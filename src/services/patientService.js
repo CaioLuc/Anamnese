@@ -90,7 +90,13 @@ export async function lerAnamnesesDoPaciente(id_paciente) {
   try {
     const q = query(collection(db, ANAMNESES_COL), where("id_paciente", "==", id_paciente));
     const qSnapshot = await getDocs(q);
-    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort descending by creation date
+    return docs.sort((a, b) => {
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+      return dateB - dateA;
+    });
   } catch (error) {
     console.error("Erro ao ler anamneses do paciente:", error);
     throw error;
@@ -154,7 +160,13 @@ export async function lerSessoesDoPaciente(id_paciente) {
   try {
     const q = query(collection(db, SESSOES_COL), where("id_paciente", "==", id_paciente));
     const qSnapshot = await getDocs(q);
-    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort descending by session date or creation date
+    return docs.sort((a, b) => {
+      const dateA = a.data_sessao ? new Date(a.data_sessao) : (a.createdAt?.toDate() || new Date(0));
+      const dateB = b.data_sessao ? new Date(b.data_sessao) : (b.createdAt?.toDate() || new Date(0));
+      return dateB - dateA;
+    });
   } catch (error) {
     console.error("Erro ao ler sessões do paciente:", error);
     throw error;

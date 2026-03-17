@@ -1,16 +1,35 @@
 import { useState } from 'react';
 import AddPatientModal from './AddPatientModal';
 import AddAnamnesisModal from './AddAnamnesisModal';
+import PatientProfileModal from './PatientProfileModal';
 
 export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [isAnamnesisModalOpen, setIsAnamnesisModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [profileInitialTab, setProfileInitialTab] = useState('evolucoes');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const openAnamnesisModal = (patient) => {
+  const openAnamnesisModal = (patient, e) => {
+    e.stopPropagation();
     setSelectedPatient(patient);
-    setIsAnamnesisModalOpen(true);
+    setProfileInitialTab('anamnese');
+    setIsProfileModalOpen(true);
   };
+
+  const openPatientProfile = (patient) => {
+    setSelectedPatient(patient);
+    setProfileInitialTab('evolucoes');
+    setIsProfileModalOpen(true);
+  };
+
+  const filteredPatients = patients.filter(p => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (p.nome && p.nome.toLowerCase().includes(term)) || 
+           (p.cpf && p.cpf.includes(term));
+  });
 
   return (
     <div className="animate-in fade-in duration-500 w-full">
@@ -31,6 +50,27 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
       </div>
 
       <div className="bg-zinc-900/50 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl overflow-hidden relative">
+        {/* Barra de Busca Exclusiva */}
+        <div className="p-4 sm:p-6 border-b border-white/5 bg-zinc-950/30 flex items-center justify-between gap-4 flex-col sm:flex-row">
+            <div className="relative w-full sm:max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input
+                    type="text"
+                    placeholder="Buscar por nome ou CPF..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-xl leading-5 bg-zinc-900 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                />
+            </div>
+            <div className="text-sm text-slate-500 shrink-0">
+                {filteredPatients.length} {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}
+            </div>
+        </div>
+
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 p-8">
             <svg className="w-8 h-8 animate-spin text-indigo-500 mb-4" fill="none" viewBox="0 0 24 24">
@@ -62,7 +102,13 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {patients.map((patient) => {
+                {filteredPatients.length === 0 ? (
+                    <tr>
+                        <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
+                            Nenhum paciente encontrado com base na busca: "{searchTerm}"
+                        </td>
+                    </tr>
+                ) : filteredPatients.map((patient) => {
                   // Simple age calculation
                   const dob = new Date(patient.data_nascimento);
                   const today = new Date();
@@ -71,7 +117,11 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
                   if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) { age--; }
 
                   return (
-                    <tr key={patient.id} className="hover:bg-white/5 transition-colors group">
+                    <tr 
+                      key={patient.id} 
+                      onClick={() => openPatientProfile(patient)}
+                      className="hover:bg-white/5 transition-colors group cursor-pointer"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 mr-4">
@@ -110,7 +160,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button 
-                          onClick={() => openAnamnesisModal(patient)}
+                          onClick={(e) => openAnamnesisModal(patient, e)}
                           className="inline-flex items-center px-3 py-1.5 border border-indigo-500/30 shadow-sm text-xs font-medium rounded-lg text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white hover:border-transparent transition-all"
                         >
                           <svg className="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -139,6 +189,12 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
         onClose={() => setIsAnamnesisModalOpen(false)} 
         patient={selectedPatient}
         onAnamnesisAdded={() => console.log('Anamnesis Added')}
+      />
+      <PatientProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        patient={selectedPatient}
+        initialTab={profileInitialTab}
       />
     </div>
   );

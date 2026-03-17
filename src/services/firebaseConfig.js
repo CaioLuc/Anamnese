@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCXvdnqWEBL7Fjrp2LJev92kI-URCkotzw",
@@ -12,6 +13,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// Initialize Firebase Authentication
+export const auth = getAuth(app);
 
 // Force WebSockets instead of Long-Polling (Bypasses AdBlockers and Antivirus traps)
 export const db = initializeFirestore(app, {

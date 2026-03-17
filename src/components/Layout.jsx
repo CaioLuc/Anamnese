@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { logoutFirebaseUser } from '../services/authService';
 
-export default function Layout({ children, currentPath, onNavigate }) {
+export default function Layout({ children, currentPath, onNavigate, userEmail }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const navigation = [
@@ -97,16 +98,25 @@ export default function Layout({ children, currentPath, onNavigate }) {
           </div>
         </div>
         
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 flex flex-col gap-2">
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/5">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-inner">
-              DR
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-inner flex-shrink-0">
+              {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-slate-200">Dr. Administrador</span>
+            <div className="flex flex-col min-w-0 pr-2">
+              <span className="text-sm font-semibold text-slate-200 truncate">{userEmail || 'Usuário'}</span>
               <span className="text-xs text-slate-500">Clínica Geral</span>
             </div>
           </div>
+          <button 
+            onClick={logoutFirebaseUser}
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold text-slate-400 hover:text-white bg-transparent hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/10"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sair do Sistema
+          </button>
         </div>
       </aside>
 
