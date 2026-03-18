@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { deletarPaciente } from '../services/patientService';
 import AddPatientModal from './AddPatientModal';
 import AddAnamnesisModal from './AddAnamnesisModal';
 import PatientProfileModal from './PatientProfileModal';
 import ConfirmDialog from './ConfirmDialog';
 
-export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) {
+export default function Pacientes({ patients, isLoading, onPatientAddedLocal, autoOpenPatient, autoOpenTab, onAutoOpenDone }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [isAnamnesisModalOpen, setIsAnamnesisModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -13,6 +13,16 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
   const [profileInitialTab, setProfileInitialTab] = useState('evolucoes');
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, patient: null });
+
+  // Auto-open patient modal when coming from Agenda 'Atender'
+  useEffect(() => {
+    if (autoOpenPatient) {
+      setSelectedPatient(autoOpenPatient);
+      setProfileInitialTab(autoOpenTab || 'evolucoes');
+      setIsProfileModalOpen(true);
+      if (onAutoOpenDone) onAutoOpenDone();
+    }
+  }, [autoOpenPatient]);
 
   const openAnamnesisModal = (patient, e) => {
     e.stopPropagation();

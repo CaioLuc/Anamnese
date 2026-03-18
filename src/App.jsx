@@ -8,13 +8,18 @@ import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';
 import Agenda from './components/Agenda';
-import { lerPacientes } from './services/patientService';
+import { lerPacientes, lerAnamnesesDoPaciente } from './services/patientService';
 
 function App() {
   const [currentPath, setCurrentPath] = useState('dashboard');
   const [patients, setPatients] = useState([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   
+  // Navigation states for 'Atender' flow
+  const [autoOpenPatientForProfile, setAutoOpenPatientForProfile] = useState(null);
+  const [autoOpenTabForProfile, setAutoOpenTabForProfile] = useState('');
+  const [preSelectedPatientForSessao, setPreSelectedPatientForSessao] = useState(null);
+
   // Auth state
   const [user, setUser] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
@@ -65,6 +70,25 @@ function App() {
     fetchPatients();
   };
 
+  const handleAtenderPaciente = async (patient) => {
+    // Check if patient already has Anamnesis
+    try {
+      const anamneses = await lerAnamnesesDoPaciente(patient.id);
+      if (anamneses.length === 0) {
+        // No anamnesis: Open profile modal in 'anamnese' tab
+        setAutoOpenPatientForProfile(patient);
+        setAutoOpenTabForProfile('anamnese');
+        setCurrentPath('pacientes');
+      } else {
+        // Has anamnesis: Go directly to 'nova-sessao' form prefilled
+        setPreSelectedPatientForSessao(patient);
+        setCurrentPath('nova-sessao');
+      }
+    } catch (error) {
+      console.error("Erro ao verificar anamnese:", error);
+    }
+  };
+
   const renderContent = () => {
     switch (currentPath) {
       case 'dashboard':
@@ -74,11 +98,21 @@ function App() {
                  patients={patients} 
                  isLoading={isLoadingPatients} 
                  onPatientAddedLocal={handlePatientAddedLocal} 
+                 autoOpenPatient={autoOpenPatientForProfile}
+                 autoOpenTab={autoOpenTabForProfile}
+                 onAutoOpenDone={() => {
+                   setAutoOpenPatientForProfile(null);
+                   setAutoOpenTabForProfile('');
+                 }}
                />;
       case 'nova-sessao':
-        return <SessaoEvolucao patients={patients} isLoadingPatients={isLoadingPatients} />;
+        return <SessaoEvolucao 
+                 patients={patients} 
+                 isLoadingPatients={isLoadingPatients} 
+                 preSelectedPatient={preSelectedPatientForSessao}
+               />;
       case 'agenda':
-        return <Agenda patients={patients} />;
+        return <Agenda patients={patients} onAtender={handleAtenderPaciente} />;
       default:
         return <DashboardSummary patients={patients} isLoading={isLoadingPatients} />;
     }

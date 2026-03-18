@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { criarSessao } from '../services/patientService';
 import { jsPDF } from 'jspdf';
 
-export default function SessaoEvolucao({ patients, isLoadingPatients }) {
+export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
-    id_paciente: '',
+    id_paciente: preSelectedPatient?.id || '',
     data_sessao: new Date().toISOString().split('T')[0],
     status: 'Presente',
     humor: 5,
@@ -12,11 +12,19 @@ export default function SessaoEvolucao({ patients, isLoadingPatients }) {
     comportamento: '',
     sintomas: ''
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
-  const [patientSearch, setPatientSearch] = useState('');
+  const [patientSearch, setPatientSearch] = useState(preSelectedPatient?.nome || '');
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // If the Agenda navigates here with a pre-selected patient, apply it
+  useEffect(() => {
+    if (preSelectedPatient) {
+      setFormData(prev => ({ ...prev, id_paciente: preSelectedPatient.id }));
+      setPatientSearch(preSelectedPatient.nome);
+    }
+  }, [preSelectedPatient]);
 
   const filteredPatientsList = patients.filter(p =>
     p.nome && p.nome.toLowerCase().includes(patientSearch.toLowerCase())

@@ -25,7 +25,7 @@ const emptyForm = {
   observacoes: '',
 };
 
-export default function Agenda({ patients }) {
+export default function Agenda({ patients, onAtender }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -109,7 +109,7 @@ export default function Agenda({ patients }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.id_paciente) return alert('Selecione um paciente.');
+    if (!form.id_paciente) return alert('Selecione um paciente da lista.');
     setIsSubmitting(true);
     try {
       if (editingId) {
@@ -119,8 +119,19 @@ export default function Agenda({ patients }) {
       }
       setShowModal(false);
       await loadAgendamentos();
+      // Auto-select the saved day so it appears immediately in the side panel
+      if (form.data) {
+        const [year, month, day] = form.data.split('-').map(Number);
+        if (year === currentYear && month === currentMonth + 1) {
+          setSelectedDay(day);
+        }
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao salvar agendamento:', err);
+      const msg = err?.code === 'permission-denied'
+        ? 'Sem permissão. Adicione a coleção "agendamentos" nas Regras do Firestore.'
+        : (err?.message || 'Erro desconhecido ao salvar.');
+      alert(`Erro: ${msg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -278,11 +289,30 @@ export default function Agenda({ patients }) {
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${sc.color}`}>{sc.label}</span>
-                        <div className="flex gap-1 mt-1">
-                          <button onClick={() => openEdit(ag)} className="p-1 text-slate-500 hover:text-indigo-400 transition-colors">
+                        <div className="flex gap-1 mt-1 items-center">
+                          {ag.status !== 'realizado' && ag.status !== 'cancelado' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await atualizarAgendamento(ag.id, { ...ag, status: 'realizado' });
+                                  await loadAgendamentos();
+                                  const patient = patients.find(p => p.id === ag.id_paciente);
+                                  if (onAtender && patient) onAtender(patient);
+                                } catch (e) {
+                                  console.error("Erro ao iniciar atendimento:", e);
+                                  alert('Não foi possível iniciar o atendimento. Verifique sua conexão.');
+                                }
+                              }}
+                              className="mr-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded shadow-sm hover:bg-indigo-500 hover:text-white transition-all"
+                              title="Iniciar Sessão"
+                            >
+                              Atender
+                            </button>
+                          )}
+                          <button onClick={() => openEdit(ag)} className="p-1.5 text-slate-500 hover:text-indigo-400 bg-white/5 hover:bg-white/10 rounded transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                           </button>
-                          <button onClick={() => setConfirmDelete({ isOpen: true, id: ag.id })} className="p-1 text-slate-500 hover:text-red-400 transition-colors">
+                          <button onClick={() => setConfirmDelete({ isOpen: true, id: ag.id })} className="p-1.5 text-slate-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
@@ -313,6 +343,7 @@ export default function Agenda({ patients }) {
                   value={patientSearch}
                   onChange={e => { setPatientSearch(e.target.value); setShowPatientDropdown(true); }}
                   onFocus={() => setShowPatientDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowPatientDropdown(false), 200)}
                   placeholder="Buscar paciente..."
                   className="w-full px-3 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-white text-sm focus:ring-1 focus:ring-indigo-500"
                 />
