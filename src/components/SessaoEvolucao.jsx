@@ -5,8 +5,9 @@ import { jsPDF } from 'jspdf';
 export default function SessaoEvolucao({ patients, isLoadingPatients }) {
   const [formData, setFormData] = useState({
     id_paciente: '',
-    data_sessao: new Date().toISOString().split('T')[0], // Hoje como default
+    data_sessao: new Date().toISOString().split('T')[0],
     status: 'Presente',
+    humor: 5,
     observacoes: '',
     comportamento: '',
     sintomas: ''
@@ -14,6 +15,18 @@ export default function SessaoEvolucao({ patients, isLoadingPatients }) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
+  const [patientSearch, setPatientSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const filteredPatientsList = patients.filter(p =>
+    p.nome && p.nome.toLowerCase().includes(patientSearch.toLowerCase())
+  );
+
+  const handleSelectPatient = (p) => {
+    setFormData(prev => ({ ...prev, id_paciente: p.id }));
+    setPatientSearch(p.nome);
+    setShowDropdown(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,6 +51,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients }) {
       // Limpa os dados de texto, mantém paciente e data
       setFormData(prev => ({ 
         ...prev, 
+        humor: 5,
         observacoes: '',
         comportamento: '',
         sintomas: ''
@@ -159,26 +173,49 @@ export default function SessaoEvolucao({ patients, isLoadingPatients }) {
           
           {/* Sessão 1: Cabeçalho */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white/[0.02] p-6 rounded-2xl border border-white/5">
-            {/* Paciente */}
+            {/* Paciente - Campo com Busca */}
             <div className="lg:col-span-1">
               <label className="block text-sm font-medium text-slate-300 mb-2">Paciente *</label>
               <div className="relative">
-                <select
-                  value={formData.id_paciente}
-                  onChange={(e) => setFormData({ ...formData, id_paciente: e.target.value })}
-                  disabled={isLoadingPatients || patients.length === 0}
-                  className="w-full pl-4 pr-10 py-3 bg-zinc-950/80 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
-                  required
-                >
-                  <option value="" disabled>Selecione um paciente</option>
-                  {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.nome}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
+                <input
+                  type="text"
+                  value={patientSearch}
+                  onChange={(e) => { setPatientSearch(e.target.value); setShowDropdown(true); setFormData(prev => ({...prev, id_paciente: ''})); }}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  placeholder="Buscar paciente..."
+                  disabled={isLoadingPatients}
+                  required
+                  className="w-full pl-9 pr-4 py-3 bg-zinc-950/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                {showDropdown && filteredPatientsList.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto">
+                    {filteredPatientsList.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onMouseDown={() => handleSelectPatient(p)}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors"
+                      >
+                        <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
+                        {p.nome}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showDropdown && patientSearch && filteredPatientsList.length === 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-zinc-900 border border-white/10 rounded-xl shadow-xl px-4 py-3 text-sm text-slate-500">
+                    Nenhum paciente encontrado.
+                  </div>
+                )}
               </div>
+              {/* Campo hidden para validação */}
+              {!formData.id_paciente && patientSearch && (
+                <p className="text-xs text-amber-400 mt-1">Selecione um paciente da lista.</p>
+              )}
             </div>
 
             {/* Data */}
@@ -211,6 +248,34 @@ export default function SessaoEvolucao({ patients, isLoadingPatients }) {
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Mood Rating */}
+          <div className="bg-white/[0.02] p-6 rounded-2xl border border-white/5">
+            <label className="block text-sm font-medium text-slate-300 mb-3">
+              Como você percebeu o paciente hoje?
+              <span className="ml-2 text-slate-500 font-normal text-xs">(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {Array.from({ length: 10 }).map((_, i) => {
+                const val = i + 1;
+                const isSelected = formData.humor === val;
+                const color = val <= 3 ? 'red' : val <= 6 ? 'yellow' : 'green';
+                const colorMap = {
+                  red:    isSelected ? 'bg-red-500 text-white border-red-500' : 'text-red-400 border-red-500/20 hover:border-red-500/50',
+                  yellow: isSelected ? 'bg-yellow-500 text-white border-yellow-500' : 'text-yellow-400 border-yellow-500/20 hover:border-yellow-500/50',
+                  green:  isSelected ? 'bg-emerald-500 text-white border-emerald-500' : 'text-emerald-400 border-emerald-500/20 hover:border-emerald-500/50',
+                };
+                return (
+                  <button key={val} type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, humor: val }))}
+                    className={`w-10 h-10 rounded-xl text-sm font-bold border transition-all ${colorMap[color]} bg-zinc-950/50`}
+                  >
+                    {val}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import { db } from './services/firebaseConfig';
 import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';
+import Agenda from './components/Agenda';
 import { lerPacientes } from './services/patientService';
 
 function App() {
@@ -59,9 +60,9 @@ function App() {
     return () => unsubscribeAuth();
   }, []);
 
-  const handlePatientAddedLocal = (newPatient) => {
-    // Add dynamically to local state immediately without loading screen
-    setPatients(prev => [newPatient, ...prev]);
+  const handlePatientAddedLocal = () => {
+    // Recarrega a lista completa do banco — funciona tanto para adições quanto para deleções
+    fetchPatients();
   };
 
   const renderContent = () => {
@@ -76,6 +77,8 @@ function App() {
                />;
       case 'nova-sessao':
         return <SessaoEvolucao patients={patients} isLoadingPatients={isLoadingPatients} />;
+      case 'agenda':
+        return <Agenda patients={patients} />;
       default:
         return <DashboardSummary patients={patients} isLoading={isLoadingPatients} />;
     }

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { lerAnamnesesDoPaciente, lerSessoesDoPaciente } from '../services/patientService';
+import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao } from '../services/patientService';
 import AnamneseForm from './AnamneseForm';
 import AnamneseAdolescenteForm from './AnamneseAdolescenteForm';
 import { jsPDF } from 'jspdf';
+import ConfirmDialog from './ConfirmDialog';
+import MoodChart from './MoodChart';
 
 export default function PatientProfileModal({ isOpen, onClose, patient, initialTab = 'evolucoes' }) {
   const [activeTab, setActiveTab] = useState('evolucoes');
@@ -11,6 +13,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState(null);
   const [isEditingAnamnese, setIsEditingAnamnese] = useState(false);
+  const [confirmSessao, setConfirmSessao] = useState({ isOpen: false, sessao: null });
 
   useEffect(() => {
     if (isOpen && patient) {
@@ -32,6 +35,21 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       console.error(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleExcluirSessao = (sessao) => {
+    setConfirmSessao({ isOpen: true, sessao });
+  };
+
+  const confirmExcluirSessao = async () => {
+    const sessao = confirmSessao.sessao;
+    setConfirmSessao({ isOpen: false, sessao: null });
+    try {
+      await deletarSessao(sessao.id);
+      loadHistory();
+    } catch (err) {
+      console.error('Erro ao deletar sessão:', err);
     }
   };
 
@@ -166,7 +184,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
@@ -253,7 +271,13 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                       <p className="text-xs text-slate-500 mt-1">Este paciente ainda não teve evoluções salvas.</p>
                     </div>
                   ) : (
-                    <div className="relative border-l border-white/10 ml-4 space-y-8 pb-4">
+                    <div className="space-y-6">
+                      {/* Mood Chart */}
+                      <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-5">
+                        <MoodChart sessoes={sessoes} />
+                      </div>
+                      {/* Timeline */}
+                      <div className="relative border-l border-white/10 ml-4 space-y-8 pb-4">
                       {sessoes.map((sessao) => (
                         <div key={sessao.id} className="relative pl-8">
                           {/* Timeline dot */}
@@ -267,9 +291,12 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                 </h4>
                                 <span className="text-xs text-slate-500 mt-1 block">ID Sessão: {sessao.id.substring(0,8)}</span>
                               </div>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
                                   <button onClick={() => gerarPdfSessao(sessao)} className="p-1.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-colors border border-blue-500/20 shadow-sm" title="Exportar Sessão para PDF">
                                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                  </button>
+                                  <button onClick={() => handleExcluirSessao(sessao)} className="p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/20 shadow-sm" title="Apagar Evolução">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                   </button>
                                   <span className={`px-2.5 py-1 text-xs font-medium rounded-lg border ${
                                     sessao.status === 'Presente' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
@@ -314,6 +341,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                           </div>
                         </div>
                       ))}
+                    </div>
                     </div>
                   )}
                 </div>
@@ -471,6 +499,14 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
         </div>
         
       </div>
+      <ConfirmDialog
+        isOpen={confirmSessao.isOpen}
+        title="Apagar Evolução"
+        message={`Deseja apagar permanentemente a evolução do dia ${confirmSessao.sessao?.data_sessao ? confirmSessao.sessao.data_sessao.split('-').reverse().join('/') : ''}? Esta ação não pode ser desfeita.`}
+        onConfirm={confirmExcluirSessao}
+        onCancel={() => setConfirmSessao({ isOpen: false, sessao: null })}
+        variant="danger"
+      />
     </div>
   );
 }

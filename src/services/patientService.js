@@ -1,5 +1,5 @@
-import { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebaseConfig.js';
+import { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { db, auth } from './firebaseConfig.js';
 
 const PACIENTES_COL = 'pacientes';
 const ANAMNESES_COL = 'anamneses';
@@ -14,6 +14,7 @@ export async function criarPaciente(pacienteData) {
   try {
     const docRef = await addDoc(collection(db, PACIENTES_COL), {
       ...pacienteData,
+      userId: auth.currentUser.uid,
       createdAt: serverTimestamp()
     });
     return docRef.id;
@@ -25,7 +26,8 @@ export async function criarPaciente(pacienteData) {
 
 export async function lerPacientes() {
   try {
-    const qSnapshot = await getDocs(collection(db, PACIENTES_COL));
+    const q = query(collection(db, PACIENTES_COL), where("userId", "==", auth.currentUser.uid));
+    const qSnapshot = await getDocs(q);
     return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Erro ao ler pacientes:", error);
@@ -77,6 +79,7 @@ export async function criarAnamnese(anamneseData) {
   try {
     const docRef = await addDoc(collection(db, ANAMNESES_COL), {
       ...anamneseData,
+      userId: auth.currentUser.uid,
       createdAt: serverTimestamp()
     });
     return docRef.id;
@@ -88,7 +91,11 @@ export async function criarAnamnese(anamneseData) {
 
 export async function lerAnamnesesDoPaciente(id_paciente) {
   try {
-    const q = query(collection(db, ANAMNESES_COL), where("id_paciente", "==", id_paciente));
+    const q = query(
+      collection(db, ANAMNESES_COL), 
+      where("id_paciente", "==", id_paciente),
+      where("userId", "==", auth.currentUser.uid)
+    );
     const qSnapshot = await getDocs(q);
     const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     // Sort descending by creation date
@@ -147,6 +154,7 @@ export async function criarSessao(sessaoData) {
   try {
     const docRef = await addDoc(collection(db, SESSOES_COL), {
       ...sessaoData,
+      userId: auth.currentUser.uid,
       createdAt: serverTimestamp()
     });
     return docRef.id;
@@ -158,7 +166,11 @@ export async function criarSessao(sessaoData) {
 
 export async function lerSessoesDoPaciente(id_paciente) {
   try {
-    const q = query(collection(db, SESSOES_COL), where("id_paciente", "==", id_paciente));
+    const q = query(
+      collection(db, SESSOES_COL), 
+      where("id_paciente", "==", id_paciente),
+      where("userId", "==", auth.currentUser.uid)
+    );
     const qSnapshot = await getDocs(q);
     const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     // Sort descending by session date or creation date
@@ -169,6 +181,81 @@ export async function lerSessoesDoPaciente(id_paciente) {
     });
   } catch (error) {
     console.error("Erro ao ler sessões do paciente:", error);
+    throw error;
+  }
+}
+
+export async function deletarSessao(id) {
+  try {
+    const docRef = doc(db, SESSOES_COL, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error("Erro ao deletar sessão:", error);
+    throw error;
+  }
+}
+
+// ==========================================
+// QUERIES GLOBAIS (para Dashboard)
+// ==========================================
+
+export async function lerTodasSessoes() {
+  try {
+    const q = query(collection(db, SESSOES_COL), where("userId", "==", auth.currentUser.uid));
+    const qSnapshot = await getDocs(q);
+    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Erro ao ler todas as sessões:", error);
+    throw error;
+  }
+}
+
+export async function lerTodasAnamneses() {
+  try {
+    const q = query(collection(db, ANAMNESES_COL), where("userId", "==", auth.currentUser.uid));
+    const qSnapshot = await getDocs(q);
+    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Erro ao ler todas as anamneses:", error);
+    throw error;
+  }
+}
+
+
+// ==========================================
+// MIGRAÇÃO: VINCULAR DADOS ÓRFÃOS
+// ==========================================
+
+export async function vincularDadosAoUsuarioAtual() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return { success: false, message: "Usuário não autenticado." };
+
+  try {
+    const collections = [PACIENTES_COL, ANAMNESES_COL, SESSOES_COL];
+    let totalMigrados = 0;
+
+    for (const colName of collections) {
+      const q = query(collection(db, colName)); // Pega tudo
+      const snapshot = await getDocs(q);
+      
+      const batch = writeBatch(db);
+      let count = 0;
+
+      snapshot.docs.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.userId) { // Se não tiver dono
+          batch.update(docSnap.ref, { userId: uid });
+          count++;
+          totalMigrados++;
+        }
+      });
+
+      if (count > 0) await batch.commit();
+    }
+
+    return { success: true, message: `${totalMigrados} registros foram vinculados à sua conta.` };
+  } catch (error) {
+    console.error("Erro na migração:", error);
     throw error;
   }
 }

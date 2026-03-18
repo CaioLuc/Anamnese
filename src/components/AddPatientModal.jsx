@@ -32,8 +32,8 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm transition-opacity">
-      <div className="relative w-full max-w-md p-8 bg-zinc-900 border border-white/10 rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm">
+      <div className="relative w-full max-w-md p-8 bg-zinc-900 border border-white/10 rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar pointer-events-auto">
         <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

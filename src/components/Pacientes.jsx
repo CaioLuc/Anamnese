@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { deletarPaciente } from '../services/patientService';
 import AddPatientModal from './AddPatientModal';
 import AddAnamnesisModal from './AddAnamnesisModal';
 import PatientProfileModal from './PatientProfileModal';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -10,6 +12,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [profileInitialTab, setProfileInitialTab] = useState('evolucoes');
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, patient: null });
 
   const openAnamnesisModal = (patient, e) => {
     e.stopPropagation();
@@ -24,6 +27,22 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
     setIsProfileModalOpen(true);
   };
 
+  const handleExcluirPaciente = async (patient, e) => {
+    e.stopPropagation();
+    setConfirmDialog({ isOpen: true, patient });
+  };
+
+  const confirmExcluirPaciente = async () => {
+    const patient = confirmDialog.patient;
+    setConfirmDialog({ isOpen: false, patient: null });
+    try {
+      await deletarPaciente(patient.id);
+      if (onPatientAddedLocal) onPatientAddedLocal();
+    } catch (err) {
+      console.error('Erro ao deletar:', err);
+    }
+  };
+
   const filteredPatients = patients.filter(p => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -36,7 +55,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-extrabold text-white tracking-tight">Pacientes cadastrados</h2>
-          <p className="mt-1 text-slate-400">Gerencie sua lista de pacientes e acompanhe as evoluções clínicas.</p>
+          <p className="mt-1 text-slate-400">Gerencie sua lista de pacientes e acompanhe as evoluções psicoterapêuticas.</p>
         </div>
         <button
           onClick={() => setIsPatientModalOpen(true)}
@@ -159,15 +178,26 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button 
-                          onClick={(e) => openAnamnesisModal(patient, e)}
-                          className="inline-flex items-center px-3 py-1.5 border border-indigo-500/30 shadow-sm text-xs font-medium rounded-lg text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white hover:border-transparent transition-all"
-                        >
-                          <svg className="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          Nova Anamnese
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={(e) => openAnamnesisModal(patient, e)}
+                              className="inline-flex items-center px-3 py-1.5 border border-indigo-500/30 shadow-sm text-xs font-medium rounded-lg text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white hover:border-transparent transition-all"
+                            >
+                              <svg className="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Nova Anamnese
+                            </button>
+                            <button 
+                              onClick={(e) => handleExcluirPaciente(patient, e)}
+                              className="p-1.5 text-red-400 bg-red-500/10 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/20 shadow-sm"
+                              title="Remover Paciente"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -195,6 +225,14 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal }) 
         onClose={() => setIsProfileModalOpen(false)}
         patient={selectedPatient}
         initialTab={profileInitialTab}
+      />
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Remover Paciente"
+        message={`Tem certeza que deseja apagar ${confirmDialog.patient?.nome}? Esta ação é permanente e removerá todo o prontuário.`}
+        onConfirm={confirmExcluirPaciente}
+        onCancel={() => setConfirmDialog({ isOpen: false, patient: null })}
+        variant="danger"
       />
     </div>
   );

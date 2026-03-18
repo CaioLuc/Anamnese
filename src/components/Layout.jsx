@@ -1,8 +1,13 @@
-import { useState } from 'react';
-import { logoutFirebaseUser } from '../services/authService';
+import { useState, useEffect } from 'react';
+import { logoutFirebaseUser, subscribeToAuthChanges } from '../services/authService';
+import { vincularDadosAoUsuarioAtual } from '../services/patientService';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function Layout({ children, currentPath, onNavigate, userEmail }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationMsg, setMigrationMsg] = useState('');
 
   const navigation = [
     { 
@@ -31,8 +36,47 @@ export default function Layout({ children, currentPath, onNavigate, userEmail })
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       )
+    },
+    {
+      name: 'Agenda',
+      id: 'agenda',
+      icon: (
+        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      )
     }
   ];
+
+  const handleLogout = async () => {
+    try {
+      await logoutFirebaseUser();
+    } catch (err) {
+      console.error('Erro ao sair:', err);
+    }
+  };
+
+  const handleMigrate = async () => {
+    setIsMigrating(true);
+    setMigrationMsg('');
+    try {
+      const res = await vincularDadosAoUsuarioAtual();
+      if (res.success) {
+        setMigrationMsg(res.message);
+        // Reload page or data after a bit
+        setTimeout(() => {
+           setMigrationMsg('');
+           window.location.reload();
+        }, 3000);
+      } else {
+        setMigrationMsg('Erro: ' + res.message);
+      }
+    } catch (err) {
+      setMigrationMsg('Erro ao vincular dados.');
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-zinc-950 text-slate-100 overflow-hidden font-sans selection:bg-indigo-500/30">
@@ -58,7 +102,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail })
               </svg>
             </div>
             <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-              ClinicDash
+              PsycoBrain
             </h1>
           </div>
           
@@ -105,11 +149,33 @@ export default function Layout({ children, currentPath, onNavigate, userEmail })
             </div>
             <div className="flex flex-col min-w-0 pr-2">
               <span className="text-sm font-semibold text-slate-200 truncate">{userEmail || 'Usuário'}</span>
-              <span className="text-xs text-slate-500">Clínica Geral</span>
+              <span className="text-xs text-slate-500">Psicólogo(a)</span>
             </div>
           </div>
+          {migrationMsg && (
+            <div className={`text-xs px-3 py-2 rounded-lg ${migrationMsg.startsWith('Erro') ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+              {migrationMsg}
+            </div>
+          )}
           <button 
-            onClick={logoutFirebaseUser}
+            onClick={handleMigrate}
+            disabled={isMigrating}
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-xl transition-colors border border-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isMigrating ? (
+              <svg className="animate-spin h-4 w-4 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            )}
+            {isMigrating ? 'Vinculando dados...' : 'Vincular dados antigos'}
+          </button>
+          <button 
+            onClick={() => setConfirmLogout(true)}
             className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold text-slate-400 hover:text-white bg-transparent hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/10"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -132,7 +198,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail })
               </svg>
             </button>
             <h1 className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-               ClinicDash
+               PsycoBrain
             </h1>
         </header>
         
@@ -143,6 +209,15 @@ export default function Layout({ children, currentPath, onNavigate, userEmail })
         </main>
       </div>
 
+      {/* Modal de Logout */}
+      <ConfirmDialog
+        isOpen={confirmLogout}
+        title="Sair do Sistema"
+        message="Tem certeza de que deseja encerrar a sua sessão? Você precisará entrar novamente para acessar seus pacientes."
+        onConfirm={handleLogout}
+        onCancel={() => setConfirmLogout(false)}
+        confirmText="Sair da Conta"
+      />
     </div>
   );
 }

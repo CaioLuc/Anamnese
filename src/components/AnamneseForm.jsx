@@ -43,6 +43,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
       doencas_importantes: '',
       medicamentos: '',
       uso_substancias: '',
+      tentativa_suicidio: '',
       
       // Seção 5: Finalização
       observacoes_gerais: ''
@@ -269,6 +270,15 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                        <label className="block text-xs font-medium text-slate-300 mb-2">Faz uso de Substâncias Psicoativas? Se sim, quais e há quanto tempo?</label>
                        <textarea name="uso_substancias" value={formData.uso_substancias} onChange={handleChange} rows="2" className="w-full p-4 bg-zinc-950/80 border border-white/10 rounded-xl text-white resize-y custom-scrollbar focus:ring-1 focus:ring-red-500/50" />
                     </div>
+
+                    {/* ALERTA SUICÍDIO */}
+                    <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl mt-4">
+                       <label className="block text-xs font-bold text-red-400 mb-2 flex items-center gap-2">
+                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                         Atenção: Houve tentativas de suicídio?
+                       </label>
+                       <textarea name="tentativa_suicidio" value={formData.tentativa_suicidio} onChange={handleChange} rows="2" className="w-full p-3 bg-zinc-950/90 border border-red-500/20 rounded-lg text-red-100 placeholder-red-900/50 resize-y focus:ring-1 focus:ring-red-500 text-sm" placeholder="Se sim, detalhe época, método e desfecho..." />
+                    </div>
                 </div>
             </section>
 
@@ -277,7 +287,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                 <SectionHeader step="5" title="Finalização" desc="Parecer do profissional ou comentários extras não mapeados." />
                 <div>
                    <label className="block text-xs font-medium text-slate-300 mb-2">Observações Gerais Feitas pelo Profissional</label>
-                   <textarea name="observacoes_gerais" value={formData.observacoes_gerais} onChange={handleChange} rows="5" className="w-full p-4 bg-zinc-950/80 border border-white/10 rounded-xl text-white resize-y custom-scrollbar focus:ring-1 focus:ring-indigo-500" placeholder="Anotações de percepções clínicas da primeira consulta..." />
+                   <textarea name="observacoes_gerais" value={formData.observacoes_gerais} onChange={handleChange} rows="5" className="w-full p-4 bg-zinc-950/80 border border-white/10 rounded-xl text-white resize-y custom-scrollbar focus:ring-1 focus:ring-indigo-500" placeholder="Anotações de percepções psicoterapêuticas da primeira consulta..." />
                 </div>
             </section>
 

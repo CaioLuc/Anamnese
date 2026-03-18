@@ -1,0 +1,14 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.psychobrain.app
+productName: PsycoBrain
+files:
+  - filter:
+      - dist/**/*
+      - electron/**/*
+win:
+  target: nsis
+extraMetadata:
+  main: electron/main.js
+electronVersion: 34.5.8
