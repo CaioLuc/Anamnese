@@ -1,9 +1,14 @@
+import { useTheme } from '../contexts/ThemeContext';
+
 /**
  * MoodChart – Gráfico SVG puro de evolução do humor do paciente.
  * Props:
  *   sessoes: array de { data_sessao, humor, observacoes }
  */
 export default function MoodChart({ sessoes }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   // Filter sessions that have a humor value and sort by date
   const data = sessoes
     .filter(s => s.humor !== undefined && s.humor !== null && s.humor !== '')
@@ -68,13 +73,13 @@ export default function MoodChart({ sessoes }) {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2">
+        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
           <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
           </svg>
           Evolução do Humor
         </h4>
-        <div className="flex items-center gap-3 text-[10px] text-slate-500">
+        <div className="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block"/>Crítico</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"/>Moderado</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"/>Bom</span>
@@ -85,7 +90,7 @@ export default function MoodChart({ sessoes }) {
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[400px]" style={{ height: H }}>
           <defs>
             <linearGradient id="moodGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
+              <stop offset="0%" stopColor="#6366f1" stopOpacity={isDark ? "0.3" : "0.15"} />
               <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
             </linearGradient>
           </defs>
@@ -95,9 +100,9 @@ export default function MoodChart({ sessoes }) {
             <g key={val}>
               <line
                 x1={padLeft} y1={yScale(val)} x2={W - padRight} y2={yScale(val)}
-                stroke="rgba(255,255,255,0.05)" strokeWidth="1"
+                stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"} strokeWidth="1"
               />
-              <text x={padLeft - 6} y={yScale(val) + 4} textAnchor="end" fontSize="9" fill="#64748b">{val}</text>
+              <text x={padLeft - 6} y={yScale(val) + 4} textAnchor="end" fontSize="9" fill={isDark ? "#94a3b8" : "#0f172a"} fontWeight="bold">{val}</text>
             </g>
           ))}
 
@@ -116,12 +121,13 @@ export default function MoodChart({ sessoes }) {
               {/* X axis date label */}
               <text
                 x={p[0]} y={H - 4}
-                textAnchor="middle" fontSize="8" fill="#64748b"
+                textAnchor="middle" fontSize="8" fill={isDark ? "#94a3b8" : "#0f172a"}
+                fontWeight="bold"
               >
                 {formatDate(data[i].data)}
               </text>
               {/* Circle */}
-              <circle cx={p[0]} cy={p[1]} r={5} fill={humorColor(data[i].humor)} stroke="#18181b" strokeWidth="2" />
+              <circle cx={p[0]} cy={p[1]} r={5} fill={humorColor(data[i].humor)} stroke={isDark ? "#18181b" : "#ffffff"} strokeWidth="2.5" />
               {/* Value label */}
               <text
                 x={p[0]} y={p[1] - 9}

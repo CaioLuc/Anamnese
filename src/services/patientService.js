@@ -195,6 +195,16 @@ export async function deletarSessao(id) {
   }
 }
 
+export async function atualizarSessao(id, dadosAtualizados) {
+  try {
+    const docRef = doc(db, SESSOES_COL, id);
+    await updateDoc(docRef, dadosAtualizados);
+  } catch (error) {
+    console.error("Erro ao atualizar sessão:", error);
+    throw error;
+  }
+}
+
 // ==========================================
 // QUERIES GLOBAIS (para Dashboard)
 // ==========================================
@@ -256,6 +266,90 @@ export async function vincularDadosAoUsuarioAtual() {
     return { success: true, message: `${totalMigrados} registros foram vinculados à sua conta.` };
   } catch (error) {
     console.error("Erro na migração:", error);
+    throw error;
+  }
+}
+
+// ==========================================
+// CRUD: QUESTIONÁRIOS (TEMPLATES)
+// ==========================================
+
+const QUESTIONARIOS_COL = 'questionarios';
+
+export async function criarQuestionario(dados) {
+  try {
+    const docRef = await addDoc(collection(db, QUESTIONARIOS_COL), {
+      ...dados,
+      userId: auth.currentUser.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error("Erro ao criar questionário:", error);
+    throw error;
+  }
+}
+
+export async function lerQuestionarios() {
+  try {
+    const q = query(
+      collection(db, QUESTIONARIOS_COL),
+      where("userId", "==", auth.currentUser.uid)
+    );
+    const snapshot = await getDocs(q);
+    const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    return docs.sort((a, b) => {
+      const dA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+      const dB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+      return dB - dA;
+    });
+  } catch (error) {
+    console.error("Erro ao ler questionários:", error);
+    throw error;
+  }
+}
+
+export async function lerQuestionario(id) {
+  try {
+    const docRef = doc(db, QUESTIONARIOS_COL, id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
+    return null;
+  } catch (error) {
+    console.error("Erro ao ler questionário:", error);
+    throw error;
+  }
+}
+
+export async function atualizarQuestionario(id, dados) {
+  try {
+    const docRef = doc(db, QUESTIONARIOS_COL, id);
+    await updateDoc(docRef, { ...dados, updatedAt: serverTimestamp() });
+  } catch (error) {
+    console.error("Erro ao atualizar questionário:", error);
+    throw error;
+  }
+}
+
+export async function deletarQuestionario(id) {
+  try {
+    await deleteDoc(doc(db, QUESTIONARIOS_COL, id));
+  } catch (error) {
+    console.error("Erro ao deletar questionário:", error);
+    throw error;
+  }
+}
+
+export async function duplicarQuestionario(id) {
+  try {
+    const original = await lerQuestionario(id);
+    if (!original) throw new Error("Questionário não encontrado.");
+    const { id: _id, createdAt: _c, updatedAt: _u, ...dados } = original;
+    const novoId = await criarQuestionario({ ...dados, nome: `${dados.nome} (cópia)` });
+    return novoId;
+  } catch (error) {
+    console.error("Erro ao duplicar questionário:", error);
     throw error;
   }
 }

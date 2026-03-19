@@ -3,14 +3,22 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-zinc-950 text-slate-100 antialiased selection:bg-indigo-500/30;
+  :root {
+    --scrollbar-thumb: #cbd5e1;
+  }
+  
+  .dark {
+    --scrollbar-thumb: #3f3f46;
   }
 
-  /* Scrollbar global - padrão escuro */
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-slate-100 antialiased selection:bg-indigo-500/30;
+  }
+
+  /* Scrollbar global */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #3f3f46 transparent;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
 
   *::-webkit-scrollbar {
@@ -23,7 +31,7 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: #3f3f46;
+    background-color: var(--scrollbar-thumb);
     border-radius: 999px;
     border: 2px solid transparent;
   }

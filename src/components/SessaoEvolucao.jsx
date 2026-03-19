@@ -10,7 +10,10 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
     humor: 5,
     observacoes: '',
     comportamento: '',
-    sintomas: ''
+    sintomas: '',
+    valor: '',
+    pago: false,
+    forma_pagamento: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,7 +24,11 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   // If the Agenda navigates here with a pre-selected patient, apply it
   useEffect(() => {
     if (preSelectedPatient) {
-      setFormData(prev => ({ ...prev, id_paciente: preSelectedPatient.id }));
+      setFormData(prev => ({ 
+        ...prev, 
+        id_paciente: preSelectedPatient.id,
+        valor: preSelectedPatient.valor_sessao || ''
+      }));
       setPatientSearch(preSelectedPatient.nome);
     }
   }, [preSelectedPatient]);
@@ -31,7 +38,11 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   );
 
   const handleSelectPatient = (p) => {
-    setFormData(prev => ({ ...prev, id_paciente: p.id }));
+    setFormData(prev => ({ 
+      ...prev, 
+      id_paciente: p.id,
+      valor: p.valor_sessao || ''
+    }));
     setPatientSearch(p.nome);
     setShowDropdown(false);
   };
@@ -62,7 +73,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         humor: 5,
         observacoes: '',
         comportamento: '',
-        sintomas: ''
+        sintomas: '',
+        pago: false,
+        forma_pagamento: ''
       }));
 
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 5000);
@@ -155,11 +168,11 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   return (
     <div className="animate-in fade-in duration-500 w-full max-w-5xl mx-auto pb-10">
       <div className="mb-8">
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">Nova Evolução</h2>
-        <p className="mt-1 text-slate-400">Registre o status, comportamento e sintomas do atendimento atual.</p>
+        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Nova Evolução</h2>
+        <p className="mt-1 text-slate-600 dark:text-slate-400">Registre o status, comportamento e sintomas do atendimento atual.</p>
       </div>
 
-      <div className="bg-zinc-900/50 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6 sm:p-10 relative overflow-hidden">
+      <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-2xl rounded-3xl p-6 sm:p-10 relative overflow-hidden">
         
         {statusMessage.text && (
           <div className={`mb-8 p-4 rounded-xl border flex items-start gap-3 transition-all ${
@@ -180,13 +193,13 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         <form onSubmit={handleSubmit} className="space-y-8">
           
           {/* Sessão 1: Cabeçalho */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white/[0.02] p-6 rounded-2xl border border-white/5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5">
             {/* Paciente - Campo com Busca */}
             <div className="lg:col-span-1">
-              <label className="block text-sm font-medium text-slate-300 mb-2">Paciente *</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Paciente *</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
                 <input
                   type="text"
@@ -197,16 +210,16 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                   placeholder="Buscar paciente..."
                   disabled={isLoadingPatients}
                   required
-                  className="w-full pl-9 pr-4 py-3 bg-zinc-950/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-4 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {showDropdown && filteredPatientsList.length > 0 && (
-                  <div className="absolute z-20 mt-1 w-full bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto">
+                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto">
                     {filteredPatientsList.map(p => (
                       <button
                         key={p.id}
                         type="button"
                         onMouseDown={() => handleSelectPatient(p)}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-800 dark:text-white hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors"
                       >
                         <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
                         {p.nome}
@@ -215,7 +228,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                   </div>
                 )}
                 {showDropdown && patientSearch && filteredPatientsList.length === 0 && (
-                  <div className="absolute z-20 mt-1 w-full bg-zinc-900 border border-white/10 rounded-xl shadow-xl px-4 py-3 text-sm text-slate-500">
+                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl shadow-xl px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                     Nenhum paciente encontrado.
                   </div>
                 )}
@@ -228,42 +241,90 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
             {/* Data */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Data da Sessão *</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Data da Sessão *</label>
               <input
                 type="date"
                 value={formData.data_sessao}
                 onChange={(e) => setFormData({ ...formData, data_sessao: e.target.value })}
-                className="w-full px-4 py-3 bg-zinc-950/80 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 css-date-input"
+                className="w-full px-4 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 css-date-input"
                 required
               />
             </div>
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Status do Comparecimento *</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status do Comparecimento *</label>
               <div className="relative">
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full pl-4 pr-10 py-3 bg-zinc-950/80 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
+                  className="w-full pl-4 pr-10 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
                 >
                   <option value="Presente">Presente</option>
                   <option value="Faltou">Faltou</option>
                   <option value="Remarcado">Remarcado</option>
                   <option value="Cancelado">Cancelado</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-600 dark:text-slate-400">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
               </div>
             </div>
+
+            {/* Valor da Sessão */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Valor da Sessão (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.valor}
+                onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+                className="w-full px-4 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Pagamento Efetuado */}
+            <div className="flex flex-col justify-end pb-1 lg:col-span-2">
+              <label className="flex items-center gap-3 p-3 bg-white/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl cursor-pointer hover:bg-white/80 dark:hover:bg-zinc-900 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.pago}
+                  onChange={(e) => setFormData({ ...formData, pago: e.target.checked })}
+                  className="w-5 h-5 text-indigo-500 bg-white dark:bg-zinc-900 border-slate-300 dark:border-white/20 rounded focus:ring-indigo-500 focus:ring-2"
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Marcar como Pago</span>
+              </label>
+
+              {formData.pago && (
+                <div className="mt-3 relative animate-in slide-in-from-top-2 duration-200">
+                  <select
+                    value={formData.forma_pagamento}
+                    onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
+                    className="w-full pl-4 pr-10 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
+                    required={formData.pago}
+                  >
+                    <option value="" disabled>Selecione a forma de pagamento...</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Transferência">Transferência Bancária</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-600 dark:text-slate-400">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Mood Rating */}
-          <div className="bg-white/[0.02] p-6 rounded-2xl border border-white/5">
-            <label className="block text-sm font-medium text-slate-300 mb-3">
+          <div className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
               Como você percebeu o paciente hoje?
-              <span className="ml-2 text-slate-500 font-normal text-xs">(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
+              <span className="ml-2 text-slate-600 dark:text-slate-400 font-normal text-xs">(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
             </label>
             <div className="flex items-center gap-1.5 flex-wrap">
               {Array.from({ length: 10 }).map((_, i) => {
@@ -271,14 +332,14 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                 const isSelected = formData.humor === val;
                 const color = val <= 3 ? 'red' : val <= 6 ? 'yellow' : 'green';
                 const colorMap = {
-                  red:    isSelected ? 'bg-red-500 text-white border-red-500' : 'text-red-400 border-red-500/20 hover:border-red-500/50',
-                  yellow: isSelected ? 'bg-yellow-500 text-white border-yellow-500' : 'text-yellow-400 border-yellow-500/20 hover:border-yellow-500/50',
-                  green:  isSelected ? 'bg-emerald-500 text-white border-emerald-500' : 'text-emerald-400 border-emerald-500/20 hover:border-emerald-500/50',
+                  red:    isSelected ? 'bg-red-500 text-slate-900 dark:text-white border-red-500' : 'text-red-400 border-red-500/20 hover:border-red-500/50',
+                  yellow: isSelected ? 'bg-yellow-500 text-slate-900 dark:text-white border-yellow-500' : 'text-yellow-400 border-yellow-500/20 hover:border-yellow-500/50',
+                  green:  isSelected ? 'bg-emerald-500 text-slate-900 dark:text-white border-emerald-500' : 'text-emerald-400 border-emerald-500/20 hover:border-emerald-500/50',
                 };
                 return (
                   <button key={val} type="button"
                     onClick={() => setFormData(prev => ({ ...prev, humor: val }))}
-                    className={`w-10 h-10 rounded-xl text-sm font-bold border transition-all ${colorMap[color]} bg-zinc-950/50`}
+                    className={`w-10 h-10 rounded-xl text-sm font-bold border transition-all ${colorMap[color]} bg-slate-50/50 dark:bg-zinc-950/50`}
                   >
                     {val}
                   </button>
@@ -289,11 +350,11 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
           {/* Sessão 2: Observações */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Observações gerais *</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Observações gerais *</label>
             <textarea
               value={formData.observacoes}
               onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-              className="w-full p-4 bg-zinc-950/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[150px] custom-scrollbar"
+              className="w-full p-4 bg-slate-50/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[150px] custom-scrollbar"
               placeholder="Resumo da sessão e os principais temas abordados..."
               required
             />
@@ -301,29 +362,29 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
           {/* Sessão 3: Comportamento */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Comportamento apresentado</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Comportamento apresentado</label>
             <textarea
               value={formData.comportamento}
               onChange={(e) => setFormData({ ...formData, comportamento: e.target.value })}
-              className="w-full p-4 bg-zinc-950/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[120px] custom-scrollbar"
+              className="w-full p-4 bg-slate-50/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[120px] custom-scrollbar"
               placeholder="Descreva a postura, afeto, humor e reações do paciente durante o atendimento..."
             />
           </div>
 
           {/* Sessão 4: Sintomas */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Sintomas relatados</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sintomas relatados</label>
             <textarea
               value={formData.sintomas}
               onChange={(e) => setFormData({ ...formData, sintomas: e.target.value })}
-              className="w-full p-4 bg-zinc-950/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[120px] custom-scrollbar"
+              className="w-full p-4 bg-slate-50/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[120px] custom-scrollbar"
               placeholder="Ansiedade, insônia, sudorese, etc..."
             />
           </div>
 
           {/* Botões */}
-          <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-slate-500 max-w-sm hidden md:block">
+          <div className="pt-6 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm hidden md:block">
               Este histórico ficará salvo eternamente no banco de dados e poderá ser recuperado no prontuário do paciente.
             </p>
             
@@ -332,7 +393,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                 type="button"
                 onClick={handleExportPDF}
                 disabled={!formData.id_paciente || !formData.observacoes}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-3 text-sm font-semibold text-slate-300 transition-all bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

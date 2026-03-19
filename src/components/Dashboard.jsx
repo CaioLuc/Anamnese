@@ -67,11 +67,11 @@ function StatCard({ label, value, icon, color, sub }) {
   return (
     <div className={`relative overflow-hidden rounded-2xl border ${c.border} ${c.bg} p-5 flex flex-col gap-3 group hover:scale-[1.02] transition-transform duration-200`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">{label}</span>
         <div className={`p-2 rounded-xl ${c.bg} ${c.icon}`}>{icon}</div>
       </div>
       <div className={`text-4xl font-extrabold ${c.text}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-500">{sub}</div>}
+      {sub && <div className="text-xs text-slate-600 dark:text-slate-400">{sub}</div>}
     </div>
   );
 }
@@ -116,22 +116,22 @@ export default function DashboardSummary({ patients, isLoading }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">Dashboard</h2>
-          <p className="mt-1 text-slate-400">Visão geral do consultório — {now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard</h2>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Visão geral do consultório — {now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
       </div>
 
       {/* Filtro de Período */}
-      <div className="bg-zinc-900/60 border border-white/5 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-2">Período:</span>
+      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-4 flex flex-wrap items-center gap-3">
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mr-2">Período:</span>
         {PERIODOS.map(p => (
           <button
             key={p.id}
             onClick={() => setPeriodo(p.id)}
             className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition-all border ${
               periodo === p.id
-                ? 'bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
-                : 'text-slate-400 border-white/10 hover:border-indigo-500/50 hover:text-white bg-transparent'
+                ? 'bg-indigo-500 text-slate-900 dark:text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
+                : 'text-slate-400 dark:text-slate-500 dark:text-slate-400 border-slate-300 dark:border-white/10 hover:border-indigo-500/50 hover:text-slate-900 dark:hover:text-white bg-transparent'
             }`}
           >
             {p.label}
@@ -140,10 +140,10 @@ export default function DashboardSummary({ patients, isLoading }) {
         {periodo === 'personalizado' && (
           <div className="flex items-center gap-2 ml-2">
             <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
-              className="px-3 py-1.5 rounded-xl text-sm bg-zinc-900 border border-white/10 text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <span className="text-slate-500 text-xs">até</span>
+              className="px-3 py-1.5 rounded-xl text-sm bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <span className="text-slate-600 dark:text-slate-400 text-xs">até</span>
             <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
-              className="px-3 py-1.5 rounded-xl text-sm bg-zinc-900 border border-white/10 text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              className="px-3 py-1.5 rounded-xl text-sm bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
         )}
       </div>
@@ -206,21 +206,21 @@ export default function DashboardSummary({ patients, isLoading }) {
       </div>
 
       {/* Tabela de Sessões recentes */}
-      <div className="bg-zinc-900/60 border border-white/5 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-          <h3 className="font-bold text-white">Evoluções do período</h3>
-          <span className="text-xs text-slate-500 bg-white/5 px-3 py-1 rounded-full">{sessoesPeriodo.length} registros</span>
+      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
+          <h3 className="font-bold text-slate-900 dark:text-white">Evoluções do período</h3>
+          <span className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">{sessoesPeriodo.length} registros</span>
         </div>
         {isLoadingStats ? (
           <div className="flex items-center justify-center py-12">
             <svg className="w-7 h-7 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
           </div>
         ) : sessoesPeriodo.length === 0 ? (
-          <div className="py-12 text-center text-slate-500 text-sm">Nenhuma evolução encontrada no período selecionado.</div>
+          <div className="py-12 text-center text-slate-600 dark:text-slate-400 text-sm">Nenhuma evolução encontrada no período selecionado.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-500 uppercase tracking-wider border-b border-white/5 bg-white/[0.02]">
+              <thead className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02]">
                 <tr>
                   <th className="px-6 py-3">Data</th>
                   <th className="px-6 py-3">Paciente</th>
@@ -233,10 +233,10 @@ export default function DashboardSummary({ patients, isLoading }) {
                   const p = patients.find(pt => pt.id === s.id_paciente);
                   return (
                     <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-3 font-medium text-slate-300 whitespace-nowrap">
+                      <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                         {s.data_sessao ? s.data_sessao.split('-').reverse().join('/') : '—'}
                       </td>
-                      <td className="px-6 py-3 text-slate-200 whitespace-nowrap">
+                      <td className="px-6 py-3 text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs font-bold">
                             {p?.nome?.charAt(0)?.toUpperCase() || '?'}
@@ -251,7 +251,7 @@ export default function DashboardSummary({ patients, isLoading }) {
                           'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         }`}>{s.status || '—'}</span>
                       </td>
-                      <td className="px-6 py-3 text-slate-500 hidden md:table-cell max-w-xs truncate">
+                      <td className="px-6 py-3 text-slate-600 dark:text-slate-400 hidden md:table-cell max-w-xs truncate">
                         {s.observacoes || '—'}
                       </td>
                     </tr>
@@ -260,7 +260,7 @@ export default function DashboardSummary({ patients, isLoading }) {
               </tbody>
             </table>
             {sessoesPeriodo.length > 15 && (
-              <div className="px-6 py-3 text-xs text-slate-500 border-t border-white/5 text-center">
+              <div className="px-6 py-3 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-white/5 text-center">
                 Mostrando 15 de {sessoesPeriodo.length} registros. Exporte o PDF ou filtre por data para ver mais.
               </div>
             )}

@@ -154,8 +154,8 @@ export default function Agenda({ patients, onAtender }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Agenda</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Organize seus atendimentos</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Agenda</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">Organize seus atendimentos</p>
         </div>
         <button
           onClick={() => openNew()}
@@ -170,16 +170,16 @@ export default function Agenda({ patients, onAtender }) {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Calendar */}
-        <div className="xl:col-span-2 bg-zinc-900/60 border border-white/5 rounded-3xl p-6">
+        <div className="xl:col-span-2 bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-3xl p-6">
           {/* Month nav */}
           <div className="flex items-center justify-between mb-6">
-            <button onClick={prevMonth} className="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-colors">
+            <button onClick={prevMonth} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <h2 className="text-lg font-bold text-white capitalize">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white capitalize">
               {monthName} {currentYear}
             </h2>
-            <button onClick={nextMonth} className="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-colors">
+            <button onClick={nextMonth} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
@@ -187,7 +187,7 @@ export default function Agenda({ patients, onAtender }) {
           {/* Week day headers */}
           <div className="grid grid-cols-7 mb-2">
             {WEEK_DAYS.map(d => (
-              <div key={d} className="text-center text-xs font-medium text-slate-500 py-1">{d}</div>
+              <div key={d} className="text-center text-xs font-medium text-slate-600 dark:text-slate-400 py-1">{d}</div>
             ))}
           </div>
 
@@ -208,18 +208,18 @@ export default function Agenda({ patients, onAtender }) {
                   key={day}
                   onClick={() => setSelectedDay(isSelected ? null : day)}
                   className={`relative rounded-xl p-1.5 min-h-[56px] flex flex-col items-center text-xs font-semibold transition-all
-                    ${isSelected ? 'bg-indigo-500/20 border border-indigo-500/40' : 'hover:bg-white/5 border border-transparent'}
-                    ${isToday ? 'text-indigo-400' : 'text-slate-300'}
+                    ${isSelected ? 'bg-indigo-500/20 border border-indigo-500/40' : 'hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent'}
+                    ${isToday ? 'text-indigo-400' : 'text-slate-700 dark:text-slate-300'}
                   `}
                 >
-                  <span className={`w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-indigo-500 text-white' : ''}`}>
+                  <span className={`w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-indigo-500 text-slate-900 dark:text-white' : ''}`}>
                     {day}
                   </span>
                   <div className="flex flex-wrap justify-center gap-0.5">
                     {dayAgendamentos.slice(0, 3).map((ag, idx) => (
                       <div key={idx} className={`w-1.5 h-1.5 rounded-full ${ag.status === 'faltou' ? 'bg-red-400' : ag.status === 'realizado' ? 'bg-emerald-400' : ag.status === 'cancelado' ? 'bg-zinc-500' : 'bg-blue-400'}`} />
                     ))}
-                    {dayAgendamentos.length > 3 && <span className="text-[8px] text-slate-500">+{dayAgendamentos.length - 3}</span>}
+                    {dayAgendamentos.length > 3 && <span className="text-[8px] text-slate-600 dark:text-slate-400">+{dayAgendamentos.length - 3}</span>}
                   </div>
                 </button>
               );
@@ -227,9 +227,9 @@ export default function Agenda({ patients, onAtender }) {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/5">
+          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-white/5">
             {[['bg-blue-400','Agendado'],['bg-emerald-400','Realizado'],['bg-red-400','Faltou'],['bg-zinc-500','Cancelado']].map(([c,l]) => (
-              <div key={l} className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <div key={l} className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
                 <div className={`w-2 h-2 rounded-full ${c}`}/>
                 {l}
               </div>
@@ -238,9 +238,9 @@ export default function Agenda({ patients, onAtender }) {
         </div>
 
         {/* Right panel: selected day or upcoming */}
-        <div className="bg-zinc-900/60 border border-white/5 rounded-3xl p-5 flex flex-col">
+        <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-3xl p-5 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-white text-sm">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
               {selectedDay
                 ? `${selectedDay} de ${monthName}`
                 : 'Selecione um dia'}
@@ -280,12 +280,12 @@ export default function Agenda({ patients, onAtender }) {
               {selectedDayAgendamentos.map(ag => {
                 const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.agendado;
                 return (
-                  <div key={ag.id} className="bg-white/5 rounded-2xl p-4 border border-white/5 hover:border-white/10 transition-all">
+                  <div key={ag.id} className="bg-slate-100 dark:bg-white/5 rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-all">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-white truncate">{ag.nome_paciente || 'Paciente'}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{ag.hora} · {ag.duracao_min} min</p>
-                        {ag.observacoes && <p className="text-xs text-slate-500 mt-1 truncate">{ag.observacoes}</p>}
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{ag.nome_paciente || 'Paciente'}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{ag.hora} · {ag.duracao_min} min</p>
+                        {ag.observacoes && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">{ag.observacoes}</p>}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${sc.color}`}>{sc.label}</span>
@@ -303,16 +303,16 @@ export default function Agenda({ patients, onAtender }) {
                                   alert('Não foi possível iniciar o atendimento. Verifique sua conexão.');
                                 }
                               }}
-                              className="mr-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded shadow-sm hover:bg-indigo-500 hover:text-white transition-all"
+                              className="mr-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded shadow-sm hover:bg-indigo-500 hover:text-slate-900 dark:hover:text-white transition-all"
                               title="Iniciar Sessão"
                             >
                               Atender
                             </button>
                           )}
-                          <button onClick={() => openEdit(ag)} className="p-1.5 text-slate-500 hover:text-indigo-400 bg-white/5 hover:bg-white/10 rounded transition-colors">
+                          <button onClick={() => openEdit(ag)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-400 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                           </button>
-                          <button onClick={() => setConfirmDelete({ isOpen: true, id: ag.id })} className="p-1.5 text-slate-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded transition-colors">
+                          <button onClick={() => setConfirmDelete({ isOpen: true, id: ag.id })} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-red-400 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
@@ -329,15 +329,15 @@ export default function Agenda({ patients, onAtender }) {
       {/* Modal: Create/Edit */}
       {showModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-white/10 rounded-3xl shadow-2xl w-full max-w-lg p-6">
-            <h2 className="text-lg font-bold text-white mb-5">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-lg p-6">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-5">
               {editingId ? 'Editar Agendamento' : 'Novo Agendamento'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
 
               {/* Patient search */}
               <div className="relative">
-                <label className="block text-xs font-medium text-slate-400 mb-1">Paciente</label>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Paciente</label>
                 <input
                   type="text"
                   value={patientSearch}
@@ -345,13 +345,14 @@ export default function Agenda({ patients, onAtender }) {
                   onFocus={() => setShowPatientDropdown(true)}
                   onBlur={() => setTimeout(() => setShowPatientDropdown(false), 200)}
                   placeholder="Buscar paciente..."
-                  className="w-full px-3 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-white text-sm focus:ring-1 focus:ring-indigo-500"
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
                 />
                 {showPatientDropdown && filteredPatients.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-zinc-800 border border-white/10 rounded-xl shadow-xl max-h-40 overflow-y-auto custom-scrollbar">
+                  <div className="absolute z-[160] w-full mt-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-40 overflow-y-auto custom-scrollbar">
                     {filteredPatients.map(p => (
                       <button key={p.id} type="button" onClick={() => handleSelectPatient(p)}
-                        className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-white/5">
+                        className="w-full text-left px-4 py-2 text-sm text-slate-800 dark:text-white hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors">
+                        <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
                         {p.nome}
                       </button>
                     ))}
@@ -362,32 +363,32 @@ export default function Agenda({ patients, onAtender }) {
               {/* Date + Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Data</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Data</label>
                   <input type="date" required value={form.data}
                     onChange={e => setForm(p => ({ ...p, data: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Horário</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Horário</label>
                   <input type="time" required value={form.hora}
                     onChange={e => setForm(p => ({ ...p, hora: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
                 </div>
               </div>
 
               {/* Duration + Status */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Duração (min)</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Duração (min)</label>
                   <input type="number" min="15" max="180" step="5" value={form.duracao_min}
                     onChange={e => setForm(p => ({ ...p, duracao_min: Number(e.target.value) }))}
-                    className="w-full px-3 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Status</label>
                   <select value={form.status}
                     onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-white text-sm focus:ring-1 focus:ring-indigo-500">
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500">
                     {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>
                     ))}
@@ -397,15 +398,15 @@ export default function Agenda({ patients, onAtender }) {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Observações</label>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Observações</label>
                 <textarea rows={2} value={form.observacoes}
                   onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-white text-sm resize-none focus:ring-1 focus:ring-indigo-500" />
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm resize-none focus:ring-1 focus:ring-indigo-500" />
               </div>
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 text-sm font-semibold text-slate-400 hover:text-white border border-white/10 hover:border-white/20 rounded-xl transition-all">
+                  className="flex-1 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/20 rounded-xl transition-all">
                   Cancelar
                 </button>
                 <button type="submit" disabled={isSubmitting}

@@ -17,7 +17,7 @@ export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCan
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
         
         {/* Ícone */}
         <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${isDanger ? 'bg-red-500/10' : 'bg-amber-500/10'}`}>
@@ -33,20 +33,20 @@ export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCan
         </div>
 
         {/* Texto */}
-        <h3 className="text-lg font-bold text-white text-center mb-2">{title}</h3>
-        <p className="text-sm text-slate-400 text-center leading-relaxed mb-6">{message}</p>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white text-center mb-2">{title}</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400 text-center leading-relaxed mb-6">{message}</p>
 
         {/* Botões */}
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white transition-all"
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white transition-all shadow-lg ${
               isDanger
                 ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
                 : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
