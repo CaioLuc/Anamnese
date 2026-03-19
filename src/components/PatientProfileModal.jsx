@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese } from '../services/patientService';
+import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese } from '../services/patientService';
 import AnamneseForm from './AnamneseForm';
 import AnamneseAdolescenteForm from './AnamneseAdolescenteForm';
 import { jsPDF } from 'jspdf';
@@ -7,6 +7,56 @@ import ConfirmDialog from './ConfirmDialog';
 import MoodChart from './MoodChart';
 import SelecionarTemplateModal from './SelecionarTemplateModal';
 import QuestionarioFiller from './QuestionarioFiller';
+
+function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
+  const [respostas, setRespostas] = useState(anamnese.respostas || {});
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError('');
+    try {
+      await atualizarAnamnese(anamnese.id, { respostas });
+      onSaved();
+    } catch (e) {
+      setError('Erro ao salvar edições. Tente novamente.');
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="w-full h-full flex flex-col p-6 bg-white dark:bg-zinc-950/80">
+       <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-white/10">
+         <div>
+           <h3 className="text-xl font-bold text-slate-900 dark:text-white">Editando Anamnese</h3>
+           <p className="text-sm text-slate-500 mt-1">Atualize as informações desejadas e salve.</p>
+         </div>
+         <button onClick={onCancel} className="text-slate-400 hover:text-red-500 bg-slate-100 dark:bg-white/5 p-2 rounded-xl transition-colors">
+           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+         </button>
+       </div>
+       {error && <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-xl text-sm text-red-600 dark:text-red-400">{error}</div>}
+       <div className="bg-slate-50/50 dark:bg-zinc-900/30 rounded-2xl p-6 border border-slate-200 dark:border-white/5 flex-1 overflow-y-auto custom-scrollbar">
+         {anamnese.template_snapshot ? (
+            <QuestionarioFiller template={anamnese.template_snapshot} respostas={respostas} onChange={setRespostas} readOnly={false} />
+         ) : (
+            <div className="text-center p-8 text-amber-500">
+               O template desta anamnese não pôde ser recuperado, por isso a edição foi desabilitada para evitar corrupção de dados.
+            </div>
+         )}
+       </div>
+       <div className="mt-8 pt-4 flex justify-end gap-3 border-t border-slate-200 dark:border-white/10">
+         <button onClick={onCancel} className="px-5 py-2.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent hover:border-slate-300 dark:hover:border-white/10 rounded-xl">Cancelar</button>
+         <button disabled={isSaving || !anamnese.template_snapshot} onClick={handleSave} className="px-6 py-2.5 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 shadow-md font-semibold transition-colors disabled:opacity-50">
+            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+         </button>
+       </div>
+    </div>
+  );
+}
 
 export default function PatientProfileModal({ isOpen, onClose, patient, initialTab = 'evolucoes' }) {
   const [activeTab, setActiveTab] = useState('evolucoes');
@@ -613,6 +663,8 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                             </button>
                           </div>
                         </div>
+                    ) : (isEditingAnamnese && anamneses[0]?.tipo === 'dinamico') ? (
+                        <DynamicAnamneseEditor anamnese={anamneses[0]} onSaved={() => { setIsEditingAnamnese(false); loadHistory(); }} onCancel={() => setIsEditingAnamnese(false)} />
                     ) : (selectedFormType === 'adulto' || (isEditingAnamnese && anamneses[0]?.tipo !== 'adolescente')) ? (
                         <AnamneseForm patient={patient} initialData={isEditingAnamnese ? anamneses[0] : null} onSaved={() => { setIsEditingAnamnese(false); loadHistory(); }} />
                     ) : (
