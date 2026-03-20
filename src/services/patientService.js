@@ -28,7 +28,9 @@ export async function lerPacientes() {
   try {
     const q = query(collection(db, PACIENTES_COL), where("userId", "==", auth.currentUser.uid));
     const qSnapshot = await getDocs(q);
-    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Apenas pacientes que NÃO estão na lixeira
+    return docs.filter(p => !p.deletedAt);
   } catch (error) {
     console.error("Erro ao ler pacientes:", error);
     throw error;
@@ -61,11 +63,58 @@ export async function atualizarPaciente(id, dadosAtualizados) {
 
 export async function deletarPaciente(id) {
   try {
+    // SOFT DELETE: Mover para lixeira em vez de exclusão física imediata
     const docRef = doc(db, PACIENTES_COL, id);
-    await deleteDoc(docRef);
+    await updateDoc(docRef, { deletedAt: serverTimestamp() });
   } catch (error) {
-    console.error("Erro ao deletar paciente:", error);
+    console.error("Erro ao mover paciente para lixeira:", error);
     throw error;
+  }
+}
+
+// ==========================================
+// FUNÇÕES DA LIXEIRA (GARBAGE COLLECTOR)
+// ==========================================
+
+export async function limparLixeiraPacientes(diasRetencao = 7) {
+  try {
+    const q = query(collection(db, PACIENTES_COL), where("userId", "==", auth.currentUser.uid));
+    const qSnapshot = await getDocs(q);
+    const todos = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const lixeira = todos.filter(p => p.deletedAt);
+
+    const agora = new Date();
+    const batch = writeBatch(db);
+    let itemsNoBatch = 0;
+
+    for (const pac of lixeira) {
+      const deletedDate = pac.deletedAt?.toDate ? pac.deletedAt.toDate() : new Date();
+      const diasNaLixeira = (agora - deletedDate) / (1000 * 60 * 60 * 24);
+
+      if (diasNaLixeira >= diasRetencao) {
+        // Exclusão Definitiva (Hard Delete)
+        // 1. Deleta anamneses vinculadas
+        const qAnam = query(collection(db, ANAMNESES_COL), where("id_paciente", "==", pac.id));
+        const snapAnam = await getDocs(qAnam);
+        snapAnam.forEach(d => { batch.delete(d.ref); itemsNoBatch++; });
+
+        // 2. Deleta sessões vinculadas
+        const qSess = query(collection(db, SESSOES_COL), where("id_paciente", "==", pac.id));
+        const snapSess = await getDocs(qSess);
+        snapSess.forEach(d => { batch.delete(d.ref); itemsNoBatch++; });
+
+        // 3. Deleta o paciente
+        batch.delete(doc(db, PACIENTES_COL, pac.id));
+        itemsNoBatch++;
+      }
+    }
+
+    if (itemsNoBatch > 0) {
+      await batch.commit();
+      console.log(`Lixeira limpa: ${itemsNoBatch} documentos deletados definitivamente.`);
+    }
+  } catch (error) {
+    console.error("Erro ao limpar lixeira de pacientes:", error);
   }
 }
 

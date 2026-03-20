@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese } from '../services/patientService';
+import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese, deletarAnamnese, atualizarSessao } from '../services/patientService';
 import AnamneseForm from './AnamneseForm';
 import AnamneseAdolescenteForm from './AnamneseAdolescenteForm';
 import { jsPDF } from 'jspdf';
@@ -64,7 +64,10 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   const [anamneses, setAnamneses] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState(null);
-  const [isEditingAnamnese, setIsEditingAnamnese] = useState(false);
+  const [selectedAnamneseId, setSelectedAnamneseId] = useState(null);
+  const [confirmDeleteAnamnese, setConfirmDeleteAnamnese] = useState({ isOpen: false, anamnese: null });
+  const [editingSessao, setEditingSessao] = useState(null); // { id, observacoes, comportamento, sintomas }
+  const [isSavingSessao, setIsSavingSessao] = useState(false);
   const [confirmSessao, setConfirmSessao] = useState({ isOpen: false, sessao: null });
   // Novo: sistema de questionários dinâmicos
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
@@ -120,6 +123,37 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       loadHistory();
     } catch (err) {
       console.error('Erro ao deletar sessão:', err);
+    }
+  };
+
+  const confirmExcluirAnamnese = async () => {
+    const ana = confirmDeleteAnamnese.anamnese;
+    setConfirmDeleteAnamnese({ isOpen: false, anamnese: null });
+    if (!ana) return;
+    try {
+      await deletarAnamnese(ana.id);
+      loadHistory();
+    } catch (err) {
+      console.error('Erro ao deletar anamnese:', err);
+    }
+  };
+
+  const handleSalvarEdicaoSessao = async () => {
+    if (!editingSessao) return;
+    setIsSavingSessao(true);
+    try {
+      await atualizarSessao(editingSessao.id, {
+        observacoes: editingSessao.observacoes,
+        comportamento: editingSessao.comportamento,
+        sintomas: editingSessao.sintomas,
+        evolucao_notas: editingSessao.evolucao_notas,
+      });
+      setEditingSessao(null);
+      loadHistory();
+    } catch (err) {
+      console.error('Erro ao editar sessão:', err);
+    } finally {
+      setIsSavingSessao(false);
     }
   };
 
@@ -256,6 +290,8 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
      doc.save(`Sessao_${patient.nome.replace(/\s+/g,'_')}_${dataNomeArquivo}.pdf`);
   };
 
+  const currentAnamnese = anamneses.length > 0 ? anamneses[0] : null;
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       
@@ -372,6 +408,9 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                   <button onClick={() => gerarPdfSessao(sessao)} className="p-1.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors border border-blue-500/20 shadow-sm" title="Exportar Sessão para PDF">
                                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                   </button>
+                                  <button onClick={() => setEditingSessao({ ...sessao })} className="p-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white rounded-lg transition-colors border border-amber-500/20 shadow-sm" title="Editar Evolução">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                  </button>
                                   <button onClick={() => handleExcluirSessao(sessao)} className="p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors border border-red-500/20 shadow-sm" title="Apagar Evolução">
                                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                   </button>
@@ -385,6 +424,48 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                               </div>
                             </div>
 
+                            {editingSessao?.id === sessao.id ? (
+                              <div className="space-y-4 mt-3">
+                                <div>
+                                  <label className="text-xs font-semibold text-indigo-400 uppercase tracking-wider block mb-1">Observações / Notas</label>
+                                  <textarea
+                                    rows={5}
+                                    className="w-full px-3 py-2.5 bg-slate-100 dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-white resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                    value={editingSessao.observacoes || editingSessao.evolucao_notas || ''}
+                                    onChange={(e) => setEditingSessao(prev => ({ ...prev, observacoes: e.target.value, evolucao_notas: e.target.value }))}
+                                    placeholder="Anotações, palavras-chave, observações clínicas..."
+                                  />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs font-semibold text-indigo-400 uppercase tracking-wider block mb-1">Comportamento</label>
+                                    <textarea
+                                      rows={3}
+                                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-white resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                      value={editingSessao.comportamento || ''}
+                                      onChange={(e) => setEditingSessao(prev => ({ ...prev, comportamento: e.target.value }))}
+                                      placeholder="Comportamento observado..."
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-semibold text-indigo-400 uppercase tracking-wider block mb-1">Sintomas Relatados</label>
+                                    <textarea
+                                      rows={3}
+                                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-white resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                      value={editingSessao.sintomas || ''}
+                                      onChange={(e) => setEditingSessao(prev => ({ ...prev, sintomas: e.target.value }))}
+                                      placeholder="Sintomas relatados pelo paciente..."
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+                                  <button onClick={() => setEditingSessao(null)} className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl border border-transparent hover:border-slate-300 dark:hover:border-white/10">Cancelar</button>
+                                  <button onClick={handleSalvarEdicaoSessao} disabled={isSavingSessao} className="px-5 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors disabled:opacity-50">
+                                    {isSavingSessao ? 'Salvando...' : 'Salvar Edição'}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
                             <div className="space-y-4 text-sm text-slate-700 dark:text-slate-300">
                               {sessao.observacoes && (
                                 <div>
@@ -392,22 +473,18 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                   <p className="whitespace-pre-wrap leading-relaxed break-words">{sessao.observacoes}</p>
                                 </div>
                               )}
-                              
                               {sessao.comportamento && (
                                 <div>
                                   <h5 className="font-semibold text-indigo-300 mb-1 text-xs uppercase tracking-wider mt-4">Comportamento</h5>
                                   <p className="whitespace-pre-wrap leading-relaxed break-words">{sessao.comportamento}</p>
                                 </div>
                               )}
-
                               {sessao.sintomas && (
                                 <div>
                                   <h5 className="font-semibold text-indigo-300 mb-1 text-xs uppercase tracking-wider mt-4">Sintomas Relatados</h5>
                                   <p className="whitespace-pre-wrap leading-relaxed break-words">{sessao.sintomas}</p>
                                 </div>
                               )}
-
-                              {/* Suporte a sessoes legadas (evolucao_notas) */}
                               {sessao.evolucao_notas && !sessao.observacoes && (
                                 <div>
                                   <h5 className="font-semibold text-indigo-300 mb-1 text-xs uppercase tracking-wider">Anotação Legada</h5>
@@ -415,6 +492,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                 </div>
                               )}
                             </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -432,24 +510,24 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                             <div>
                                <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                    Anamnese Registrada
-                                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${anamneses[0].tipo === 'adolescente' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : (anamneses[0].tipo === 'dinamico' ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30')}`}>
-                                       {anamneses[0].tipo === 'adolescente' ? 'Infantil / Adolescente' : (anamneses[0].tipo === 'dinamico' ? 'Pública / Customizada' : 'Adulto')}
+                                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${currentAnamnese.tipo === 'adolescente' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : (currentAnamnese.tipo === 'dinamico' ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30')}`}>
+                                       {currentAnamnese.tipo === 'adolescente' ? 'Infantil / Adolescente' : (currentAnamnese.tipo === 'dinamico' ? (currentAnamnese.questionario_nome || 'Personalizada') : 'Adulto')}
                                    </span>
                                </h3>
-                               <p className="text-sm text-slate-600 dark:text-slate-400">Dados do prontuário inicial.</p>
+                               <p className="text-sm text-slate-600 dark:text-slate-400">Criada em: {new Date(currentAnamnese.createdAt?.toDate() || Date.now()).toLocaleDateString()}</p>
                             </div>
-                            <div className="flex items-center gap-4">
-                               <button onClick={() => setIsEditingAnamnese(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-slate-200 font-medium rounded-xl hover:bg-zinc-700 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-300 dark:border-white/10 shadow-sm text-sm">
+                            <div className="flex items-center gap-2 shrink-0">
+                               <button onClick={() => setIsEditingAnamnese(true)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-slate-200 font-medium rounded-xl hover:bg-zinc-700 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-300 dark:border-white/10 shadow-sm text-sm" title="Editar">
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                  Editar Ficha
+                                  <span className="hidden sm:block">Editar</span>
                                </button>
-                               <button onClick={gerarPdfAnamnese} className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 font-medium rounded-xl hover:bg-blue-500 hover:text-slate-900 dark:hover:text-white transition-all border border-blue-500/20 shadow-sm text-sm">
+                               <button onClick={gerarPdfAnamnese} className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 text-blue-400 font-medium rounded-xl hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20 shadow-sm text-sm" title="Exportar">
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                  Exportar PDF
+                                  <span className="hidden sm:block">Exportar</span>
                                </button>
-                               <span className="text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-white/10 hidden lg:block">
-                                  {new Date(anamneses[0].createdAt?.toDate() || Date.now()).toLocaleDateString()}
-                               </span>
+                               <button onClick={() => setConfirmDeleteAnamnese({ isOpen: true, anamnese: currentAnamnese })} className="flex items-center gap-2 px-3 py-2 bg-red-500/10 text-red-500 font-medium rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-sm text-sm" title="Excluir">
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                               </button>
                             </div>
                          </div>
 

@@ -1,8 +1,20 @@
 import { useState } from 'react';
 import { criarPaciente } from '../services/patientService';
 
+const toTitleCase = (str) => {
+  const preps = ["de", "da", "do", "das", "dos", "e"];
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word, index) => {
+       if (index > 0 && preps.includes(word)) return word;
+       return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
+
 export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
-  const [formData, setFormData] = useState({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '' });
+  const [formData, setFormData] = useState({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,7 +33,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
       const id = await criarPaciente(formData);
       
       onPatientAdded({ id, ...formData });
-      setFormData({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '' });
+      setFormData({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
       onClose();
     } catch (err) {
       console.error(err);
@@ -54,7 +66,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
             <input
               type="text"
               value={formData.nome}
-              onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, nome: toTitleCase(e.target.value) })}
               className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Ex: João Silva"
               required
@@ -108,6 +120,17 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
                 placeholder="0.00"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Clínica / Local de Atendimento</label>
+            <input
+              type="text"
+              value={formData.clinica}
+              onChange={(e) => setFormData({ ...formData, clinica: e.target.value })}
+              className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Ex: Clínica Esperança, Consultório Particular..."
+            />
           </div>
 
           <div className="pt-4 flex justify-end gap-3">

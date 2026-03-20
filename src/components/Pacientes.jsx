@@ -10,6 +10,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [profileInitialTab, setProfileInitialTab] = useState('evolucoes');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterClinica, setFilterClinica] = useState(''); // '' = todas
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, patient: null });
 
   // Auto-open patient modal when coming from Agenda 'Atender'
@@ -51,11 +52,14 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
     }
   };
 
+  const clinicas = [...new Set(patients.map(p => p.clinica).filter(Boolean))].sort();
+
   const filteredPatients = patients.filter(p => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (p.nome && p.nome.toLowerCase().includes(term)) || 
-           (p.cpf && p.cpf.includes(term));
+    const matchSearch = !searchTerm || 
+      (p.nome && p.nome.toLowerCase().includes(searchTerm.toLowerCase())) || 
+      (p.cpf && p.cpf.includes(searchTerm));
+    const matchClinica = !filterClinica || p.clinica === filterClinica;
+    return matchSearch && matchClinica;
   });
 
   return (
@@ -93,6 +97,18 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                     className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                 />
             </div>
+            {clinicas.length > 0 && (
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  value={filterClinica}
+                  onChange={(e) => setFilterClinica(e.target.value)}
+                  className="px-3 py-2 border border-slate-300 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-colors"
+                >
+                  <option value="">Todas as clínicas</option>
+                  {clinicas.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
             <div className="text-sm text-slate-600 dark:text-slate-400 shrink-0">
                 {filteredPatients.length} {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}
             </div>

@@ -11,7 +11,7 @@ import SessaoEvolucao from './components/SessaoEvolucao';
 import Agenda from './components/Agenda';
 import Financas from './components/Financas';
 import Questionarios from './components/Questionarios';
-import { lerPacientes, lerAnamnesesDoPaciente } from './services/patientService';
+import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes } from './services/patientService';
 
 function App() {
   const [currentPath, setCurrentPath] = useState('dashboard');
@@ -62,6 +62,7 @@ function App() {
         // Only fetch database data if the user is authenticated
         testFirebaseConnection();
         fetchPatients();
+        limparLixeiraPacientes(7); // Aciona o Garbage Collector da Lixeira silenciosamente
       }
     });
 

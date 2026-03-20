@@ -89,13 +89,21 @@ export default function DashboardSummary({ patients, isLoading }) {
       setIsLoadingStats(true);
       try {
         const [s, a] = await Promise.all([lerTodasSessoes(), lerTodasAnamneses()]);
-        setSessoes(s);
-        setAnamneses(a);
-      } catch (e) { console.error(e); }
-      finally { setIsLoadingStats(false); }
+        
+        // Obter apenas IDs de pacientes ativos (que não estão na lixeira)
+        const activeIds = new Set(patients.map(p => p.id));
+        
+        // Filtrar apenas sessões e anamneses de pacientes que "ainda existem"
+        setSessoes(s.filter(sessao => activeIds.has(sessao.id_paciente)));
+        setAnamneses(a.filter(ana => activeIds.has(ana.id_paciente)));
+      } catch (e) { 
+        console.error(e); 
+      } finally { 
+        setIsLoadingStats(false); 
+      }
     }
     load();
-  }, []);
+  }, [patients]);
 
   const { start, end } = getRange(periodo, customStart, customEnd);
 

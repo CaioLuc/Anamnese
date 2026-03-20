@@ -74,7 +74,8 @@ export default function Financas({ patients, isLoadingPatients }) {
     setIsLoading(true);
     try {
       const data = await lerTodasSessoes();
-      setSessoes(data);
+      const activeIds = new Set(patients.map(p => p.id));
+      setSessoes(data.filter(s => activeIds.has(s.id_paciente)));
     } catch (e) {
       console.error(e);
     } finally {
