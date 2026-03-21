@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is logged in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the document belongs to the logged-in user
+    function belongsToUser() {
+      // Para leitura/update/delete, verificamos se o userId gravado no documento existente é o do logado.
+      return resource.data.userId == request.auth.uid;
+    }
+
+    // Helper function to check if the incoming creation payload sets the userId correctly
+    function isCreatingForSelf() {
+      // Para criação, o 'resource' original é null, mas o 'request.resource' traz o payload novo.
+      return request.resource.data.userId == request.auth.uid;
+    }
+
+    // ===================================
+    // COLEÇÃO: PACIENTES
+    // ===================================
+    match /pacientes/{documentId} {
+      allow read, delete: if isAuthenticated() && belongsToUser();
+      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
+      allow create: if isAuthenticated() && isCreatingForSelf();
+    }
+
+    // ===================================
+    // COLEÇÃO: ANAMNESES
+    // ===================================
+    match /anamneses/{documentId} {
+      allow read, delete: if isAuthenticated() && belongsToUser();
+      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
+      allow create: if isAuthenticated() && isCreatingForSelf();
+    }
+
+    // ===================================
+    // COLEÇÃO: SESSÕES / EVOLUÇÕES
+    // ===================================
+    match /sessoes/{documentId} {
+      allow read, delete: if isAuthenticated() && belongsToUser();
+      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
+      allow create: if isAuthenticated() && isCreatingForSelf();
+    }
+
+    // ===================================
+    // COLEÇÃO: QUESTIONÁRIOS (Templates)
+    // ===================================
+    match /questionarios/{documentId} {
+      allow read, delete: if isAuthenticated() && belongsToUser();
+      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
+      allow create: if isAuthenticated() && isCreatingForSelf();
+    }
+
+    // ===================================
+    // COLETRÂNEA: DE TESTE
+    // (Para o teste do App.jsx na inicialização)
+    // ===================================
+    match /test_connection/{documentId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+  }
+}
