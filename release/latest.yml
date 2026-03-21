@@ -1,8 +1,8 @@
 version: 0.0.0
 files:
   - url: PsycoBrain-Setup-0.0.0.exe
-    sha512: V3kxJ9O0kGJJW2jJyeATmNrNwfNTtu5kMExO74mpxEYnwR7rVRsu5DykIwnCGOOnj7RuuEn5S4a8eaC6ym4NSA==
-    size: 99727314
+    sha512: vbmEdWLJ2nDi/VEq8LgzkPoVsFRSft42ZX0LAXYvTQ5WWxEQ9NGZBjozYXK/yT+xu/HX9rNbdlEZf4n2t8DjWw==
+    size: 99728486
 path: PsycoBrain-Setup-0.0.0.exe
-sha512: V3kxJ9O0kGJJW2jJyeATmNrNwfNTtu5kMExO74mpxEYnwR7rVRsu5DykIwnCGOOnj7RuuEn5S4a8eaC6ym4NSA==
-releaseDate: '2026-03-19T20:50:36.479Z'
+sha512: vbmEdWLJ2nDi/VEq8LgzkPoVsFRSft42ZX0LAXYvTQ5WWxEQ9NGZBjozYXK/yT+xu/HX9rNbdlEZf4n2t8DjWw==
+releaseDate: '2026-03-21T04:14:02.778Z'
