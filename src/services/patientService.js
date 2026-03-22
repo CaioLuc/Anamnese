@@ -342,6 +342,7 @@ export async function criarQuestionario(dados) {
 
 export async function lerQuestionarios() {
   try {
+    if (!auth.currentUser) return [];
     const q = query(
       collection(db, QUESTIONARIOS_COL),
       where("userId", "==", auth.currentUser.uid)
@@ -355,7 +356,7 @@ export async function lerQuestionarios() {
     });
   } catch (error) {
     console.error("Erro ao ler questionários:", error);
-    throw error;
+    return []; // Retorna array vazio em vez de lançar exceção
   }
 }
 

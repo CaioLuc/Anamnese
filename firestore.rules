@@ -56,6 +56,15 @@ service cloud.firestore {
     }
 
     // ===================================
+    // COLEÇÃO: AGENDAMENTOS
+    // ===================================
+    match /agendamentos/{documentId} {
+      allow read, delete: if isAuthenticated() && belongsToUser();
+      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
+      allow create: if isAuthenticated() && isCreatingForSelf();
+    }
+
+    // ===================================
     // COLETRÂNEA: DE TESTE
     // (Para o teste do App.jsx na inicialização)
     // ===================================

@@ -1,85 +1,63 @@
 import { useState, useEffect } from 'react';
 import { lerTodasSessoes, lerTodasAnamneses } from '../services/patientService';
 
-const PERIODOS = [
-  { id: 'semana', label: 'Semana' },
-  { id: 'mes', label: 'Mês' },
-  { id: 'semestre', label: 'Semestre' },
-  { id: 'ano', label: 'Ano' },
-  { id: 'personalizado', label: 'Personalizado' },
-];
-
+// ── Helpers ─────────────────────────────────────────────────────────────
 function parseDate(d) {
   if (!d) return null;
-  // Firebase Timestamp
   if (d.toDate) return d.toDate();
-  // Native Date object
   if (d instanceof Date) return d;
-  // String format (likely YYYY-MM-DD)
   if (typeof d === 'string') {
-    const [y, m, d_part] = d.split('-');
-    if (y && m && d_part) return new Date(+y, +m - 1, +d_part);
-    return new Date(d); // Fallback for other string formats
+    const [y, m, day] = d.split('-');
+    if (y && m && day) return new Date(+y, +m - 1, +day);
+    return new Date(d);
   }
   return null;
 }
 
-function getRange(periodo, customStart, customEnd) {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let start, end;
-  end = new Date(today); end.setHours(23, 59, 59, 999);
+// ── Sub-components ───────────────────────────────────────────────────────
 
-  if (periodo === 'semana') {
-    start = new Date(today); start.setDate(today.getDate() - today.getDay());
-  } else if (periodo === 'mes') {
-    start = new Date(today.getFullYear(), today.getMonth(), 1);
-  } else if (periodo === 'semestre') {
-    const semStart = today.getMonth() < 6 ? 0 : 6;
-    start = new Date(today.getFullYear(), semStart, 1);
-  } else if (periodo === 'ano') {
-    start = new Date(today.getFullYear(), 0, 1);
-  } else if (periodo === 'personalizado') {
-    start = customStart ? parseDate(customStart) : new Date(today.getFullYear(), 0, 1);
-    end = customEnd ? parseDate(customEnd) : today;
-    if (end) { end.setHours(23, 59, 59, 999); }
-  }
-  return { start, end };
-}
-
-function filterByRange(items, dateField, start, end) {
-  return items.filter(item => {
-    let d = parseDate(item[dateField]);
-    if (!d) return false;
-    return d >= start && d <= end;
-  });
+function QuickAction({ icon, label, color, onClick }) {
+  const colors = {
+    indigo: 'from-indigo-500/20 to-indigo-600/10 border-indigo-500/20 text-indigo-400 hover:border-indigo-500/50 hover:from-indigo-500/30',
+    cyan:   'from-cyan-500/20 to-cyan-600/10 border-cyan-500/20 text-cyan-400 hover:border-cyan-500/50 hover:from-cyan-500/30',
+    violet: 'from-violet-500/20 to-violet-600/10 border-violet-500/20 text-violet-400 hover:border-violet-500/50 hover:from-violet-500/30',
+    emerald:'from-emerald-500/20 to-emerald-600/10 border-emerald-500/20 text-emerald-400 hover:border-emerald-500/50 hover:from-emerald-500/30',
+  };
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center gap-3 p-5 sm:p-6 rounded-2xl border bg-gradient-to-br ${colors[color]} transition-all duration-200 hover:scale-[1.03] hover:shadow-lg w-full`}
+    >
+      <div className="text-4xl sm:text-3xl">{icon}</div>
+      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{label}</span>
+    </button>
+  );
 }
 
 function StatCard({ label, value, icon, color, sub }) {
   const colors = {
-    indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-400', icon: 'text-indigo-300' },
-    cyan:   { bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20',   text: 'text-cyan-400',   icon: 'text-cyan-300' },
-    emerald:{ bg: 'bg-emerald-500/10',border: 'border-emerald-500/20',text: 'text-emerald-400',icon: 'text-emerald-300' },
-    violet: { bg: 'bg-violet-500/10', border: 'border-violet-500/20', text: 'text-violet-400', icon: 'text-violet-300' },
-    amber:  { bg: 'bg-amber-500/10',  border: 'border-amber-500/20',  text: 'text-amber-400',  icon: 'text-amber-300' },
+    indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-400' },
+    cyan:   { bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20',   text: 'text-cyan-400' },
+    emerald:{ bg: 'bg-emerald-500/10',border: 'border-emerald-500/20',text: 'text-emerald-400' },
+    violet: { bg: 'bg-violet-500/10', border: 'border-violet-500/20', text: 'text-violet-400' },
+    amber:  { bg: 'bg-amber-500/10',  border: 'border-amber-500/20',  text: 'text-amber-400' },
   };
   const c = colors[color] || colors.indigo;
   return (
-    <div className={`relative overflow-hidden rounded-2xl border ${c.border} ${c.bg} p-5 flex flex-col gap-3 group hover:scale-[1.02] transition-transform duration-200`}>
+    <div className={`rounded-2xl border ${c.border} ${c.bg} p-5 sm:p-6 flex flex-col gap-2 hover:scale-[1.02] transition-transform duration-200`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">{label}</span>
-        <div className={`p-2 rounded-xl ${c.bg} ${c.icon}`}>{icon}</div>
+        <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className={`text-2xl sm:text-xl ${c.text}`}>{icon}</span>
       </div>
-      <div className={`text-4xl font-extrabold ${c.text}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-600 dark:text-slate-400">{sub}</div>}
+      <div className={`text-4xl sm:text-3xl font-extrabold ${c.text}`}>{value}</div>
+      {sub && <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">{sub}</div>}
     </div>
   );
 }
 
-export default function DashboardSummary({ patients, isLoading }) {
-  const [periodo, setPeriodo] = useState('mes');
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
+// ── Main Component ───────────────────────────────────────────────────────
+
+export default function DashboardSummary({ patients, isLoading, onNavigate }) {
   const [sessoes, setSessoes] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -89,191 +67,228 @@ export default function DashboardSummary({ patients, isLoading }) {
       setIsLoadingStats(true);
       try {
         const [s, a] = await Promise.all([lerTodasSessoes(), lerTodasAnamneses()]);
-        
-        // Obter apenas IDs de pacientes ativos (que não estão na lixeira)
         const activeIds = new Set(patients.map(p => p.id));
-        
-        // Filtrar apenas sessões e anamneses de pacientes que "ainda existem"
         setSessoes(s.filter(sessao => activeIds.has(sessao.id_paciente)));
         setAnamneses(a.filter(ana => activeIds.has(ana.id_paciente)));
-      } catch (e) { 
-        console.error(e); 
-      } finally { 
-        setIsLoadingStats(false); 
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoadingStats(false);
       }
     }
     load();
   }, [patients]);
 
-  const { start, end } = getRange(periodo, customStart, customEnd);
-
-  const sessoesPeriodo = filterByRange(sessoes, 'data_sessao', start, end);
-  const anamnesesPeriodo = filterByRange(anamneses, 'createdAt', start, end);
-
-  const presentes = sessoesPeriodo.filter(s => s.status === 'Presente').length;
-  const faltou = sessoesPeriodo.filter(s => s.status === 'Faltou').length;
-  const adultos = anamnesesPeriodo.filter(a => a.tipo !== 'adolescente').length;
-  const adolescentes = anamnesesPeriodo.filter(a => a.tipo === 'adolescente').length;
-
   const now = new Date();
-  const periodoLabel = PERIODOS.find(p => p.id === periodo)?.label || '';
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayStr = today.toISOString().slice(0, 10);
+
+  // Sessões de hoje
+  const sessoesHoje = sessoes.filter(s => s.data_sessao === todayStr);
+
+  // Sessões do mês atual
+  const mesStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const mesEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const sessoesMes = sessoes.filter(s => {
+    const d = parseDate(s.data_sessao);
+    return d && d >= mesStart && d <= mesEnd;
+  });
+
+  const presentesMes = sessoesMes.filter(s => s.status === 'Presente').length;
+  const faltasMes = sessoesMes.filter(s => s.status === 'Faltou').length;
+
+  // Pacientes mais recentes (últimos 5 cadastrados)
+  const recentPatients = [...patients]
+    .sort((a, b) => {
+      const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+      const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+      return db - da;
+    })
+    .slice(0, 5);
+
+  // Saudação dinâmica
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const dayLabel = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="animate-in fade-in duration-500 w-full max-w-6xl mx-auto pb-10 space-y-8">
+    <div className="animate-in fade-in duration-500 w-full max-w-6xl mx-auto space-y-6 pb-10">
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Saudação */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard</h2>
-          <p className="mt-1 text-slate-600 dark:text-slate-400">Visão geral do consultório — {now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            {greeting}! 👋
+          </h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 capitalize">{dayLabel}</p>
         </div>
-      </div>
-
-      {/* Filtro de Período */}
-      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mr-2">Período:</span>
-        {PERIODOS.map(p => (
-          <button
-            key={p.id}
-            onClick={() => setPeriodo(p.id)}
-            className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition-all border ${
-              periodo === p.id
-                ? 'bg-indigo-500 text-slate-900 dark:text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
-                : 'text-slate-400 dark:text-slate-500 dark:text-slate-400 border-slate-300 dark:border-white/10 hover:border-indigo-500/50 hover:text-slate-900 dark:hover:text-white bg-transparent'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-        {periodo === 'personalizado' && (
-          <div className="flex items-center gap-2 ml-2">
-            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
-              className="px-3 py-1.5 rounded-xl text-sm bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <span className="text-slate-600 dark:text-slate-400 text-xs">até</span>
-            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
-              className="px-3 py-1.5 rounded-xl text-sm bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        {sessoesHoje.length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+            <span className="text-indigo-400 text-lg">📅</span>
+            <span className="text-sm font-semibold text-indigo-400">
+              {sessoesHoje.length} sessão{sessoesHoje.length > 1 ? 'ões' : ''} registrada{sessoesHoje.length > 1 ? 's' : ''} hoje
+            </span>
           </div>
         )}
       </div>
 
-      {/* KPIs - Linha 1 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          label="Total de Pacientes"
-          value={isLoading ? '...' : patients.length}
-          color="indigo"
-          sub="Todos os pacientes cadastrados"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
-        />
-        <StatCard
-          label={`Evoluções (${periodoLabel})`}
-          value={isLoadingStats ? '...' : sessoesPeriodo.length}
-          color="cyan"
-          sub={`${presentes} presentes · ${faltou} faltas`}
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
-        />
-        <StatCard
-          label={`Anamneses (${periodoLabel})`}
-          value={isLoadingStats ? '...' : anamnesesPeriodo.length}
-          color="emerald"
-          sub={`${adultos} adultos · ${adolescentes} adolescentes`}
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
-        />
-        <StatCard
-          label="Total de Evoluções"
-          value={isLoadingStats ? '...' : sessoes.length}
-          color="violet"
-          sub="Total histórico de sessões"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
-        />
-      </div>
-
-      {/* KPIs - Linha 2: Presença e Detalhes */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          label={`Presenças (${periodoLabel})`}
-          value={isLoadingStats ? '...' : presentes}
-          color="emerald"
-          sub={sessoesPeriodo.length > 0 ? `${Math.round((presentes / sessoesPeriodo.length) * 100)}% de comparecimento` : 'Nenhuma sessão'}
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-        />
-        <StatCard
-          label={`Faltas (${periodoLabel})`}
-          value={isLoadingStats ? '...' : faltou}
-          color="amber"
-          sub={sessoesPeriodo.length > 0 ? `${Math.round((faltou / sessoesPeriodo.length) * 100)}% de ausência` : 'Nenhuma sessão'}
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-        />
-        <StatCard
-          label="Total de Anamneses"
-          value={isLoadingStats ? '...' : anamneses.length}
-          color="indigo"
-          sub={`${anamneses.filter(a => a.tipo !== 'adolescente').length} adultos · ${anamneses.filter(a => a.tipo === 'adolescente').length} adolescentes`}
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
-        />
-      </div>
-
-      {/* Tabela de Sessões recentes */}
-      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 dark:text-white">Evoluções do período</h3>
-          <span className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">{sessoesPeriodo.length} registros</span>
+      {/* Atalhos Rápidos */}
+      <div>
+        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Ações Rápidas</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <QuickAction icon="👤" label="Novo Paciente" color="indigo" onClick={() => onNavigate && onNavigate('pacientes')} />
+          <QuickAction icon="📝" label="Registrar Sessão" color="cyan" onClick={() => onNavigate && onNavigate('nova-sessao')} />
+          <QuickAction icon="📅" label="Ver Agenda" color="violet" onClick={() => onNavigate && onNavigate('agenda')} />
+          <QuickAction icon="📋" label="Questionários" color="emerald" onClick={() => onNavigate && onNavigate('questionarios')} />
         </div>
-        {isLoadingStats ? (
-          <div className="flex items-center justify-center py-12">
-            <svg className="w-7 h-7 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+      </div>
+
+      {/* KPIs do Mês */}
+      <div>
+        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Resumo do Mês</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard
+            label="Pacientes"
+            value={isLoading ? '…' : patients.length}
+            icon="👥"
+            color="indigo"
+            sub="Total ativo"
+          />
+          <StatCard
+            label="Sessões este mês"
+            value={isLoadingStats ? '…' : sessoesMes.length}
+            icon="📝"
+            color="cyan"
+            sub={`${presentesMes} presentes · ${faltasMes} faltas`}
+          />
+          <StatCard
+            label="Anamneses"
+            value={isLoadingStats ? '…' : anamneses.length}
+            icon="📋"
+            color="violet"
+            sub="Total preenchidas"
+          />
+          <StatCard
+            label="Taxa de Presença"
+            value={isLoadingStats || sessoesMes.length === 0 ? '—' : `${Math.round((presentesMes / sessoesMes.length) * 100)}%`}
+            icon="✅"
+            color="emerald"
+            sub="Este mês"
+          />
+        </div>
+      </div>
+
+      {/* Linha inferior: Pacientes recentes + Sessões de Hoje */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Pacientes Recentes */}
+        <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Pacientes Recentes</h3>
+            <button
+              onClick={() => onNavigate && onNavigate('pacientes')}
+              className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+            >
+              Ver todos →
+            </button>
           </div>
-        ) : sessoesPeriodo.length === 0 ? (
-          <div className="py-12 text-center text-slate-600 dark:text-slate-400 text-sm">Nenhuma evolução encontrada no período selecionado.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02]">
-                <tr>
-                  <th className="px-6 py-3">Data</th>
-                  <th className="px-6 py-3">Paciente</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 hidden md:table-cell">Observações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {sessoesPeriodo.slice(0, 15).map(s => {
-                  const p = patients.find(pt => pt.id === s.id_paciente);
-                  return (
-                    <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                        {s.data_sessao ? s.data_sessao.split('-').reverse().join('/') : '—'}
-                      </td>
-                      <td className="px-6 py-3 text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs font-bold">
-                            {p?.nome?.charAt(0)?.toUpperCase() || '?'}
-                          </span>
-                          {p?.nome || <span className="text-slate-600 italic">Paciente removido</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${
-                          s.status === 'Presente' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          s.status === 'Faltou' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                          'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        }`}>{s.status || '—'}</span>
-                      </td>
-                      <td className="px-6 py-3 text-slate-600 dark:text-slate-400 hidden md:table-cell max-w-xs truncate">
-                        {s.observacoes || '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {sessoesPeriodo.length > 15 && (
-              <div className="px-6 py-3 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-white/5 text-center">
-                Mostrando 15 de {sessoesPeriodo.length} registros. Exporte o PDF ou filtre por data para ver mais.
-              </div>
-            )}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <svg className="w-6 h-6 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            </div>
+          ) : recentPatients.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-3xl mb-2">🧑‍⚕️</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum paciente cadastrado ainda.</p>
+              <button
+                onClick={() => onNavigate && onNavigate('pacientes')}
+                className="mt-3 text-xs text-indigo-400 hover:underline"
+              >
+                Cadastrar agora →
+              </button>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-white/5">
+              {recentPatients.map(p => {
+                const sessoesDoPaciente = sessoes.filter(s => s.id_paciente === p.id);
+                return (
+                  <li key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                      {p.nome?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{p.nome}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {sessoesDoPaciente.length} sessão{sessoesDoPaciente.length !== 1 ? 'ões' : ''} registrada{sessoesDoPaciente.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-400 whitespace-nowrap">
+                      {p.data_nascimento ? `${new Date().getFullYear() - new Date(p.data_nascimento).getFullYear()} anos` : ''}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Sessões de Hoje */}
+        <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Sessões Hoje</h3>
+            <span className="text-xs bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-full">
+              {todayStr.split('-').reverse().join('/')}
+            </span>
           </div>
-        )}
+          {isLoadingStats ? (
+            <div className="flex items-center justify-center py-8">
+              <svg className="w-6 h-6 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            </div>
+          ) : sessoesHoje.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-3xl mb-2">☕</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Nenhuma sessão registrada para hoje.</p>
+              <button
+                onClick={() => onNavigate && onNavigate('nova-sessao')}
+                className="mt-3 text-xs text-cyan-400 hover:underline"
+              >
+                Registrar sessão →
+              </button>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-white/5">
+              {sessoesHoje.slice(0, 6).map(s => {
+                const p = patients.find(pt => pt.id === s.id_paciente);
+                return (
+                  <li key={s.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="w-9 h-9 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-300 font-bold text-sm flex-shrink-0">
+                      {p?.nome?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {p?.nome || <span className="italic text-slate-400">Paciente removido</span>}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{s.observacoes || 'Sem observações'}</p>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                      s.status === 'Presente' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                      s.status === 'Faltou' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                      'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }`}>
+                      {s.status || '—'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
 
     </div>

@@ -45,6 +45,13 @@
   }
 }
 
+/* Força a sidebar a aparecer no desktop, mesmo que o React a tenha fechado no mobile */
+@media (min-width: 1024px) {
+  aside.-translate-x-full {
+    transform: translateX(0) !important;
+  }
+}
+
 @layer utilities {
   .custom-scrollbar {
     scrollbar-width: thin;

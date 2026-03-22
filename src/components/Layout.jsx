@@ -4,9 +4,11 @@ import ConfirmDialog from './ConfirmDialog';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function Layout({ children, currentPath, onNavigate, userEmail, fullHeight = false }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  // A visibilidade em desktop agora é garantida pelo Tailwind (lg:translate-x-0), não precisamos mais do JavaScript resize listener para isso.
 
   const navigation = [
     { 
@@ -28,7 +30,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
       )
     },
     {
-      name: 'Nova Sessão (Evolução)', 
+      name: 'Nova Sessão', 
       id: 'nova-sessao',
       icon: (
         <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,18 +78,18 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
   return (
     <div className="flex w-full h-full bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans selection:bg-indigo-500/30">
       
-      {/* Sidebar Overlay (Mobile) */}
-      {!isSidebarOpen && (
+      {/* Sidebar Overlay (Mobile) — aparece quando o menu está ABERTO */}
+      {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-20 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm lg:hidden transition-opacity"
-          onClick={() => setIsSidebarOpen(true)}
+          className="fixed inset-0 z-20 bg-black/40 backdrop-blur-sm lg:hidden transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
 
       {/* Sidebar */}
       <aside 
-        className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-          fixed lg:static inset-y-0 left-0 z-30 w-72 bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex flex-col transition-transform duration-300 ease-in-out`}
+        className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} 
+          fixed lg:static inset-y-0 left-0 z-30 w-64 lg:w-72 bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex flex-col transition-transform duration-300 ease-in-out`}
       >
         <div className="h-20 flex items-center justify-between px-6 mb-4 border-b border-slate-200 dark:border-white/5">
           <div className="flex items-center gap-3">
@@ -178,10 +180,10 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
 
       {/* Main Content wrapper */}
       <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 relative">
-        <header className="h-20 lg:h-0 sticky top-0 z-10 flex-shrink-0 flex items-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 lg:border-none px-4 lg:hidden">
+        <header className="h-16 lg:h-0 sticky top-0 z-10 flex-shrink-0 flex items-center bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-slate-200 dark:border-white/5 lg:border-none px-4 lg:hidden">
             <button
                onClick={() => setIsSidebarOpen(true)}
-               className="p-2 mr-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+               className="p-2.5 mr-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -196,7 +198,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
           {fullHeight ? (
             <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
           ) : (
-            <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-10 w-full">{children}</div>
+            <div className="max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 w-full">{children}</div>
           )}
         </main>
       </div>
