@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { criarSessao } from '../services/patientService';
-import { jsPDF } from 'jspdf';
+import { PdfBuilder } from '../services/pdfUtils';
 
 export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
@@ -96,66 +96,31 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
     try {
       const patient = patients.find(p => p.id === formData.id_paciente);
-      const patientName = patient ? patient.nome : 'Paciente_Desconhecido';
+      const patientName = patient ? patient.nome : 'Paciente Desconhecido';
 
-      // Format Date
       const [year, month, day] = formData.data_sessao.split('-');
       const formattedDate = `${day}/${month}/${year}`;
 
-      const doc = new jsPDF();
-      
-      // Header
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Ficha Clinica - Evolucao', 105, 20, { align: 'center' });
-      
-      // Info
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Paciente: ${patientName}`, 20, 40);
-      doc.text(`Data da Sessao: ${formattedDate}`, 20, 48);
-      doc.text(`Status: ${formData.status}`, 20, 56);
-      
-      doc.line(20, 62, 190, 62);
+      const pdf = new PdfBuilder(
+        'Evolucao de Sessao Psicologica',
+        `Paciente: ${patientName} - ${formattedDate}`
+      );
 
-      // Section 1: Observações
-      let yPos = 72;
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Observacoes Gerais:', 20, yPos);
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      yPos += 7;
-      const splitObs = doc.splitTextToSize(formData.observacoes || 'N/A', 170);
-      doc.text(splitObs, 20, yPos);
-      yPos += (splitObs.length * 6) + 10;
+      // Dados da sessão
+      pdf.addSection('Dados da Sessao');
+      pdf.addInfoBlock([
+        { label: 'Paciente', value: patientName },
+        { label: 'Data da Sessao', value: formattedDate },
+        { label: 'Status', value: formData.status },
+      ]);
 
-      // Section 2: Comportamento
-      if (formData.comportamento) {
-          doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Comportamento Apresentado:', 20, yPos);
-          doc.setFontSize(12);
-          doc.setFont('helvetica', 'normal');
-          yPos += 7;
-          const splitComp = doc.splitTextToSize(formData.comportamento, 170);
-          doc.text(splitComp, 20, yPos);
-          yPos += (splitComp.length * 6) + 10;
-      }
+      // Conteúdo clínico
+      pdf.addSection('Registro Clinico');
+      pdf.addTextBlock('Observações Gerais', formData.observacoes);
+      pdf.addTextBlock('Comportamento Apresentado', formData.comportamento);
+      pdf.addTextBlock('Sintomas Relatados', formData.sintomas);
 
-      // Section 3: Sintomas
-      if (formData.sintomas) {
-          doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Sintomas Relatados:', 20, yPos);
-          doc.setFontSize(12);
-          doc.setFont('helvetica', 'normal');
-          yPos += 7;
-          const splitSin = doc.splitTextToSize(formData.sintomas, 170);
-          doc.text(splitSin, 20, yPos);
-      }
-      
-      doc.save(`Evolucao_${patientName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`);
+      pdf.save(`Evolucao_${patientName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`);
       
       setStatusMessage({ type: 'success', text: 'PDF exportado com sucesso!' });
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 3000);
@@ -219,9 +184,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                         key={p.id}
                         type="button"
                         onMouseDown={() => handleSelectPatient(p)}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-800 dark:text-white hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors"
                       >
-                        <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
+                        <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
                         {p.nome}
                       </button>
                     ))}

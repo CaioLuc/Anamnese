@@ -18,7 +18,7 @@ function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
     setIsSaving(true);
     setError('');
     try {
-      await atualizarAnamnese(anamnese.id, { respostas });
+      await atualizarAnamnese(anamnese.id, anamnese.id_paciente, { respostas });
       onSaved();
     } catch (e) {
       setError('Erro ao salvar edições. Tente novamente.');
@@ -54,12 +54,12 @@ function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
          <button disabled={isSaving || !anamnese.template_snapshot} onClick={handleSave} className="px-6 py-2.5 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 shadow-md font-semibold transition-colors disabled:opacity-50">
             {isSaving ? 'Salvando...' : 'Salvar Alterações'}
          </button>
-       </div>
+      </div>
     </div>
   );
 }
 
-export default function PatientProfileModal({ isOpen, onClose, patient, initialTab = 'evolucoes' }) {
+export default function PatientProfileModal({ isOpen, onClose, patient, initialTab = 'evolucoes', onPatientUpdated, onEditRequest }) {
   const [activeTab, setActiveTab] = useState('evolucoes');
   const [sessoes, setSessoes] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
@@ -120,7 +120,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
     const sessao = confirmSessao.sessao;
     setConfirmSessao({ isOpen: false, sessao: null });
     try {
-      await deletarSessao(sessao.id);
+      await deletarSessao(sessao.id, patient.id);
       loadHistory();
     } catch (err) {
       console.error('Erro ao deletar sessão:', err);
@@ -132,7 +132,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
     setConfirmDeleteAnamnese({ isOpen: false, anamnese: null });
     if (!ana) return;
     try {
-      await deletarAnamnese(ana.id);
+      await deletarAnamnese(ana.id, patient.id);
       loadHistory();
     } catch (err) {
       console.error('Erro ao deletar anamnese:', err);
@@ -143,7 +143,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
     if (!editingSessao) return;
     setIsSavingSessao(true);
     try {
-      await atualizarSessao(editingSessao.id, {
+      await atualizarSessao(editingSessao.id, patient.id, {
         observacoes: editingSessao.observacoes,
         comportamento: editingSessao.comportamento,
         sintomas: editingSessao.sintomas,
@@ -161,135 +161,121 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   if (!isOpen || !patient) return null;
 
   const currentAnamnese = anamneses[0] || null;
-  const age = new Date().getFullYear() - new Date(patient.data_nascimento).getFullYear();
+  const dobStr = patient.data_nascimento.includes('T') ? patient.data_nascimento : patient.data_nascimento + 'T12:00:00';
+  const age = new Date().getFullYear() - new Date(dobStr).getFullYear();
 
   // ====== FUNÇÕES DE PDF ======
   const gerarPdfAnamnese = () => {
      if (anamneses.length === 0) return;
      const ana = anamneses[0];
-     const doc = new jsPDF();
-     let yCursor = 20;
-     const margin = 20;
-     const lh = 7;
+     const { PdfBuilder, calcularIdade, formatDateBR } = require('../services/pdfUtils');
 
-     const textTitle = (text) => {
-         doc.setFontSize(14);
-         doc.setFont("helvetica", "bold");
-         if (yCursor > 270) { doc.addPage(); yCursor = 20; }
-         doc.text(text, margin, yCursor);
-         yCursor += lh;
-         doc.setFontSize(10);
-         doc.setFont("helvetica", "normal");
-     };
-
-     const textLine = (label, value) => {
-         if (yCursor > 270) { doc.addPage(); yCursor = 20; }
-         doc.setFont("helvetica", "bold");
-         doc.text(`${label}:`, margin, yCursor);
-         doc.setFont("helvetica", "normal");
-         
-         const labelWidth = doc.getTextWidth(`${label}: `);
-         const textLines = doc.splitTextToSize(value || 'N/D', 180 - margin - labelWidth);
-         
-         if (textLines.length > 1) {
-             yCursor += lh;
-             doc.text(textLines, margin, yCursor);
-         } else {
-             doc.text(textLines, margin + labelWidth + 2, yCursor);
-         }
-         
-         yCursor += (textLines.length * lh) + 3; 
-     };
-
-     doc.setFontSize(18);
-     doc.text("Ficha de Anamnese Psicológica", margin, yCursor);
-     yCursor += 10;
-     
-     doc.setFontSize(12);
      let viewMode = ana.tipo === 'adolescente' ? 'Infanto-Juvenil' : (ana.tipo === 'dinamico' ? ana.questionario_nome || 'Personalizada' : 'Adulto');
-     doc.text(`Paciente: ${patient.nome} - Tipo: ${viewMode}`, margin, yCursor);
-     yCursor += 15;
-     
+     const pdf = new PdfBuilder(
+       `Anamnese Psicologica - ${viewMode}`,
+       `Paciente: ${patient.nome}`
+     );
+
+     // --- Identificação do Paciente ---
+     pdf.addSection('Identificacao do Paciente');
+     pdf.addInfoBlock([
+       { label: 'Nome Completo', value: patient.nome },
+       { label: 'Idade', value: calcularIdade(patient.data_nascimento) },
+       { label: 'Data de Nascimento', value: formatDateBR(patient.data_nascimento) },
+       { label: 'CPF', value: patient.cpf || 'Não informado' },
+       { label: 'Telefone', value: patient.telefone || 'Não informado' },
+     ]);
+
      if (ana.tipo === 'dinamico') {
-       doc.setFontSize(10);
-       doc.text("Nota: Formato de impressão dinâmica em breve.", margin, yCursor);
+       // === Anamnese Dinâmica ===
+       if (ana.template_snapshot && ana.template_snapshot.campos) {
+         pdf.addSection('Respostas da Anamnese');
+         ana.template_snapshot.campos.forEach((campo, idx) => {
+           const resposta = ana.respostas?.[campo.id] || ana.respostas?.[idx];
+           const valor = Array.isArray(resposta) ? resposta.join(', ') : (resposta || 'N/D');
+           pdf.addField(campo.label || campo.titulo || `Pergunta ${idx + 1}`, String(valor));
+         });
+       }
      } else {
-         textTitle("1. Dados Familiares");
-         textLine("Nome do Pai", `${ana.nome_pai} (${ana.idade_pai} anos - ${ana.profissao_pai})`);
-         textLine("Nome da Mãe", `${ana.nome_mae} (${ana.idade_mae} anos - ${ana.profissao_mae})`);
-         textLine("Qtd Irmãos", `${ana.qtd_irmaos} (${ana.irmaos_masculino}H / ${ana.irmaos_feminino}M)`);
-         yCursor += 5;
+       // === Anamnese Estruturada (Adulto / Adolescente) ===
+       
+       // Dados Familiares
+       pdf.addSection('Dados Familiares');
+       pdf.addInline('Pai', `${ana.nome_pai || 'N/I'} (${ana.idade_pai || '?'} anos - ${ana.profissao_pai || 'N/I'})`);
+       pdf.addInline('Mãe', `${ana.nome_mae || 'N/I'} (${ana.idade_mae || '?'} anos - ${ana.profissao_mae || 'N/I'})`);
+       pdf.addInline('Irmãos', `${ana.qtd_irmaos || 0} (${ana.irmaos_masculino || 0}M / ${ana.irmaos_feminino || 0}F)`);
+       if (ana.observacoes_familiares) pdf.addField('Observações Familiares', ana.observacoes_familiares);
 
-         if (ana.tipo === 'adolescente') {
-             textTitle("2. Desenvolvimento e Escola");
-             textLine("Gestação / Nascimento", `Gestação: ${ana.gestacao_notas || '-'} | Parto: ${ana.tipo_parto}`);
-             textLine("Amamentação", ana.mamou ? `Sim (${ana.tempo_amamentacao})` : 'Não');
-             textLine("Desenvolvimento Motor", ana.desenvolvimento_motor);
-             textLine("Linguagem / Fala", ana.atraso_fala);
-             textLine("Dificuldade Escolar", ana.dificuldade_escolar ? `Sim - ${ana.dificuldade_escolar_notas}` : 'Não');
-             textLine("Seletividade Alimentar", ana.seletividade_alimentar ? `Sim - ${ana.seletividade_notas}` : 'Não');
-             yCursor += 5;
-         }
+       // Desenvolvimento (se adolescente)
+       if (ana.tipo === 'adolescente') {
+         pdf.addSection('Desenvolvimento e Escola');
+         pdf.addInfoBlock([
+           { label: 'Gestação Planejada', value: ana.gestacao_planejada ? 'Sim' : 'Não' },
+           { label: 'Tipo de Parto', value: ana.tipo_parto || 'N/I' },
+           { label: 'Amamentação', value: ana.mamou ? `Sim (${ana.tempo_amamentacao || ''})` : 'Não' },
+         ]);
+         if (ana.gestacao_notas) pdf.addField('Notas da Gestação', ana.gestacao_notas);
+         pdf.addField('Desenvolvimento Motor', ana.desenvolvimento_motor);
+         pdf.addField('Fala / Linguagem', ana.atraso_fala);
+         pdf.addField('Interação / Brincadeiras', ana.interacao_brincadeiras);
+         if (ana.dificuldade_escolar) pdf.addField('Dificuldade Escolar', ana.dificuldade_escolar_notas);
+         if (ana.seletividade_alimentar) pdf.addField('Seletividade Alimentar', ana.seletividade_notas);
+       }
 
-         textTitle("3. Motivo da Consulta e Dinâmicas");
-         textLine("Motivo Principal", ana.motivo_consulta);
-         textLine("Histórico da Queixa", ana.historico_queixa);
-         textLine("Dinâmica Familiar", ana.dinamica_familiar);
-         yCursor += 5;
+       // Motivo e Dinâmicas
+       pdf.addSection('Motivo da Consulta');
+       pdf.addTextBlock('Motivo Principal', ana.motivo_consulta);
+       pdf.addTextBlock('Histórico da Queixa', ana.historico_queixa);
+       pdf.addTextBlock('Dinâmica Familiar', ana.dinamica_familiar);
 
-         textTitle("4. Quadro Clínico e Histórico");
-         textLine("Sintomas Apresentados", ana.sintomas_apresentados);
-         textLine("Fatores Agravantes", ana.fatores_agravantes);
-         if (ana.tentativa_suicidio) {
-             textLine("Risco/Suicídio", ana.tentativa_suicidio);
-         }
-         textLine("Psicológo/Psiquiatra Prévio", `Psicólogo: ${ana.psicologo_previo?'Sim':'Não'} | Psiquiatra: ${ana.psiquiatra_previo?'Sim':'Não'}`);
-         yCursor += 5;
+       // Quadro Clínico
+       pdf.addSection('Quadro Clínico e Histórico');
+       pdf.addTextBlock('Sintomas Apresentados', ana.sintomas_apresentados);
+       pdf.addTextBlock('Fatores Agravantes', ana.fatores_agravantes);
+       if (ana.tentativa_suicidio) pdf.addAlert(ana.tentativa_suicidio);
+       pdf.addInfoBlock([
+         { label: 'Psicólogo Prévio', value: ana.psicologo_previo ? 'Sim' : 'Não' },
+         { label: 'Psiquiatra Prévio', value: ana.psiquiatra_previo ? 'Sim' : 'Não' },
+       ]);
 
-         textTitle("5. Parecer Profissional");
-         textLine("Observações Gerais", ana.observacoes_gerais);
+       // Parecer
+       pdf.addSection('Parecer Profissional');
+       pdf.addTextBlock('Observações Gerais', ana.observacoes_gerais);
      }
-     doc.save(`Anamnese_${patient.nome.replace(/\s+/g,'_')}.pdf`);
+
+     pdf.save(`Anamnese_${patient.nome.replace(/\s+/g,'_')}.pdf`);
   };
 
   const gerarPdfSessao = (sessao) => {
-     const doc = new jsPDF();
-     let yCursor = 20;
-     const margin = 20;
+    const { PdfBuilder, formatDateBR } = require('../services/pdfUtils');
+    
+    const dataFormatada = sessao.data_sessao 
+      ? formatDateBR(sessao.data_sessao)
+      : new Date(sessao.createdAt?.toDate() || Date.now()).toLocaleDateString('pt-BR');
 
-     doc.setFontSize(16);
-     doc.text("Evolução de Sessão Psicológica", margin, yCursor);
-     yCursor += 15;
+    const pdf = new PdfBuilder(
+      'Evolucao de Sessao Psicologica',
+      `Paciente: ${patient.nome} - ${dataFormatada}`
+    );
 
-     doc.setFontSize(12);
-     doc.text(`Paciente: ${patient.nome}`, margin, yCursor);
-     yCursor += 10;
-     
-     const dataFormatada = sessao.data_sessao ? sessao.data_sessao.split('-').reverse().join('/') : new Date(sessao.createdAt?.toDate() || Date.now()).toLocaleDateString('pt-BR');
-     
-     doc.text(`Data da Sessão: ${dataFormatada}`, margin, yCursor);
-     yCursor += 10;
-     doc.text(`Status: ${sessao.status || 'Não Definido'}`, margin, yCursor);
-     yCursor += 15;
+    // Dados da sessão
+    pdf.addSection('Dados da Sessao');
+    pdf.addInfoBlock([
+      { label: 'Paciente', value: patient.nome },
+      { label: 'Data da Sessão', value: dataFormatada },
+      { label: 'Status', value: sessao.status || 'Não Definido' },
+    ]);
 
-     const addField = (title, content) => {
-        if (!content) return;
-        if (yCursor > 270) { doc.addPage(); yCursor = 20; }
-        doc.setFont("helvetica", "bold");
-        doc.text(title, margin, yCursor);
-        yCursor += 7;
-        doc.setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(content, 170);
-        doc.text(lines, margin, yCursor);
-        yCursor += (lines.length * 7) + 5;
-     };
+    // Conteúdo
+    pdf.addSection('Registro Clinico');
+    pdf.addTextBlock('Observações / Notas', sessao.observacoes || sessao.evolucao_notas);
+    pdf.addTextBlock('Comportamento Apresentado', sessao.comportamento);
+    pdf.addTextBlock('Sintomas Relatados', sessao.sintomas);
 
-     addField("Observações / Notas:", sessao.observacoes || sessao.evolucao_notas);
-     addField("Comportamento:", sessao.comportamento);
-     addField("Sintomas:", sessao.sintomas);
-
-     const dataNomeArquivo = sessao.data_sessao ? sessao.data_sessao.split('-').reverse().join('-') : new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
-     doc.save(`Sessao_${patient.nome.replace(/\s+/g,'_')}_${dataNomeArquivo}.pdf`);
+    const dataNomeArquivo = sessao.data_sessao 
+      ? sessao.data_sessao.split('-').reverse().join('-') 
+      : new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+    pdf.save(`Sessao_${patient.nome.replace(/\s+/g,'_')}_${dataNomeArquivo}.pdf`);
   };
 
   return (
@@ -330,14 +316,24 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
              </div>
           </div>
           
-          <button 
-            onClick={onClose}
-            className="p-2 -mr-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-colors self-start"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2 self-start -mr-2">
+             <button
+               onClick={() => onEditRequest && onEditRequest(patient)}
+               className="p-2 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors"
+               title="Editar Paciente"
+             >
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+             </button>
+             <button 
+               onClick={onClose}
+               className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-colors"
+               title="Fechar Prontuário"
+             >
+               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+               </svg>
+             </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -636,7 +632,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                              )}
                            </div>
                          </div>
-                      ) : (!selectedFormType && !selectedTemplate) ? (
+                      ) : (!selectedFormType && !selectedTemplate && !isEditingAnamnese) ? (
                           <div className="w-full h-full flex items-center justify-center p-6">
                               <div className="max-w-md w-full text-center">
                                   <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
@@ -744,6 +740,20 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                           </div>
                       ) : (isEditingAnamnese && anamneses[0]?.tipo === 'dinamico') ? (
                           <DynamicAnamneseEditor anamnese={anamneses[0]} onSaved={() => { setIsEditingAnamnese(false); loadHistory(); }} onCancel={() => setIsEditingAnamnese(false)} />
+                      ) : (!isEditingAnamnese && anamneses[0]?.tipo === 'dinamico') ? (
+                          <div className="space-y-4 overflow-hidden">
+                            <h4 className="text-indigo-500 font-bold mb-3">Respostas da Anamnese</h4>
+                            {anamneses[0].template_snapshot?.campos?.map((campo, idx) => {
+                              const resp = anamneses[0].respostas?.[campo.id] || anamneses[0].respostas?.[idx];
+                              const valor = Array.isArray(resp) ? resp.join(', ') : (resp || 'N/D');
+                              return (
+                                <div key={campo.id || idx} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/5 p-4 rounded-xl">
+                                  <strong className="text-slate-600 dark:text-slate-400 text-xs block mb-1">{campo.label || campo.titulo || `Pergunta ${idx+1}`}</strong>
+                                  <p className="text-sm text-slate-900 dark:text-slate-200 whitespace-pre-wrap break-words overflow-wrap-anywhere">{valor}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
                       ) : (selectedFormType === 'adulto' || (isEditingAnamnese && anamneses[0]?.tipo !== 'adolescente')) ? (
                           <AnamneseForm patient={patient} initialData={isEditingAnamnese ? anamneses[0] : null} onSaved={() => { setIsEditingAnamnese(false); loadHistory(); }} />
                       ) : (
@@ -755,7 +765,6 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
             </>
           )}
         </div>
-        
       </div>
       <ConfirmDialog
         isOpen={confirmSessao.isOpen}

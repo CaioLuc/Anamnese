@@ -4,17 +4,98 @@ import { db, auth } from './firebaseConfig.js';
 const PACIENTES_COL = 'pacientes';
 const ANAMNESES_COL = 'anamneses';
 const SESSOES_COL = 'sessoes';
+const QUESTIONARIOS_COL = 'questionarios';
+const CLINICAS_COL = 'clinicas';
+
+// ==========================================
+// HELPERS: PATH GENERATION
+// ==========================================
+
+function getPsicologoRef() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("Usuário não autenticado.");
+  return doc(db, 'psicologos', uid);
+}
+
+function getPacientesRef() {
+  return collection(getPsicologoRef(), PACIENTES_COL);
+}
+
+function getPacienteDoc(id) {
+  return doc(getPsicologoRef(), PACIENTES_COL, id);
+}
+
+function getAnamnesesRef(pacienteId) {
+  return collection(getPacienteDoc(pacienteId), ANAMNESES_COL);
+}
+
+function getSessoesRef(pacienteId) {
+  return collection(getPacienteDoc(pacienteId), SESSOES_COL);
+}
+
+function getQuestionariosRef() {
+  return collection(getPsicologoRef(), QUESTIONARIOS_COL);
+}
+
+function getClinicasRef() {
+  return collection(getPsicologoRef(), CLINICAS_COL);
+}
+
+function getClinicaDoc(id) {
+  return doc(getPsicologoRef(), CLINICAS_COL, id);
+}
+
+// ==========================================
+// PERFIL DO PSICÓLOGO (plano, ativo, etc.)
+// ==========================================
+
+export async function lerPerfilPsicologo() {
+  try {
+    const ref = getPsicologoRef();
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() };
+    }
+    return null;
+  } catch (error) {
+    console.error("Erro ao ler perfil:", error);
+    return null;
+  }
+}
+
+export async function salvarPerfilPsicologo(dados) {
+  try {
+    const ref = getPsicologoRef();
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, { ...dados, updatedAt: serverTimestamp() });
+    } else {
+      const { setDoc } = await import('firebase/firestore');
+      await setDoc(ref, {
+        email: auth.currentUser?.email || '',
+        plano: 'basico',
+        ativo: true,
+        max_locais: 1,
+        ...dados,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
+  } catch (error) {
+    console.error("Erro ao salvar perfil:", error);
+    throw error;
+  }
+}
 
 // ==========================================
 // CRUD: PACIENTES
 // ==========================================
 
 export async function criarPaciente(pacienteData) {
-  // pacienteData: { nome, data_nascimento, telefone, cpf }
   try {
-    const docRef = await addDoc(collection(db, PACIENTES_COL), {
+    const docRef = await addDoc(getPacientesRef(), {
       ...pacienteData,
-      userId: auth.currentUser.uid,
+      userId: auth.currentUser.uid, // Mantido para compatibilidade/migração fácil
       createdAt: serverTimestamp()
     });
     return docRef.id;
@@ -26,8 +107,7 @@ export async function criarPaciente(pacienteData) {
 
 export async function lerPacientes() {
   try {
-    const q = query(collection(db, PACIENTES_COL), where("userId", "==", auth.currentUser.uid));
-    const qSnapshot = await getDocs(q);
+    const qSnapshot = await getDocs(getPacientesRef());
     const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     // Apenas pacientes que NÃO estão na lixeira
     return docs.filter(p => !p.deletedAt);
@@ -39,8 +119,7 @@ export async function lerPacientes() {
 
 export async function lerPaciente(id) {
   try {
-    const docRef = doc(db, PACIENTES_COL, id);
-    const docSnap = await getDoc(docRef);
+    const docSnap = await getDoc(getPacienteDoc(id));
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
     }
@@ -53,8 +132,7 @@ export async function lerPaciente(id) {
 
 export async function atualizarPaciente(id, dadosAtualizados) {
   try {
-    const docRef = doc(db, PACIENTES_COL, id);
-    await updateDoc(docRef, dadosAtualizados);
+    await updateDoc(getPacienteDoc(id), dadosAtualizados);
   } catch (error) {
     console.error("Erro ao atualizar paciente:", error);
     throw error;
@@ -63,9 +141,8 @@ export async function atualizarPaciente(id, dadosAtualizados) {
 
 export async function deletarPaciente(id) {
   try {
-    // SOFT DELETE: Mover para lixeira em vez de exclusão física imediata
-    const docRef = doc(db, PACIENTES_COL, id);
-    await updateDoc(docRef, { deletedAt: serverTimestamp() });
+    // SOFT DELETE: Mover para lixeira
+    await updateDoc(getPacienteDoc(id), { deletedAt: serverTimestamp() });
   } catch (error) {
     console.error("Erro ao mover paciente para lixeira:", error);
     throw error;
@@ -78,8 +155,7 @@ export async function deletarPaciente(id) {
 
 export async function limparLixeiraPacientes(diasRetencao = 7) {
   try {
-    const q = query(collection(db, PACIENTES_COL), where("userId", "==", auth.currentUser.uid));
-    const qSnapshot = await getDocs(q);
+    const qSnapshot = await getDocs(getPacientesRef());
     const todos = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const lixeira = todos.filter(p => p.deletedAt);
 
@@ -93,18 +169,16 @@ export async function limparLixeiraPacientes(diasRetencao = 7) {
 
       if (diasNaLixeira >= diasRetencao) {
         // Exclusão Definitiva (Hard Delete)
-        // 1. Deleta anamneses vinculadas
-        const qAnam = query(collection(db, ANAMNESES_COL), where("id_paciente", "==", pac.id));
-        const snapAnam = await getDocs(qAnam);
+        // 1. Deleta anamneses vinculadas (subcoleção)
+        const snapAnam = await getDocs(getAnamnesesRef(pac.id));
         snapAnam.forEach(d => { batch.delete(d.ref); itemsNoBatch++; });
 
-        // 2. Deleta sessões vinculadas
-        const qSess = query(collection(db, SESSOES_COL), where("id_paciente", "==", pac.id));
-        const snapSess = await getDocs(qSess);
+        // 2. Deleta sessões vinculadas (subcoleção)
+        const snapSess = await getDocs(getSessoesRef(pac.id));
         snapSess.forEach(d => { batch.delete(d.ref); itemsNoBatch++; });
 
         // 3. Deleta o paciente
-        batch.delete(doc(db, PACIENTES_COL, pac.id));
+        batch.delete(getPacienteDoc(pac.id));
         itemsNoBatch++;
       }
     }
@@ -124,10 +198,11 @@ export async function limparLixeiraPacientes(diasRetencao = 7) {
 // ==========================================
 
 export async function criarAnamnese(anamneseData) {
-  // anamneseData: { id_paciente, queixa_principal, historico_familiar, observacoes_iniciais }
   try {
-    const docRef = await addDoc(collection(db, ANAMNESES_COL), {
-      ...anamneseData,
+    const { id_paciente, ...data } = anamneseData;
+    const docRef = await addDoc(getAnamnesesRef(id_paciente), {
+      ...data,
+      id_paciente, // Mantido por compatibilidade
       userId: auth.currentUser.uid,
       createdAt: serverTimestamp()
     });
@@ -140,14 +215,8 @@ export async function criarAnamnese(anamneseData) {
 
 export async function lerAnamnesesDoPaciente(id_paciente) {
   try {
-    const q = query(
-      collection(db, ANAMNESES_COL), 
-      where("id_paciente", "==", id_paciente),
-      where("userId", "==", auth.currentUser.uid)
-    );
-    const qSnapshot = await getDocs(q);
+    const qSnapshot = await getDocs(getAnamnesesRef(id_paciente));
     const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    // Sort descending by creation date
     return docs.sort((a, b) => {
       const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
       const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
@@ -159,9 +228,10 @@ export async function lerAnamnesesDoPaciente(id_paciente) {
   }
 }
 
-export async function lerAnamnese(id) {
+export async function lerAnamnese(id, id_paciente) {
+  // Nota: Agora precisamos do id_paciente para compor o path
   try {
-    const docRef = doc(db, ANAMNESES_COL, id);
+    const docRef = doc(getAnamnesesRef(id_paciente), id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
@@ -173,9 +243,9 @@ export async function lerAnamnese(id) {
   }
 }
 
-export async function atualizarAnamnese(id, dadosAtualizados) {
+export async function atualizarAnamnese(id, id_paciente, dadosAtualizados) {
   try {
-    const docRef = doc(db, ANAMNESES_COL, id);
+    const docRef = doc(getAnamnesesRef(id_paciente), id);
     await updateDoc(docRef, dadosAtualizados);
   } catch (error) {
     console.error("Erro ao atualizar anamnese:", error);
@@ -183,9 +253,9 @@ export async function atualizarAnamnese(id, dadosAtualizados) {
   }
 }
 
-export async function deletarAnamnese(id) {
+export async function deletarAnamnese(id, id_paciente) {
   try {
-    const docRef = doc(db, ANAMNESES_COL, id);
+    const docRef = doc(getAnamnesesRef(id_paciente), id);
     await deleteDoc(docRef);
   } catch (error) {
     console.error("Erro ao deletar anamnese:", error);
@@ -199,10 +269,11 @@ export async function deletarAnamnese(id) {
 // ==========================================
 
 export async function criarSessao(sessaoData) {
-  // sessaoData: { id_paciente, data_sessao, evolucao_notas }
   try {
-    const docRef = await addDoc(collection(db, SESSOES_COL), {
-      ...sessaoData,
+    const { id_paciente, ...data } = sessaoData;
+    const docRef = await addDoc(getSessoesRef(id_paciente), {
+      ...data,
+      id_paciente,
       userId: auth.currentUser.uid,
       createdAt: serverTimestamp()
     });
@@ -215,14 +286,8 @@ export async function criarSessao(sessaoData) {
 
 export async function lerSessoesDoPaciente(id_paciente) {
   try {
-    const q = query(
-      collection(db, SESSOES_COL), 
-      where("id_paciente", "==", id_paciente),
-      where("userId", "==", auth.currentUser.uid)
-    );
-    const qSnapshot = await getDocs(q);
+    const qSnapshot = await getDocs(getSessoesRef(id_paciente));
     const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    // Sort descending by session date or creation date
     return docs.sort((a, b) => {
       const dateA = a.data_sessao ? new Date(a.data_sessao) : (a.createdAt?.toDate() || new Date(0));
       const dateB = b.data_sessao ? new Date(b.data_sessao) : (b.createdAt?.toDate() || new Date(0));
@@ -234,9 +299,9 @@ export async function lerSessoesDoPaciente(id_paciente) {
   }
 }
 
-export async function deletarSessao(id) {
+export async function deletarSessao(id, id_paciente) {
   try {
-    const docRef = doc(db, SESSOES_COL, id);
+    const docRef = doc(getSessoesRef(id_paciente), id);
     await deleteDoc(docRef);
   } catch (error) {
     console.error("Erro ao deletar sessão:", error);
@@ -244,9 +309,9 @@ export async function deletarSessao(id) {
   }
 }
 
-export async function atualizarSessao(id, dadosAtualizados) {
+export async function atualizarSessao(id, id_paciente, dadosAtualizados) {
   try {
-    const docRef = doc(db, SESSOES_COL, id);
+    const docRef = doc(getSessoesRef(id_paciente), id);
     await updateDoc(docRef, dadosAtualizados);
   } catch (error) {
     console.error("Erro ao atualizar sessão:", error);
@@ -256,13 +321,21 @@ export async function atualizarSessao(id, dadosAtualizados) {
 
 // ==========================================
 // QUERIES GLOBAIS (para Dashboard)
+// NOTA: Agora usam Collection Group Queries se precisar de todos, 
+// mas aqui o dashboard é apenas do usuário logado.
 // ==========================================
 
 export async function lerTodasSessoes() {
+  // Como as sessões estão espalhadas em pacientes, precisamos buscar todos os pacientes primeiro
+  // ou usar collectionGroup (que exige index). Para simplicidade e segurança, buscamos via pacientes.
   try {
-    const q = query(collection(db, SESSOES_COL), where("userId", "==", auth.currentUser.uid));
-    const qSnapshot = await getDocs(q);
-    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const pacientes = await lerPacientes();
+    let todasSessoes = [];
+    for (const pac of pacientes) {
+      const sessoes = await lerSessoesDoPaciente(pac.id);
+      todasSessoes = [...todasSessoes, ...sessoes];
+    }
+    return todasSessoes;
   } catch (error) {
     console.error("Erro ao ler todas as sessões:", error);
     throw error;
@@ -271,9 +344,13 @@ export async function lerTodasSessoes() {
 
 export async function lerTodasAnamneses() {
   try {
-    const q = query(collection(db, ANAMNESES_COL), where("userId", "==", auth.currentUser.uid));
-    const qSnapshot = await getDocs(q);
-    return qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const pacientes = await lerPacientes();
+    let todasAnamneses = [];
+    for (const pac of pacientes) {
+      const anamneses = await lerAnamnesesDoPaciente(pac.id);
+      todasAnamneses = [...todasAnamneses, ...anamneses];
+    }
+    return todasAnamneses;
   } catch (error) {
     console.error("Erro ao ler todas as anamneses:", error);
     throw error;
@@ -282,52 +359,20 @@ export async function lerTodasAnamneses() {
 
 
 // ==========================================
-// MIGRAÇÃO: VINCULAR DADOS ÓRFÃOS
+// MIGRAÇÃO: VINCULAR DADOS ÓRFÃOS (DESATIVADO/OBSOLETO)
 // ==========================================
 
 export async function vincularDadosAoUsuarioAtual() {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return { success: false, message: "Usuário não autenticado." };
-
-  try {
-    const collections = [PACIENTES_COL, ANAMNESES_COL, SESSOES_COL];
-    let totalMigrados = 0;
-
-    for (const colName of collections) {
-      const q = query(collection(db, colName)); // Pega tudo
-      const snapshot = await getDocs(q);
-      
-      const batch = writeBatch(db);
-      let count = 0;
-
-      snapshot.docs.forEach(docSnap => {
-        const data = docSnap.data();
-        if (!data.userId) { // Se não tiver dono
-          batch.update(docSnap.ref, { userId: uid });
-          count++;
-          totalMigrados++;
-        }
-      });
-
-      if (count > 0) await batch.commit();
-    }
-
-    return { success: true, message: `${totalMigrados} registros foram vinculados à sua conta.` };
-  } catch (error) {
-    console.error("Erro na migração:", error);
-    throw error;
-  }
+  return { success: false, message: "Esta função deve ser substituída pelo script de migração hierárquica." };
 }
 
 // ==========================================
 // CRUD: QUESTIONÁRIOS (TEMPLATES)
 // ==========================================
 
-const QUESTIONARIOS_COL = 'questionarios';
-
 export async function criarQuestionario(dados) {
   try {
-    const docRef = await addDoc(collection(db, QUESTIONARIOS_COL), {
+    const docRef = await addDoc(getQuestionariosRef(), {
       ...dados,
       userId: auth.currentUser.uid,
       createdAt: serverTimestamp(),
@@ -343,11 +388,7 @@ export async function criarQuestionario(dados) {
 export async function lerQuestionarios() {
   try {
     if (!auth.currentUser) return [];
-    const q = query(
-      collection(db, QUESTIONARIOS_COL),
-      where("userId", "==", auth.currentUser.uid)
-    );
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(getQuestionariosRef());
     const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     return docs.sort((a, b) => {
       const dA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
@@ -356,13 +397,13 @@ export async function lerQuestionarios() {
     });
   } catch (error) {
     console.error("Erro ao ler questionários:", error);
-    return []; // Retorna array vazio em vez de lançar exceção
+    return [];
   }
 }
 
 export async function lerQuestionario(id) {
   try {
-    const docRef = doc(db, QUESTIONARIOS_COL, id);
+    const docRef = doc(getQuestionariosRef(), id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
     return null;
@@ -374,7 +415,7 @@ export async function lerQuestionario(id) {
 
 export async function atualizarQuestionario(id, dados) {
   try {
-    const docRef = doc(db, QUESTIONARIOS_COL, id);
+    const docRef = doc(getQuestionariosRef(), id);
     await updateDoc(docRef, { ...dados, updatedAt: serverTimestamp() });
   } catch (error) {
     console.error("Erro ao atualizar questionário:", error);
@@ -384,7 +425,7 @@ export async function atualizarQuestionario(id, dados) {
 
 export async function deletarQuestionario(id) {
   try {
-    await deleteDoc(doc(db, QUESTIONARIOS_COL, id));
+    await deleteDoc(doc(getQuestionariosRef(), id));
   } catch (error) {
     console.error("Erro ao deletar questionário:", error);
     throw error;
@@ -403,3 +444,41 @@ export async function duplicarQuestionario(id) {
     throw error;
   }
 }
+
+// ==========================================
+// CRUD: CLÍNICAS (GESTÃO)
+// ==========================================
+
+export async function criarClinica(clinicaData) {
+  try {
+    const docRef = await addDoc(getClinicasRef(), {
+      ...clinicaData,
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error("Erro ao criar clínica:", error);
+    throw error;
+  }
+}
+
+export async function lerClinicas() {
+  try {
+    const qSnapshot = await getDocs(getClinicasRef());
+    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return docs.sort((a, b) => a.nome.localeCompare(b.nome));
+  } catch (error) {
+    console.error("Erro ao ler clínicas:", error);
+    throw error;
+  }
+}
+
+export async function deletarClinica(id) {
+  try {
+    await deleteDoc(getClinicaDoc(id));
+  } catch (error) {
+    console.error("Erro ao deletar clínica:", error);
+    throw error;
+  }
+}
+

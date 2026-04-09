@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { criarPaciente } from '../services/patientService';
+import { useState, useEffect } from 'react';
+import { criarPaciente, atualizarPaciente } from '../services/patientService';
 
 const toTitleCase = (str) => {
   const preps = ["de", "da", "do", "das", "dos", "e"];
@@ -13,10 +13,27 @@ const toTitleCase = (str) => {
     .join(' ');
 };
 
-export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
+export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patientToEdit = null }) {
   const [formData, setFormData] = useState({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+
+  useEffect(() => {
+    if (patientToEdit) {
+      setFormData({
+        nome: patientToEdit.nome || '',
+        data_nascimento: patientToEdit.data_nascimento || '',
+        telefone: patientToEdit.telefone || '',
+        cpf: patientToEdit.cpf || '',
+        valor_sessao: patientToEdit.valor_sessao || '',
+        clinica: patientToEdit.clinica || ''
+      });
+    } else {
+      setFormData({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
+    }
+    setError('');
+  }, [patientToEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -26,13 +43,18 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
     setIsSubmitting(true);
 
     try {
-      if (!formData.nome || !formData.data_nascimento || !formData.cpf) {
-        throw new Error('Nome, Data de Nascimento e CPF são obrigatórios.');
+      if (!formData.nome || !formData.data_nascimento) {
+        throw new Error('Nome e Data de Nascimento são obrigatórios.');
       }
 
-      const id = await criarPaciente(formData);
+      if (patientToEdit) {
+        await atualizarPaciente(patientToEdit.id, formData);
+        onPatientAdded({ id: patientToEdit.id, ...formData }, true); // true = isEdit
+      } else {
+        const id = await criarPaciente(formData);
+        onPatientAdded({ id, ...formData }, false);
+      }
       
-      onPatientAdded({ id, ...formData });
       setFormData({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
       onClose();
     } catch (err) {
@@ -52,7 +74,9 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
           </svg>
         </button>
 
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Novo Paciente</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+          {patientToEdit ? 'Editar Paciente' : 'Novo Paciente'}
+        </h2>
 
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm">
@@ -85,14 +109,13 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">CPF *</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">CPF (Opcional)</label>
               <input
                 type="text"
                 value={formData.cpf}
                 onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
                 className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="000.000.000-00"
-                required
               />
             </div>
           </div>
@@ -123,20 +146,20 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Clínica / Local de Atendimento</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Local de Atendimento</label>
             <input
               type="text"
               value={formData.clinica}
               onChange={(e) => setFormData({ ...formData, clinica: e.target.value })}
               className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Ex: Clínica Esperança, Consultório Particular..."
+              placeholder="Ex: Consultório Particular, Clínica Bem Estar..."
             />
           </div>
 
           <div className="pt-4 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-6 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"> Cancelar </button>
             <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center px-6 py-2.5 text-sm font-medium text-white transition-all bg-indigo-500 rounded-xl hover:bg-indigo-600 disabled:opacity-50">
-              {isSubmitting ? 'Salvando...' : 'Salvar Paciente'}
+              {isSubmitting ? 'Salvando...' : (patientToEdit ? 'Salvar Alterações' : 'Salvar Paciente')}
             </button>
           </div>
         </form>

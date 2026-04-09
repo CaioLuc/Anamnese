@@ -6,6 +6,8 @@ import ConfirmDialog from './ConfirmDialog';
 
 export default function Pacientes({ patients, isLoading, onPatientAddedLocal, autoOpenPatient, autoOpenTab, onAutoOpenDone }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [isEditPatientModalOpen, setIsEditPatientModalOpen] = useState(false);
+  const [patientToEdit, setPatientToEdit] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [profileInitialTab, setProfileInitialTab] = useState('evolucoes');
@@ -104,7 +106,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                   onChange={(e) => setFilterClinica(e.target.value)}
                   className="px-3 py-2 border border-slate-300 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-colors"
                 >
-                  <option value="">Todas as clínicas</option>
+                  <option value="">Todos os locais</option>
                   {clinicas.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -153,7 +155,8 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                     </tr>
                 ) : filteredPatients.map((patient) => {
                   // Simple age calculation
-                  const dob = new Date(patient.data_nascimento);
+                  const dobStr = patient.data_nascimento.includes('T') ? patient.data_nascimento : patient.data_nascimento + 'T12:00:00';
+                  const dob = new Date(dobStr);
                   const today = new Date();
                   let age = today.getFullYear() - dob.getFullYear();
                   const m = today.getMonth() - dob.getMonth();
@@ -186,8 +189,8 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                        <div className="text-sm text-slate-700 dark:text-slate-300">{age > 0 ? `${age} anos` : '-'}</div>
-                        <div className="text-xs text-slate-600 dark:text-slate-400">{new Date(patient.data_nascimento).toLocaleDateString()}</div>
+                        <div className="text-sm text-slate-700 dark:text-slate-300">{age >= 0 ? `${age} anos` : '-'}</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">{dob.toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                         {patient.telefone ? (
@@ -243,6 +246,25 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
         onClose={() => setIsProfileModalOpen(false)}
         patient={selectedPatient}
         initialTab={profileInitialTab}
+        onEditRequest={(p) => {
+          setPatientToEdit(p);
+          setIsEditPatientModalOpen(true);
+        }}
+        onPatientUpdated={(updated) => {
+          setSelectedPatient(updated);
+          if (onPatientAddedLocal) onPatientAddedLocal();
+        }}
+      />
+      <AddPatientModal
+        isOpen={isEditPatientModalOpen}
+        onClose={() => { setIsEditPatientModalOpen(false); setPatientToEdit(null); }}
+        patientToEdit={patientToEdit}
+        onPatientAdded={(updatedData) => {
+          setSelectedPatient(updatedData);
+          setIsEditPatientModalOpen(false);
+          setPatientToEdit(null);
+          if (onPatientAddedLocal) onPatientAddedLocal();
+        }}
       />
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}

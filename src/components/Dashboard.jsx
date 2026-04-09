@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { lerTodasSessoes, lerTodasAnamneses } from '../services/patientService';
+import { lerAvisoGlobal } from '../services/adminService';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 function parseDate(d) {
@@ -61,6 +62,8 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
   const [sessoes, setSessoes] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [filtro, setFiltro] = useState('mes');
+  const [avisoGlobal, setAvisoGlobal] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -77,6 +80,8 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
       }
     }
     load();
+    // Carregar aviso global
+    lerAvisoGlobal().then(a => { if (a.ativo && a.mensagem) setAvisoGlobal(a.mensagem); }).catch(() => {});
   }, [patients]);
 
   const now = new Date();
@@ -86,16 +91,30 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
   // Sessões de hoje
   const sessoesHoje = sessoes.filter(s => s.data_sessao === todayStr);
 
-  // Sessões do mês atual
-  const mesStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const mesEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-  const sessoesMes = sessoes.filter(s => {
+  // Filtro de período
+  let periodoStart, periodoEnd, periodoLabel;
+  if (filtro === 'semana') {
+    const dayOfWeek = now.getDay();
+    periodoStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+    periodoEnd = new Date(periodoStart.getFullYear(), periodoStart.getMonth(), periodoStart.getDate() + 6, 23, 59, 59);
+    periodoLabel = 'Semana';
+  } else if (filtro === 'ano') {
+    periodoStart = new Date(now.getFullYear(), 0, 1);
+    periodoEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    periodoLabel = 'Ano';
+  } else {
+    periodoStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    periodoEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    periodoLabel = 'Mês';
+  }
+
+  const sessoesPeriodo = sessoes.filter(s => {
     const d = parseDate(s.data_sessao);
-    return d && d >= mesStart && d <= mesEnd;
+    return d && d >= periodoStart && d <= periodoEnd;
   });
 
-  const presentesMes = sessoesMes.filter(s => s.status === 'Presente').length;
-  const faltasMes = sessoesMes.filter(s => s.status === 'Faltou').length;
+  const presentesPeriodo = sessoesPeriodo.filter(s => s.status === 'Presente').length;
+  const faltasPeriodo = sessoesPeriodo.filter(s => s.status === 'Faltou').length;
 
   // Pacientes mais recentes (últimos 5 cadastrados)
   const recentPatients = [...patients]
@@ -113,6 +132,17 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
 
   return (
     <div className="animate-in fade-in duration-500 w-full max-w-6xl mx-auto space-y-6 pb-10">
+
+      {/* Aviso Global do Admin */}
+      {avisoGlobal && (
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 flex items-start gap-3">
+          <span className="text-lg shrink-0 mt-0.5">📢</span>
+          <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">{avisoGlobal}</p>
+          <button onClick={() => setAvisoGlobal('')} className="shrink-0 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors ml-auto">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      )}
 
       {/* Saudação */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -143,9 +173,20 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
         </div>
       </div>
 
-      {/* KPIs do Mês */}
+      {/* KPIs do Período */}
       <div>
-        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Resumo do Mês</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Resumo do Período</h3>
+          <div className="flex bg-slate-200 dark:bg-zinc-800 rounded-lg p-0.5">
+            {[{id:'semana',label:'Semana'},{id:'mes',label:'Mês'},{id:'ano',label:'Ano'}].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFiltro(f.id)}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${filtro === f.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              >{f.label}</button>
+            ))}
+          </div>
+        </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
             label="Pacientes"
@@ -155,11 +196,11 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
             sub="Total ativo"
           />
           <StatCard
-            label="Sessões este mês"
-            value={isLoadingStats ? '…' : sessoesMes.length}
+            label={`Sessões (${periodoLabel})`}
+            value={isLoadingStats ? '…' : sessoesPeriodo.length}
             icon="📝"
             color="cyan"
-            sub={`${presentesMes} presentes · ${faltasMes} faltas`}
+            sub={`${presentesPeriodo} presentes · ${faltasPeriodo} faltas`}
           />
           <StatCard
             label="Anamneses"
@@ -170,10 +211,10 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
           />
           <StatCard
             label="Taxa de Presença"
-            value={isLoadingStats || sessoesMes.length === 0 ? '—' : `${Math.round((presentesMes / sessoesMes.length) * 100)}%`}
+            value={isLoadingStats || sessoesPeriodo.length === 0 ? '—' : `${Math.round((presentesPeriodo / sessoesPeriodo.length) * 100)}%`}
             icon="✅"
             color="emerald"
-            sub="Este mês"
+            sub={`Este ${periodoLabel.toLowerCase()}`}
           />
         </div>
       </div>
@@ -226,7 +267,7 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
                       </p>
                     </div>
                     <span className="text-xs text-slate-400 whitespace-nowrap">
-                      {p.data_nascimento ? `${new Date().getFullYear() - new Date(p.data_nascimento).getFullYear()} anos` : ''}
+                      {p.data_nascimento ? `${new Date().getFullYear() - new Date(p.data_nascimento.includes('T') ? p.data_nascimento : p.data_nascimento + 'T12:00:00').getFullYear()} anos` : ''}
                     </span>
                   </li>
                 );

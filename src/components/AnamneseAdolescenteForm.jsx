@@ -87,7 +87,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
 
       try {
         if (initialData?.id) {
-            await atualizarAnamnese(initialData.id, formData);
+            await atualizarAnamnese(initialData.id, patient.id, formData);
             setStatusMessage({ type: 'success', text: 'Anamnese atualizada com sucesso!' });
         } else {
             await criarAnamnese({
@@ -156,6 +156,17 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-10">
+            
+            {/* Nome do paciente */}
+            <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-2xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-500 dark:text-cyan-400 font-bold text-lg shrink-0">
+                {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <div>
+                <p className="font-bold text-slate-900 dark:text-white">{patient?.nome || 'Paciente'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{initialData ? 'Editando anamnese existente' : 'Nova anamnese infanto-juvenil'}</p>
+              </div>
+            </div>
             
             {/* Seção 0 */}
             <section className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg">

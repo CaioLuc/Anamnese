@@ -13,6 +13,13 @@
 
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-slate-100 antialiased selection:bg-indigo-500/30;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .dark option {
+    background-color: #18181b; /* zinc-950 */
+    color: #f4f4f5; /* zinc-100 */
   }
 
   /* Scrollbar global */

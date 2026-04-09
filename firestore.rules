@@ -7,70 +7,69 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if the document belongs to the logged-in user
-    function belongsToUser() {
-      // Para leitura/update/delete, verificamos se o userId gravado no documento existente é o do logado.
-      return resource.data.userId == request.auth.uid;
+    // Helper function for the hierarchical structure: psicologos/{uid}/...
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // Helper function to check if the incoming creation payload sets the userId correctly
-    function isCreatingForSelf() {
-      // Para criação, o 'resource' original é null, mas o 'request.resource' traz o payload novo.
-      return request.resource.data.userId == request.auth.uid;
-    }
-
-    // ===================================
-    // COLEÇÃO: PACIENTES
-    // ===================================
-    match /pacientes/{documentId} {
-      allow read, delete: if isAuthenticated() && belongsToUser();
-      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
-      allow create: if isAuthenticated() && isCreatingForSelf();
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     // ===================================
-    // COLEÇÃO: ANAMNESES
+    // ADMIN ACCESS
     // ===================================
-    match /anamneses/{documentId} {
-      allow read, delete: if isAuthenticated() && belongsToUser();
-      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
-      allow create: if isAuthenticated() && isCreatingForSelf();
+    match /admins/{uid} {
+      allow read, write: if isOwner(uid);
     }
 
     // ===================================
-    // COLEÇÃO: SESSÕES / EVOLUÇÕES
+    // ESTRUTURA PROTEGIDA (PER-USER)
     // ===================================
-    match /sessoes/{documentId} {
-      allow read, delete: if isAuthenticated() && belongsToUser();
-      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
-      allow create: if isAuthenticated() && isCreatingForSelf();
+    match /psicologos/{uid} {
+      // O próprio psicólogo pode ler e editar seu perfil
+      // Admins podem ler e editar qualquer perfil
+      allow read, write: if isOwner(uid) || isAdmin();
+      
+      // Regras para subcoleções dentro do perfil do psicólogo
+      match /pacientes/{pid} {
+        allow read, write: if isOwner(uid) || isAdmin();
+        
+        match /anamneses/{aid} {
+          allow read, write: if isOwner(uid);
+        }
+        
+        match /sessoes/{sid} {
+          allow read, write: if isOwner(uid);
+        }
+      }
+      
+      match /questionarios/{qid} {
+        allow read, write: if isOwner(uid);
+      }
+      
+      match /agendamentos/{aid} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /clinicas/{cid} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // ===================================
-    // COLEÇÃO: QUESTIONÁRIOS (Templates)
+    // CONFIG GLOBAL (avisos, etc.)
     // ===================================
-    match /questionarios/{documentId} {
-      allow read, delete: if isAuthenticated() && belongsToUser();
-      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
-      allow create: if isAuthenticated() && isCreatingForSelf();
+    match /config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // ===================================
-    // COLEÇÃO: AGENDAMENTOS
-    // ===================================
-    match /agendamentos/{documentId} {
-      allow read, delete: if isAuthenticated() && belongsToUser();
-      allow update: if isAuthenticated() && belongsToUser() && isCreatingForSelf();
-      allow create: if isAuthenticated() && isCreatingForSelf();
+    // Bloqueio padrão para qualquer outra rota não especificada
+    match /{document=**} {
+      allow read, write: if false;
     }
-
-    // ===================================
-    // COLETRÂNEA: DE TESTE
-    // (Para o teste do App.jsx na inicialização)
-    // ===================================
-    match /test_connection/{documentId} {
-      allow read, write: if isAuthenticated();
-    }
-    
   }
 }
