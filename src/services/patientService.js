@@ -117,6 +117,19 @@ export async function lerPacientes() {
   }
 }
 
+// Busca paciente pelo CPF (normalizado, só dígitos)
+export async function buscarPacientePorCPF(cpf) {
+  try {
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    if (!cpfLimpo) return null;
+    const todos = await lerPacientes();
+    return todos.find(p => p.cpf && p.cpf.replace(/\D/g, '') === cpfLimpo) || null;
+  } catch (error) {
+    console.error("Erro ao buscar paciente por CPF:", error);
+    return null;
+  }
+}
+
 export async function lerPaciente(id) {
   try {
     const docSnap = await getDoc(getPacienteDoc(id));

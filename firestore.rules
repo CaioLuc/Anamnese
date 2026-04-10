@@ -28,6 +28,14 @@ service cloud.firestore {
     // ===================================
     // ESTRUTURA PROTEGIDA (PER-USER)
     // ===================================
+    // ===================================
+    // SLUG LOOKUP (Leitura pública)
+    // ===================================
+    match /slugs/{slug} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
     match /psicologos/{uid} {
       // O próprio psicólogo pode ler e editar seu perfil
       // Admins podem ler e editar qualquer perfil
@@ -50,12 +58,30 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
       
+      // Agendamentos: PRIVADO — contém dados pessoais (nome, CPF, telefone)
+      // Somente o psicólogo dono pode ler e gerenciar
+      // Criação pública permitida (paciente agenda pelo link)
       match /agendamentos/{aid} {
-        allow read, write: if isOwner(uid);
+        allow read, update, delete: if isOwner(uid);
+        allow create: if true;
+      }
+
+      // Horários ocupados: PÚBLICO — espelho seguro (apenas data, hora, duração, status)
+      // Nenhum dado pessoal. Leitura e criação públicas para a página de agendamento.
+      match /horarios_ocupados/{sid} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if isOwner(uid);
       }
 
       match /clinicas/{cid} {
         allow read, write: if isOwner(uid);
+      }
+
+      // Config da agenda: dono escreve, leitura pública (para página de agendamento)
+      match /config/{docId} {
+        allow read: if true;
+        allow write: if isOwner(uid);
       }
     }
 

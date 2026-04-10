@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import AdminPanel from './components/AdminPanel';
@@ -12,10 +13,14 @@ import Agenda from './components/Agenda';
 import Financas from './components/Financas';
 import Questionarios from './components/Questionarios';
 import Clinicas from './components/Clinicas';
+import AgendaPublica from './components/AgendaPublica';
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
 
-function App() {
+// ================================
+// APP PRINCIPAL (Autenticado)
+// ================================
+function AppMain() {
   const [currentPath, setCurrentPath] = useState('dashboard');
   const [patients, setPatients] = useState([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
@@ -151,7 +156,7 @@ function App() {
                  preSelectedPatient={preSelectedPatientForSessao}
                />;
       case 'agenda':
-        return <Agenda patients={patients} onAtender={handleAtenderPaciente} />;
+        return <Agenda patients={patients} onAtender={handleAtenderPaciente} onRefreshPatients={fetchPatients} />;
       case 'financas':
         return <Financas patients={patients} isLoadingPatients={isLoadingPatients} />;
       case 'questionarios':
@@ -210,6 +215,22 @@ function App() {
         {renderContent()}
       </Layout>
     </div>
+  );
+}
+
+// ================================
+// APP ROOT (Router)
+// ================================
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Rota pública — página de agendamento para pacientes */}
+        <Route path="/agendar/:slug" element={<AgendaPublica />} />
+        {/* App principal — tudo que já existe */}
+        <Route path="/*" element={<AppMain />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

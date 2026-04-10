@@ -276,7 +276,8 @@ export class PdfBuilder {
     if (!text) return;
     this._checkPage(18);
     const doc = this.doc;
-    const lines = doc.splitTextToSize(text, CONTENT_WIDTH - 20);
+    const cleanText = sanitizeText(text);
+    const lines = doc.splitTextToSize(cleanText, CONTENT_WIDTH - 20);
     const h = lines.length * 5 + 10;
 
     doc.setFillColor(254, 242, 242); // red-50
@@ -287,7 +288,7 @@ export class PdfBuilder {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.danger);
-    doc.text('⚠ ALERTA DE RISCO', MARGIN + 5, this.y + 5.5);
+    doc.text('ALERTA DE RISCO', MARGIN + 5, this.y + 5.5);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -312,7 +313,7 @@ export class PdfBuilder {
 // HELPERS
 // ==========================================
 export function calcularIdade(dataNascimento) {
-  if (!dataNascimento) return 'Não informada';
+  if (!dataNascimento) return 'Nao informada';
   const dob = new Date(dataNascimento.includes('T') ? dataNascimento : dataNascimento + 'T12:00:00');
   const today = new Date();
   let age = today.getFullYear() - dob.getFullYear();
@@ -323,8 +324,11 @@ export function calcularIdade(dataNascimento) {
 
 export function formatDateBR(dateStr) {
   if (!dateStr) return 'N/D';
-  if (dateStr.includes('/')) return dateStr; // já formatada
+  if (dateStr.includes('/')) return dateStr;
   const parts = dateStr.split('-');
   if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
   return dateStr;
 }
+
+// Exportar sanitizeText para uso externo se necessário
+export { sanitizeText };

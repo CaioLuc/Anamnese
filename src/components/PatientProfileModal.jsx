@@ -161,8 +161,8 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   if (!isOpen || !patient) return null;
 
   const currentAnamnese = anamneses[0] || null;
-  const dobStr = patient.data_nascimento.includes('T') ? patient.data_nascimento : patient.data_nascimento + 'T12:00:00';
-  const age = new Date().getFullYear() - new Date(dobStr).getFullYear();
+  const dobStr = (patient.data_nascimento || '').includes('T') ? patient.data_nascimento : (patient.data_nascimento || '') + 'T12:00:00';
+  const age = patient.data_nascimento ? new Date().getFullYear() - new Date(dobStr).getFullYear() : null;
 
   // ====== FUNÇÕES DE PDF ======
   const gerarPdfAnamnese = () => {

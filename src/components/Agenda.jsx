@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   criarAgendamento, lerAgendamentos,
-  atualizarAgendamento, deletarAgendamento
+  atualizarAgendamento, deletarAgendamento, lerConfigAgenda
 } from '../services/agendaService';
+import { buscarPacientePorCPF, criarPaciente } from '../services/patientService';
 import ConfirmDialog from './ConfirmDialog';
+import ConfigAgenda from './ConfigAgenda';
 
 const STATUS_CONFIG = {
+  pendente:   { label: 'Pendente',   color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
   agendado:   { label: 'Agendado',   color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
   confirmado: { label: 'Confirmado', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
   realizado:  { label: 'Realizado',  color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
@@ -25,7 +28,7 @@ const emptyForm = {
   observacoes: '',
 };
 
-export default function Agenda({ patients, onAtender }) {
+export default function Agenda({ patients, onAtender, onRefreshPatients }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -39,6 +42,7 @@ export default function Agenda({ patients, onAtender }) {
   const [patientSearch, setPatientSearch] = useState('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, id: null });
+  const [showConfig, setShowConfig] = useState(false);
 
   const loadAgendamentos = useCallback(async () => {
     setIsLoading(true);
@@ -149,6 +153,10 @@ export default function Agenda({ patients, onAtender }) {
 
   const selectedDayAgendamentos = selectedDay ? getAgendamentosForDay(selectedDay) : [];
 
+  if (showConfig) {
+    return <ConfigAgenda onClose={() => setShowConfig(false)} />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -157,15 +165,27 @@ export default function Agenda({ patients, onAtender }) {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Agenda</h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">Organize seus atendimentos</p>
         </div>
-        <button
-          onClick={() => openNew()}
-          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Novo Agendamento
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowConfig(true)}
+            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-white/10 hover:border-indigo-500/40 text-slate-600 dark:text-slate-400 hover:text-indigo-400 text-sm font-semibold rounded-xl transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Configurar
+          </button>
+          <button
+            onClick={() => openNew()}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Novo Agendamento
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -285,7 +305,9 @@ export default function Agenda({ patients, onAtender }) {
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{ag.nome_paciente || 'Paciente'}</p>
                         <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{ag.hora} · {ag.duracao_min} min</p>
+                        {ag.telefone_paciente && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Tel: {ag.telefone_paciente}</p>}
                         {ag.observacoes && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">{ag.observacoes}</p>}
+                        {ag.origem === 'publico' && <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full font-semibold">Via Link Público</span>}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${sc.color}`}>{sc.label}</span>
@@ -294,9 +316,56 @@ export default function Agenda({ patients, onAtender }) {
                             <button
                               onClick={async () => {
                                 try {
+                                  // 1. Tentar encontrar paciente
+                                  let patient = null;
+
+                                  // Se tem id_paciente (agendamento interno), buscar direto
+                                  if (ag.id_paciente) {
+                                    patient = patients.find(p => p.id === ag.id_paciente);
+                                  }
+
+                                  // Se veio do link público e tem CPF, buscar por CPF
+                                  if (!patient && ag.cpf_paciente) {
+                                    patient = await buscarPacientePorCPF(ag.cpf_paciente);
+                                  }
+
+                                  // Se não encontrou: criar paciente novo automaticamente
+                                  if (!patient && ag.origem === 'publico') {
+                                    // Carregar config para pegar o valor da consulta
+                                    let valorSessao = '';
+                                    try {
+                                      const config = await lerConfigAgenda();
+                                      if (config?.valor_consulta) valorSessao = config.valor_consulta;
+                                    } catch (_) {}
+
+                                    const novoId = await criarPaciente({
+                                      nome: ag.nome_paciente || 'Paciente',
+                                      telefone: ag.telefone_paciente || '',
+                                      cpf: ag.cpf_paciente || '',
+                                      valor_sessao: valorSessao,
+                                      data_nascimento: '',
+                                      clinica: '',
+                                    });
+                                    patient = {
+                                      id: novoId,
+                                      nome: ag.nome_paciente,
+                                      telefone: ag.telefone_paciente,
+                                      cpf: ag.cpf_paciente,
+                                      valor_sessao: valorSessao,
+                                    };
+
+                                    // Vincular o paciente ao agendamento
+                                    await atualizarAgendamento(ag.id, { id_paciente: novoId });
+
+                                    // Atualizar lista de pacientes no App
+                                    if (onRefreshPatients) await onRefreshPatients();
+                                  }
+
+                                  // 2. Atualizar status do agendamento
                                   await atualizarAgendamento(ag.id, { ...ag, status: 'realizado' });
                                   await loadAgendamentos();
-                                  const patient = patients.find(p => p.id === ag.id_paciente);
+
+                                  // 3. Redirecionar
                                   if (onAtender && patient) onAtender(patient);
                                 } catch (e) {
                                   console.error("Erro ao iniciar atendimento:", e);
@@ -308,6 +377,17 @@ export default function Agenda({ patients, onAtender }) {
                             >
                               Atender
                             </button>
+                          )}
+                          {ag.telefone_paciente && (
+                            <a
+                              href={`https://wa.me/${ag.telefone_paciente.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${ag.nome_paciente || ''}! Sua sessão está marcada para ${ag.data?.split('-').reverse().join('/')} às ${ag.hora}. Confirma?`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded transition-colors"
+                              title="Enviar WhatsApp"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                            </a>
                           )}
                           <button onClick={() => openEdit(ag)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-400 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>

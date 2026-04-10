@@ -267,7 +267,7 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
                       </p>
                     </div>
                     <span className="text-xs text-slate-400 whitespace-nowrap">
-                      {p.data_nascimento ? `${new Date().getFullYear() - new Date(p.data_nascimento.includes('T') ? p.data_nascimento : p.data_nascimento + 'T12:00:00').getFullYear()} anos` : ''}
+                      {p.data_nascimento ? `${new Date().getFullYear() - new Date((p.data_nascimento || '').includes('T') ? p.data_nascimento : p.data_nascimento + 'T12:00:00').getFullYear()} anos` : ''}
                     </span>
                   </li>
                 );

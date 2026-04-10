@@ -155,7 +155,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                     </tr>
                 ) : filteredPatients.map((patient) => {
                   // Simple age calculation
-                  const dobStr = patient.data_nascimento.includes('T') ? patient.data_nascimento : patient.data_nascimento + 'T12:00:00';
+                  const dobStr = (patient.data_nascimento || '').includes('T') ? patient.data_nascimento : (patient.data_nascimento || '') + 'T12:00:00';
                   const dob = new Date(dobStr);
                   const today = new Date();
                   let age = today.getFullYear() - dob.getFullYear();
