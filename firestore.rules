@@ -93,6 +93,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ===================================
+    // LOGS DE I.A. (escrita via Cloud Function com admin SDK)
+    // ===================================
+    match /logs_ia/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Somente Cloud Functions (admin SDK) escrevem
+    }
+
     // Bloqueio padrão para qualquer outra rota não especificada
     match /{document=**} {
       allow read, write: if false;

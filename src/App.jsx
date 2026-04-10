@@ -58,22 +58,18 @@ function AppMain() {
 
       if (currentUser) {
         setIsCheckingRole(true);
-        console.log("Usuário logado:", currentUser.email);
         try {
           // Verificar se é admin
           const isAdm = isAdminEmail(currentUser.email);
-          console.log("É admin?", isAdm);
           
           if (isAdm) {
             await verificarOuCriarAdmin();
             setIsAdmin(true);
             setIsCheckingRole(false);
-            console.log("Acesso Admin concedido.");
             return; 
           }
 
           // Não é admin: verificar/criar perfil do psicólogo
-          console.log("Iniciando fluxo de Psicólogo...");
           setIsAdmin(false);
           let perfil = await lerPerfilPsicologo();
           if (!perfil) {

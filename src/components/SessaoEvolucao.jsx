@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { criarSessao } from '../services/patientService';
+import { criarSessao, lerPerfilPsicologo } from '../services/patientService';
 import { PdfBuilder } from '../services/pdfUtils';
+import { gerarResumoIA } from '../services/iaService';
+import UpgradeProModal from './UpgradeProModal';
 
 export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
@@ -20,6 +22,14 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
   const [patientSearch, setPatientSearch] = useState(preSelectedPatient?.nome || '');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isGeneratingIA, setIsGeneratingIA] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [planoPsicologo, setPlanoPsicologo] = useState('basico');
+
+  // Carregar plano do psicólogo
+  useEffect(() => {
+    lerPerfilPsicologo().then(p => { if (p?.plano) setPlanoPsicologo(p.plano); }).catch(() => {});
+  }, []);
 
   // If the Agenda navigates here with a pre-selected patient, apply it
   useEffect(() => {
@@ -315,7 +325,68 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
           {/* Sessão 2: Observações */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Observações gerais *</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Observações gerais *</label>
+              <button
+                type="button"
+                disabled={isGeneratingIA || !formData.observacoes}
+                onClick={async () => {
+                  if (planoPsicologo !== 'pro' && planoPsicologo !== 'premium') {
+                    setShowUpgradeModal(true);
+                    return;
+                  }
+                  setIsGeneratingIA(true);
+                  try {
+                    const textoCompleto = [
+                      formData.observacoes && `Observações: ${formData.observacoes}`,
+                      formData.comportamento && `Comportamento: ${formData.comportamento}`,
+                      formData.sintomas && `Sintomas: ${formData.sintomas}`,
+                    ].filter(Boolean).join('\n\n');
+                    const { resumo } = await gerarResumoIA('sessao', textoCompleto);
+                    setFormData(prev => ({ ...prev, observacoes: resumo }));
+                    setStatusMessage({ type: 'success', text: 'Resumo gerado com I.A. com sucesso!' });
+                    setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
+                  } catch (err) {
+                    console.error(err);
+                    const msg = err?.message?.includes('permission-denied') || err?.message?.includes('PRO')
+                      ? 'Recurso exclusivo do plano PRO.'
+                      : 'Erro ao gerar resumo. Tente novamente.';
+                    setStatusMessage({ type: 'error', text: msg });
+                  } finally {
+                    setIsGeneratingIA(false);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all disabled:opacity-40
+                  bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/20
+                  hover:shadow-purple-500/40 hover:scale-105 active:scale-95"
+              >
+                {isGeneratingIA ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    Resumir com I.A.
+                  </>
+                )}
+              </button>
+            </div>
+            {isGeneratingIA && (
+              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-purple-500/20 flex items-center gap-3 animate-pulse">
+                <svg className="w-5 h-5 animate-spin text-purple-400" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-sm font-medium text-purple-300">A I.A. está analisando suas anotações e gerando um resumo clínico...</span>
+              </div>
+            )}
             <textarea
               value={formData.observacoes}
               onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
@@ -390,6 +461,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
         </form>
       </div>
+      <UpgradeProModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
     </div>
   );
 }
