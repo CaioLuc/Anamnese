@@ -56,11 +56,11 @@ export class PdfBuilder {
     doc.setFillColor(...COLORS.primaryLight);
     doc.rect(MARGIN, 10, CONTENT_WIDTH, subtitulo ? 28 : 20, 'F');
 
-    // Badge PsycoBrain
+    // Badge Caritas
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.primary);
     doc.setFont('helvetica', 'bold');
-    doc.text('PSYCHOBRAIN', MARGIN + 4, 19);
+    doc.text('CARITAS', MARGIN + 4, 19);
 
     // Título  
     doc.setFontSize(16);
@@ -95,7 +95,7 @@ export class PdfBuilder {
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.textLight);
     doc.setFont('helvetica', 'normal');
-    doc.text(`PsycoBrain - Documento gerado automaticamente`, MARGIN, 290);
+    doc.text(`Caritas - Documento gerado automaticamente`, MARGIN, 290);
     doc.text(`Pagina ${this.pageNum}`, PAGE_WIDTH - MARGIN, 290, { align: 'right' });
     // Linha fina
     doc.setDrawColor(...COLORS.line);

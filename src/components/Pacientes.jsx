@@ -3,6 +3,7 @@ import { deletarPaciente } from '../services/patientService';
 import AddPatientModal from './AddPatientModal';
 import PatientProfileModal from './PatientProfileModal';
 import ConfirmDialog from './ConfirmDialog';
+import { formatCPF } from '../utils/formatUtils';
 
 export default function Pacientes({ patients, isLoading, onPatientAddedLocal, autoOpenPatient, autoOpenTab, onAutoOpenDone }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -185,7 +186,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700">
-                          {patient.cpf}
+                          {patient.cpf ? formatCPF(patient.cpf) : '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">

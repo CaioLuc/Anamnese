@@ -5,7 +5,6 @@ import Login from './components/Login';
 import AdminPanel from './components/AdminPanel';
 import ContaBloqueada from './components/ContaBloqueada';
 import { subscribeToAuthChanges } from './services/authService';
-import TitleBar from './components/TitleBar';
 import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';

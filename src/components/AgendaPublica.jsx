@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { resolverSlug, lerConfigAgendaPublica, lerAgendamentosDoDia, criarAgendamentoPublico } from '../services/agendaService';
+import { formatCPF } from '../utils/formatUtils';
 
 const DIAS_MAP = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
 
@@ -221,7 +222,7 @@ export default function AgendaPublica() {
           {config.especialidade && (
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{config.especialidade}</p>
           )}
-          <p className="text-xs text-indigo-400 mt-2 font-semibold">PsycoBrain</p>
+          <p className="text-xs text-indigo-400 mt-2 font-semibold">Caritas</p>
         </div>
       </div>
 
@@ -313,7 +314,7 @@ export default function AgendaPublica() {
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">CPF *</label>
                 <input
                   type="text" required value={formCPF}
-                  onChange={e => setFormCPF(e.target.value)}
+                  onChange={e => setFormCPF(formatCPF(e.target.value))}
                   placeholder="000.000.000-00"
                   maxLength={14}
                   className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
@@ -353,7 +354,7 @@ export default function AgendaPublica() {
 
       {/* Footer */}
       <div className="text-center py-6 text-xs text-slate-400">
-        Powered by <span className="font-bold text-indigo-400">PsycoBrain</span>
+        Powered by <span className="font-bold text-indigo-400">Caritas</span>
       </div>
     </div>
   );

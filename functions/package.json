@@ -1,6 +1,6 @@
 {
-  "name": "psychobrain-functions",
-  "description": "Cloud Functions para PsycoBrain (Resumos I.A.)",
+  "name": "caritas-functions",
+  "description": "Cloud Functions para Caritas (Resumos I.A.)",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"

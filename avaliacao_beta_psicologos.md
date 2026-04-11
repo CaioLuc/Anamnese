@@ -1,4 +1,4 @@
-# PsycoBrain — Protocolo de Avaliação Beta
+# Caritas — Protocolo de Avaliação Beta
 **Versão:** Beta 1.0 · **Data:** Março/2026  
 **Público:** Psicólogos e Profissionais de Saúde Mental convidados para o teste  
 **Contato do responsável:** [seu e-mail aqui]
@@ -7,7 +7,7 @@
 
 ## Bem-vindo(a)
 
-Você foi selecionado(a) para participar da fase de testes do **PsycoBrain**, um sistema de gestão clínica desenvolvido especialmente para psicólogos. O objetivo desta avaliação é identificar pontos fortes, lacunas funcionais e oportunidades de melhoria antes do lançamento oficial.
+Você foi selecionado(a) para participar da fase de testes do **Caritas**, um sistema de gestão clínica desenvolvido especialmente para psicólogos. O objetivo desta avaliação é identificar pontos fortes, lacunas funcionais e oportunidades de melhoria antes do lançamento oficial.
 
 Sua experiência prática é o insumo mais valioso nesta fase. Não existe resposta certa ou errada — o que nos interessa é a sua percepção honesta como profissional.
 

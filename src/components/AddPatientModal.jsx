@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { criarPaciente, atualizarPaciente } from '../services/patientService';
+import { formatCPF, cleanCPF } from '../utils/formatUtils';
 
 const toTitleCase = (str) => {
   const preps = ["de", "da", "do", "das", "dos", "e"];
@@ -25,7 +26,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
         nome: patientToEdit.nome || '',
         data_nascimento: patientToEdit.data_nascimento || '',
         telefone: patientToEdit.telefone || '',
-        cpf: patientToEdit.cpf || '',
+        cpf: formatCPF(patientToEdit.cpf) || '',
         valor_sessao: patientToEdit.valor_sessao || '',
         clinica: patientToEdit.clinica || ''
       });
@@ -47,12 +48,14 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
         throw new Error('Nome e Data de Nascimento são obrigatórios.');
       }
 
+      const dataToSave = { ...formData, cpf: cleanCPF(formData.cpf) };
+
       if (patientToEdit) {
-        await atualizarPaciente(patientToEdit.id, formData);
-        onPatientAdded({ id: patientToEdit.id, ...formData }, true); // true = isEdit
+        await atualizarPaciente(patientToEdit.id, dataToSave);
+        onPatientAdded({ id: patientToEdit.id, ...dataToSave }, true); // true = isEdit
       } else {
-        const id = await criarPaciente(formData);
-        onPatientAdded({ id, ...formData }, false);
+        const id = await criarPaciente(dataToSave);
+        onPatientAdded({ id, ...dataToSave }, false);
       }
       
       setFormData({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
@@ -113,7 +116,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
               <input
                 type="text"
                 value={formData.cpf}
-                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
                 className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="000.000.000-00"
               />

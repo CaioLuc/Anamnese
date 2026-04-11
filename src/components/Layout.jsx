@@ -108,7 +108,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
               </svg>
             </div>
             <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-              PsycoBrain
+              Caritas
             </h1>
           </div>
           
@@ -199,7 +199,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
               </svg>
             </button>
             <h1 className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-               PsycoBrain
+               Caritas
             </h1>
         </header>
         

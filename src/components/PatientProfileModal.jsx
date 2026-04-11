@@ -8,6 +8,7 @@ import MoodChart from './MoodChart';
 import SelecionarTemplateModal from './SelecionarTemplateModal';
 import QuestionarioFiller from './QuestionarioFiller';
 import ErrorBoundary from './ErrorBoundary';
+import { formatCPF } from '../utils/formatUtils';
 
 function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
   const [respostas, setRespostas] = useState(anamnese.respostas || {});
@@ -182,7 +183,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
        { label: 'Nome Completo', value: patient.nome },
        { label: 'Idade', value: calcularIdade(patient.data_nascimento) },
        { label: 'Data de Nascimento', value: formatDateBR(patient.data_nascimento) },
-       { label: 'CPF', value: patient.cpf || 'Não informado' },
+       { label: 'CPF', value: formatCPF(patient.cpf) || 'Não informado' },
        { label: 'Telefone', value: patient.telefone || 'Não informado' },
      ]);
 
@@ -298,7 +299,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-slate-600 dark:text-slate-400">
                  <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/5">
                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" /></svg>
-                   CPF: {patient.cpf || 'Não info.'}
+                   CPF: {formatCPF(patient.cpf) || 'Não info.'}
                  </span>
                  <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/5">
                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>

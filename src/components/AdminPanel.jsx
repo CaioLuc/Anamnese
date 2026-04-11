@@ -272,7 +272,7 @@ export default function AdminPanel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `psicologos_psychobrain_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `psicologos_caritas_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -292,7 +292,7 @@ export default function AdminPanel() {
           </div>
           <div>
             <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">Painel Administrativo</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">PsycoBrain — Gestão de Acessos</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Caritas — Gestão de Acessos</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

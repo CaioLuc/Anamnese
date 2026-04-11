@@ -16,7 +16,7 @@ export default function ContaBloqueada() {
           Conta Inativa
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-          Sua conta no PsycoBrain ainda não foi ativada ou foi temporariamente desabilitada pelo administrador. 
+          Sua conta no Caritas ainda não foi ativada ou foi temporariamente desabilitada pelo administrador. 
           Entre em contato com o suporte para regularizar seu acesso.
         </p>
 
