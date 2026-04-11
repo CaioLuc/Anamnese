@@ -6,6 +6,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "caritas-os",
     "public": "dist",
     "ignore": [
       "firebase.json",

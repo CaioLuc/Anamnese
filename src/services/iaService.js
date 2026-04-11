@@ -4,7 +4,7 @@ import { app } from './firebaseConfig.js';
 const functions = getFunctions(app, 'southamerica-east1');
 
 /**
- * Chama a Cloud Function para gerar resumo com I.A.
+ * Chama a Cloud Function para gerar resumo com I.A. (Requer Plano Blaze no Firebase)
  * @param {'sessao'|'anamnese'} tipo - Tipo de resumo
  * @param {string} conteudo - Texto bruto para resumir
  * @returns {Promise<{resumo: string, tokens: number}>}
