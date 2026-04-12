@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { lerTodasSessoes, atualizarSessao } from '../services/patientService';
+import { gerarRelatorioFinanceiroPDF } from '../services/pdfUtils';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const PERIODOS = [
   { id: 'mes', label: 'Mês Atual' },
@@ -144,6 +146,19 @@ export default function Financas({ patients, isLoadingPatients }) {
         </div>
       </div>
 
+      <div className="flex justify-end mt-2 mb-2">
+        <button 
+          onClick={() => {
+             const label = PERIODOS.find(p => p.id === periodo)?.label || periodo;
+             gerarRelatorioFinanceiroPDF(sessoesPeriodo, patients, label, { previsaoTotal, valorRecebido, valorPendente });
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-md hover:scale-[1.02] transition-transform text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          Exportar Relatório PDF
+        </button>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <FinCard 
@@ -165,6 +180,34 @@ export default function Financas({ patients, isLoadingPatients }) {
           icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
         />
       </div>
+
+      {/* CHART DASHBOARD */}
+      {sessoesPeriodo.length > 0 && (
+        <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-3xl p-6 shadow-xl shadow-slate-200/20 dark:shadow-black/10">
+          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+            <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+            Balanço Recebido vs Pendente
+          </h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[
+                { name: 'Recebido', valor: valorRecebido, fill: '#10b981' }, // emerald-500
+                { name: 'Inadimplência', valor: valorPendente, fill: '#ef4444' } // rose-500
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#475569" strokeOpacity={0.2} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `R$ ${val}`} />
+                <Tooltip 
+                  cursor={{fill: 'transparent'}}
+                  formatter={(value) => [`R$ ${value.toFixed(2)}`, 'Valor']}
+                  contentStyle={{borderRadius: '0.75rem', fontWeight: 'bold'}} 
+                />
+                <Bar dataKey="valor" radius={[8, 8, 0, 0]} barSize={80} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Lista de Faturamentos */}
       <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-black/10">

@@ -330,5 +330,90 @@ export function formatDateBR(dateStr) {
   return dateStr;
 }
 
+export function gerarRelatorioFinanceiroPDF(sessoesPeriodo, pacientes, periodoLabel, totais) {
+  const pdf = new PdfBuilder();
+
+  // Cabeçalho
+  pdf.addHeader('Balanco Financeiro Caritas');
+
+  // Sub-título com o período selecionado
+  pdf.doc.setFont('helvetica', 'normal');
+  pdf.doc.setFontSize(11);
+  pdf.doc.setTextColor(...COLORS.textLight);
+  pdf.doc.text(`Periodo Apurado: ${sanitizeText(periodoLabel)}`, MARGIN, pdf.y);
+  pdf.y += 6;
+  pdf.doc.text(`Emissao: ${formatDateBR(new Date().toISOString().split('T')[0])}`, MARGIN, pdf.y);
+  pdf.y += 15;
+
+  // Caixa de Resumo / KPIs
+  pdf.doc.setFillColor(...COLORS.primaryLight);
+  pdf.doc.setDrawColor(...COLORS.primary);
+  pdf.doc.setLineWidth(0.5);
+  pdf.doc.roundedRect(MARGIN, pdf.y, 170, 30, 3, 3, 'FD');
+  
+  pdf.doc.setFont('helvetica', 'bold');
+  pdf.doc.setTextColor(...COLORS.primary);
+  pdf.doc.setFontSize(12);
+  
+  // Três colunas na caixa
+  pdf.doc.text('Previsao Geral:', MARGIN + 5, pdf.y + 10);
+  pdf.doc.text(`R$ ${totais.previsaoTotal.toFixed(2)}`, MARGIN + 5, pdf.y + 20);
+
+  pdf.doc.setTextColor(...COLORS.success);
+  pdf.doc.text('Valor Recebido (Pago):', MARGIN + 60, pdf.y + 10);
+  pdf.doc.text(`R$ ${totais.valorRecebido.toFixed(2)}`, MARGIN + 60, pdf.y + 20);
+
+  pdf.doc.setTextColor(...COLORS.danger);
+  pdf.doc.text('A Receber (Inadimplencia):', MARGIN + 120, pdf.y + 10);
+  pdf.doc.text(`R$ ${totais.valorPendente.toFixed(2)}`, MARGIN + 120, pdf.y + 20);
+  
+  pdf.y += 45;
+
+  // Título da Tabela
+  pdf.addSectionTitle('Detalhamento de Sessoes (Historico)');
+  
+  // Iterar sessões desenhando o mini relatório (em vez de tabela, em formato de lista)
+  if (sessoesPeriodo.length === 0) {
+    pdf.doc.setFont('helvetica', 'normal');
+    pdf.doc.setTextColor(...COLORS.textLight);
+    pdf.doc.text('Nenhuma sessao faturada no periodo selecionado.', MARGIN, pdf.y);
+  } else {
+    // Surted
+    const ordernadas = [...sessoesPeriodo].sort((a,b) => new Date(b.data_sessao) - new Date(a.data_sessao));
+    
+    ordernadas.forEach(s => {
+      pdf.checkPageBreak(15);
+      
+      const pac = pacientes.find(p => p.id === s.id_paciente);
+      const mNome = pac ? pac.nome : 'Paciente nao encontrado';
+      const isPago = s.pago;
+      const v = s.valor ? parseFloat(s.valor).toFixed(2) : '0.00';
+      
+      pdf.doc.setFont('helvetica', 'bold');
+      pdf.doc.setTextColor(...COLORS.text);
+      pdf.doc.setFontSize(10);
+      pdf.doc.text(`${formatDateBR(s.data_sessao)} - ${sanitizeText(mNome)}`, MARGIN, pdf.y);
+      
+      pdf.doc.setFont('helvetica', 'normal');
+      pdf.doc.setFontSize(9);
+      if (isPago) {
+         pdf.doc.setTextColor(...COLORS.success);
+         pdf.doc.text(`R$ ${v} (PAGO - ${sanitizeText(s.forma_pagamento || '')})`, MARGIN + 100, pdf.y);
+      } else {
+         pdf.doc.setTextColor(...COLORS.danger);
+         pdf.doc.text(`R$ ${v} (PENDENTE)`, MARGIN + 100, pdf.y);
+      }
+      pdf.y += 6;
+      pdf.doc.setDrawColor(...COLORS.line);
+      pdf.doc.line(MARGIN, pdf.y - 2, 210 - MARGIN, pdf.y - 2);
+      pdf.y += 4;
+    });
+  }
+
+  // Baixar
+  const fileName = `Relatorio_Financeiro_Caritas_${periodoLabel.replace(/ /g, '_')}.pdf`;
+  pdf.save(fileName);
+}
+
 // Exportar sanitizeText para uso externo se necessário
 export { sanitizeText };
