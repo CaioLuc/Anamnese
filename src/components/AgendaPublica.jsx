@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { resolverSlug, lerConfigAgendaPublica, lerAgendamentosDoDia, criarAgendamentoPublico } from '../services/agendaService';
-import { formatCPF } from '../utils/formatUtils';
+import { formatCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
 
 const DIAS_MAP = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
 
@@ -76,6 +76,8 @@ export default function AgendaPublica() {
   const [formObs, setFormObs] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
 
   // Generate next 14 days for date picker
   const dateOptions = [];
@@ -135,9 +137,17 @@ export default function AgendaPublica() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formNome.trim()) return alert('Por favor, informe seu nome.');
-    if (!formCPF.trim() || formCPF.replace(/\D/g, '').length < 11) return alert('Por favor, informe um CPF válido (11 dígitos).');
-    if (!formTelefone.trim()) return alert('Por favor, informe seu telefone.');
+    setFormErrors({});
+    setSubmitError('');
+
+    // Validação inline (H5/H9 — prevenção de erros sem alert)
+    const errors = {};
+    if (!formNome.trim()) errors.nome = 'Informe seu nome completo.';
+    if (!formCPF.trim() || formCPF.replace(/\D/g, '').length < 11) errors.cpf = 'Informe um CPF válido (11 dígitos).';
+    else if (!validarCPF(formCPF)) errors.cpf = 'CPF inválido. Verifique os dígitos.';
+    if (!formTelefone.trim()) errors.telefone = 'Informe um telefone para contato.';
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+
     setIsSubmitting(true);
     try {
       await criarAgendamentoPublico(uid, {
@@ -152,7 +162,7 @@ export default function AgendaPublica() {
       setSuccess(true);
     } catch (e) {
       console.error(e);
-      alert('Erro ao enviar solicitação. Tente novamente.');
+      setSubmitError('Erro ao enviar solicitação. Verifique sua conexão e tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -179,7 +189,13 @@ export default function AgendaPublica() {
             <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{error}</h2>
-          <p className="text-sm text-slate-500">Verifique o link e tente novamente.</p>
+          <p className="text-sm text-slate-500 mb-4">Verifique o link e tente novamente.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+          >
+            Tentar novamente
+          </button>
         </div>
       </div>
     );
@@ -304,30 +320,34 @@ export default function AgendaPublica() {
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Seu nome *</label>
               <input
                 type="text" required value={formNome}
-                onChange={e => setFormNome(e.target.value)}
+                onChange={e => { setFormNome(e.target.value); setFormErrors(prev => ({...prev, nome: ''})); }}
                 placeholder="Nome completo"
-                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+                className={`w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border ${formErrors.nome ? 'border-red-400' : 'border-slate-300 dark:border-white/10'} rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500`}
               />
+              {formErrors.nome && <p className="text-xs text-red-400 mt-1">{formErrors.nome}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">CPF *</label>
                 <input
                   type="text" required value={formCPF}
-                  onChange={e => setFormCPF(formatCPF(e.target.value))}
+                  onChange={e => { setFormCPF(formatCPF(e.target.value)); setFormErrors(prev => ({...prev, cpf: ''})); }}
                   placeholder="000.000.000-00"
                   maxLength={14}
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+                  className={`w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border ${formErrors.cpf ? 'border-red-400' : 'border-slate-300 dark:border-white/10'} rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500`}
                 />
+                {formErrors.cpf && <p className="text-xs text-red-400 mt-1">{formErrors.cpf}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Telefone / WhatsApp *</label>
                 <input
                   type="tel" required value={formTelefone}
-                  onChange={e => setFormTelefone(e.target.value)}
+                  onChange={e => { setFormTelefone(formatTelefone(e.target.value)); setFormErrors(prev => ({...prev, telefone: ''})); }}
                   placeholder="(21) 99999-0000"
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+                  maxLength={15}
+                  className={`w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border ${formErrors.telefone ? 'border-red-400' : 'border-slate-300 dark:border-white/10'} rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500`}
                 />
+                {formErrors.telefone && <p className="text-xs text-red-400 mt-1">{formErrors.telefone}</p>}
               </div>
             </div>
             <div>
@@ -345,6 +365,11 @@ export default function AgendaPublica() {
             >
               {isSubmitting ? 'Enviando...' : 'Solicitar Agendamento'}
             </button>
+            {submitError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-500 text-center">
+                {submitError}
+              </div>
+            )}
             <p className="text-[11px] text-center text-slate-400">
               Ao solicitar, o profissional receberá seu pedido e confirmará em breve.
             </p>

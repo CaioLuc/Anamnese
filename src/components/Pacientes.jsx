@@ -180,7 +180,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                             <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-indigo-400 transition-colors">
                               {patient.nome}
                             </div>
-                            <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">ID: {patient.id.substring(0, 8)}...</div>
+                            <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{patient.clinica || 'Sem local definido'}</div>
                           </div>
                         </div>
                       </td>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { lerClinicas, criarClinica, deletarClinica, lerPerfilPsicologo } from '../services/patientService';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function Clinicas() {
   const [clinicas, setClinicas] = useState([]);
@@ -9,6 +10,7 @@ export default function Clinicas() {
   const [error, setError] = useState('');
   const [maxLocais, setMaxLocais] = useState(1);
   const [planoAtual, setPlanoAtual] = useState('basico');
+  const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, clinica: null });
 
   useEffect(() => {
     loadClinicas();
@@ -69,8 +71,7 @@ export default function Clinicas() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Deseja mesmo remover esta clínica/local? Isso não alterará o local de pacientes já cadastrados com ela (o nome continuará lá), mas a opção sumirá da lista de novas seleções.")) return;
-    
+    setConfirmDelete({ isOpen: false, clinica: null });
     try {
       await deletarClinica(id);
       await loadClinicas();
@@ -80,6 +81,7 @@ export default function Clinicas() {
   };
 
   return (
+    <>
     <div className="animate-in fade-in duration-500 w-full h-full flex flex-col p-6 sm:p-10 max-w-4xl mx-auto">
       <div className="mb-8">
         <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Locais de Atendimento</h2>
@@ -147,7 +149,7 @@ export default function Clinicas() {
                   </div>
                 </div>
                 <button 
-                  onClick={() => handleDelete(c.id)}
+                  onClick={() => setConfirmDelete({ isOpen: true, clinica: c })}
                   className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
                   title="Remover"
                 >
@@ -161,5 +163,14 @@ export default function Clinicas() {
         )}
       </div>
     </div>
+
+    <ConfirmDialog
+      isOpen={confirmDelete.isOpen}
+      title="Remover Local de Atendimento"
+      message={`Deseja remover "${confirmDelete.clinica?.nome}"? Pacientes já vinculados a este local não serão afetados, mas a opção sumirá da lista de novas seleções.`}
+      onConfirm={() => handleDelete(confirmDelete.clinica?.id)}
+      onCancel={() => setConfirmDelete({ isOpen: false, clinica: null })}
+    />
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { lerTodasSessoes, lerTodasAnamneses } from '../services/patientService';
 import { lerAvisoGlobal } from '../services/adminService';
+import { useToast } from '../contexts/ToastContext';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 function parseDate(d) {
@@ -64,6 +65,7 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [filtro, setFiltro] = useState('mes');
   const [avisoGlobal, setAvisoGlobal] = useState('');
+  const { showToast } = useToast();
 
   useEffect(() => {
     async function load() {
@@ -75,6 +77,7 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
         setAnamneses(a.filter(ana => activeIds.has(ana.id_paciente)));
       } catch (e) {
         console.error(e);
+        showToast({ type: 'error', message: 'Não foi possível carregar os dados do dashboard. Verifique sua conexão.' });
       } finally {
         setIsLoadingStats(false);
       }

@@ -162,7 +162,7 @@ export default function Questionarios() {
       <div className="flex-shrink-0 px-6 pt-6 pb-4">
         <div className="flex items-center justify-between mb-1">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Questionários</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Questionários</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">Crie e gerencie seus modelos de anamnese personalizados</p>
           </div>
           <button

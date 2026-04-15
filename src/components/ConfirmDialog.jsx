@@ -1,3 +1,5 @@
+import { useEscapeKey } from '../hooks/useKeyboard';
+
 /**
  * ConfirmDialog - Modal de confirmação estilizado no padrão do app.
  * Substitui o window.confirm() nativo do sistema operacional.
@@ -9,8 +11,11 @@
  *   onConfirm {function} - Callback ao confirmar
  *   onCancel  {function} - Callback ao cancelar
  *   variant   {string}   - 'danger' (padrão) ou 'warning'
+ *   confirmText {string} - Texto customizado do botão confirmar
  */
-export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel, variant = 'danger' }) {
+export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel, variant = 'danger', confirmText }) {
+  useEscapeKey(isOpen, onCancel || (() => {}));
+
   if (!isOpen) return null;
 
   const isDanger = variant === 'danger';
@@ -52,7 +57,7 @@ export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCan
                 : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
             }`}
           >
-            {isDanger ? 'Sim, apagar' : 'Confirmar'}
+            {confirmText || (isDanger ? 'Sim, apagar' : 'Confirmar')}
           </button>
         </div>
       </div>

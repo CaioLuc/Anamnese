@@ -6,6 +6,7 @@ import {
 import { buscarPacientePorCPF, criarPaciente } from '../services/patientService';
 import ConfirmDialog from './ConfirmDialog';
 import ConfigAgenda from './ConfigAgenda';
+import { useToast } from '../contexts/ToastContext';
 
 const STATUS_CONFIG = {
   pendente:   { label: 'Pendente',   color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
@@ -113,7 +114,10 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.id_paciente) return alert('Selecione um paciente da lista.');
+    if (!form.id_paciente) {
+      showToast({ type: 'warning', message: 'Selecione um paciente da lista antes de agendar.' });
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (editingId) {
@@ -135,7 +139,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       const msg = err?.code === 'permission-denied'
         ? 'Sem permissão. Adicione a coleção "agendamentos" nas Regras do Firestore.'
         : (err?.message || 'Erro desconhecido ao salvar.');
-      alert(`Erro: ${msg}`);
+      showToast({ type: 'error', message: msg });
     } finally {
       setIsSubmitting(false);
     }
@@ -146,6 +150,8 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
     setConfirmDelete({ isOpen: false, id: null });
     await loadAgendamentos();
   };
+
+  const { showToast } = useToast();
 
   const filteredPatients = patients.filter(p =>
     p.nome?.toLowerCase().includes(patientSearch.toLowerCase())
@@ -162,7 +168,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Agenda</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Agenda</h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">Organize seus atendimentos</p>
         </div>
         <div className="flex items-center gap-2">
@@ -369,7 +375,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                                   if (onAtender && patient) onAtender(patient);
                                 } catch (e) {
                                   console.error("Erro ao iniciar atendimento:", e);
-                                  alert('Não foi possível iniciar o atendimento. Verifique sua conexão.');
+                                  showToast({ type: 'error', message: 'Não foi possível iniciar o atendimento. Verifique sua conexão e tente novamente.' });
                                 }
                               }}
                               className="mr-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded shadow-sm hover:bg-indigo-500 hover:text-slate-900 dark:hover:text-white transition-all"

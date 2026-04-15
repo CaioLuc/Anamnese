@@ -2,11 +2,22 @@ import { useState, useEffect } from 'react';
 import { logoutFirebaseUser, subscribeToAuthChanges } from '../services/authService';
 import ConfirmDialog from './ConfirmDialog';
 import { useTheme } from '../contexts/ThemeContext';
+import HelpPanel from './HelpPanel';
+import GlobalSearch from './GlobalSearch';
+import { useKeyboard } from '../hooks/useKeyboard';
 
-export default function Layout({ children, currentPath, onNavigate, userEmail, fullHeight = false }) {
+export default function Layout({ children, currentPath, onNavigate, userEmail, fullHeight = false, patients = [] }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  // Atalhos de teclado globais (H7)
+  useKeyboard([
+    { key: 'k', ctrl: true, action: () => setShowSearch(true) },
+    { key: 'Escape', action: () => { setShowSearch(false); setShowHelp(false); } },
+  ]);
 
   // A visibilidade em desktop agora é garantida pelo Tailwind (lg:translate-x-0), não precisamos mais do JavaScript resize listener para isso.
 
@@ -74,6 +85,15 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
         </svg>
       )
     },
+    {
+      name: 'Lixeira',
+      id: 'lixeira',
+      icon: (
+        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      )
+    },
   ];
 
   const handleLogout = async () => {
@@ -135,7 +155,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
                     w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
                     ${isActive 
                       ? 'bg-indigo-500/10 text-indigo-400 shadow-inner' 
-                      : 'text-slate-400 dark:text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200'}
+                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200'}
                   `}
                 >
                   <span className={`${isActive ? 'text-indigo-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-400'} transition-colors`}>
@@ -145,6 +165,29 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
                 </button>
               );
             })}
+          </div>
+
+          {/* Busca global e Ajuda */}
+          <div className="mt-4 space-y-1">
+            <button
+              onClick={() => setShowSearch(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition-all duration-200"
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="flex-1 text-left">Buscar</span>
+              <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-200 dark:bg-white/10 rounded">⌘K</kbd>
+            </button>
+            <button
+              onClick={() => setShowHelp(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition-all duration-200"
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Central de Ajuda
+            </button>
           </div>
         </div>
         
@@ -220,6 +263,20 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
         onConfirm={handleLogout}
         onCancel={() => setConfirmLogout(false)}
         confirmText="Sair da Conta"
+      />
+
+      {/* Central de Ajuda (H10) */}
+      <HelpPanel isOpen={showHelp} onClose={() => setShowHelp(false)} />
+
+      {/* Busca Global (H7) */}
+      <GlobalSearch
+        isOpen={showSearch}
+        onClose={() => setShowSearch(false)}
+        patients={patients}
+        onNavigate={(path, opts) => {
+          onNavigate(path, opts);
+          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+        }}
       />
     </div>
   );

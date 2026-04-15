@@ -205,8 +205,43 @@ export async function limparLixeiraPacientes(diasRetencao = 7) {
   }
 }
 
+/**
+ * Lê pacientes que estão na lixeira (soft-deleted).
+ * Retorna com campo `diasRestantes` indicando quanto tempo falta para exclusão definitiva.
+ */
+export async function lerPacientesDeletados(diasRetencao = 7) {
+  try {
+    const qSnapshot = await getDocs(getPacientesRef());
+    const todos = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const agora = new Date();
 
-// ==========================================
+    return todos
+      .filter(p => p.deletedAt)
+      .map(p => {
+        const deletedDate = p.deletedAt?.toDate ? p.deletedAt.toDate() : new Date();
+        const diasNaLixeira = (agora - deletedDate) / (1000 * 60 * 60 * 24);
+        const diasRestantes = Math.max(0, Math.ceil(diasRetencao - diasNaLixeira));
+        return { ...p, diasRestantes, deletedDate };
+      })
+      .sort((a, b) => a.diasRestantes - b.diasRestantes);
+  } catch (error) {
+    console.error("Erro ao ler pacientes deletados:", error);
+    return [];
+  }
+}
+
+/**
+ * Restaura um paciente da lixeira removendo o campo deletedAt.
+ */
+export async function restaurarPaciente(id) {
+  try {
+    const { deleteField } = await import('firebase/firestore');
+    await updateDoc(getPacienteDoc(id), { deletedAt: deleteField() });
+  } catch (error) {
+    console.error("Erro ao restaurar paciente:", error);
+    throw error;
+  }
+}
 // CRUD: ANAMNESES
 // ==========================================
 

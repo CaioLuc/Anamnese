@@ -12,7 +12,9 @@ import Agenda from './components/Agenda';
 import Financas from './components/Financas';
 import Questionarios from './components/Questionarios';
 import Clinicas from './components/Clinicas';
+import Lixeira from './components/Lixeira';
 import AgendaPublica from './components/AgendaPublica';
+import OnboardingOverlay from './components/OnboardingOverlay';
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
 
@@ -28,6 +30,22 @@ function AppMain() {
   const [autoOpenPatientForProfile, setAutoOpenPatientForProfile] = useState(null);
   const [autoOpenTabForProfile, setAutoOpenTabForProfile] = useState('');
   const [preSelectedPatientForSessao, setPreSelectedPatientForSessao] = useState(null);
+
+  // Onboarding (H10)
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('caritas_onboarding_done'));
+
+  // Navegação com opções extras (para GlobalSearch)
+  const handleNavigate = (path, opts) => {
+    setCurrentPath(path);
+    if (opts?.openPatient) {
+      setAutoOpenPatientForProfile(opts.openPatient);
+      setAutoOpenTabForProfile('evolucoes');
+    }
+    if (opts?.addPatient) {
+      // Será tratado pelo Pacientes.jsx via auto-open
+      setAutoOpenPatientForProfile('__add__');
+    }
+  };
 
   // Auth state
   const [user, setUser] = useState(null);
@@ -158,6 +176,8 @@ function AppMain() {
         return <Questionarios />;
       case 'clinicas':
         return <Clinicas />;
+      case 'lixeira':
+        return <Lixeira onPatientRestored={fetchPatients} />;
       default:
         return <DashboardSummary patients={patients} isLoading={isLoadingPatients} />;
     }
@@ -206,9 +226,14 @@ function AppMain() {
   // 5. Psicólogo normal
   return (
     <div className="h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
-      <Layout currentPath={currentPath} onNavigate={setCurrentPath} userEmail={user.email} fullHeight={currentPath === 'questionarios'}>
+      <Layout currentPath={currentPath} onNavigate={handleNavigate} userEmail={user.email} fullHeight={currentPath === 'questionarios'} patients={patients}>
         {renderContent()}
       </Layout>
+
+      {/* Onboarding para primeiro acesso (H10) */}
+      {showOnboarding && (
+        <OnboardingOverlay onComplete={() => setShowOnboarding(false)} />
+      )}
     </div>
   );
 }

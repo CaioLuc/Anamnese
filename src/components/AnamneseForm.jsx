@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { criarAnamnese, atualizarAnamnese } from '../services/patientService';
+import Tooltip from './Tooltip';
+import { useKeyboard } from '../hooks/useKeyboard';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useToast } from '../contexts/ToastContext';
 
 export default function AnamneseForm({ patient, onSaved, initialData }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +53,90 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
       observacoes_gerais: ''
     });
 
+    const [currentStep, setCurrentStep] = useState(0);
+    const formRef = useRef(null);
+    const { showToast } = useToast();
+    const [autoSaveStatus, setAutoSaveStatus] = useState(''); // '', 'saving', 'saved'
+    const [hasDraft, setHasDraft] = useState(false);
+    const autoSaveTimerRef = useRef(null);
+
+    // Chave do rascunho no localStorage
+    const draftKey = `caritas_anamnese_draft_${patient?.id || 'unknown'}`;
+
+    // Warn on unsaved changes (H3)
+    const hasUnsavedData = Object.values(formData).some(v => v !== '' && v !== false && v !== 0);
+    useUnsavedChanges(hasUnsavedData);
+
+    // Keyboard shortcut (H7)
+    useKeyboard([
+      { key: 's', ctrl: true, action: () => formRef.current?.requestSubmit() },
+    ]);
+
+    // Auto-save: Restaurar rascunho ao montar (H1)
+    useEffect(() => {
+      if (initialData) return; // Não restaurar rascunho ao editar anamnese existente
+      try {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.data && Object.values(parsed.data).some(v => v !== '' && v !== false && v !== 0)) {
+            setHasDraft(true);
+          }
+        }
+      } catch (_) {}
+    }, [draftKey, initialData]);
+
+    // Auto-save: Debounce de 2 segundos ao alterar o formulário (H1)
+    const scheduleAutoSave = useCallback((data) => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(() => {
+        try {
+          const hasContent = Object.values(data).some(v => v !== '' && v !== false && v !== 0);
+          if (!hasContent) return;
+          setAutoSaveStatus('saving');
+          localStorage.setItem(draftKey, JSON.stringify({
+            data,
+            savedAt: new Date().toISOString()
+          }));
+          setTimeout(() => {
+            setAutoSaveStatus('saved');
+            setTimeout(() => setAutoSaveStatus(''), 3000);
+          }, 300);
+        } catch (_) {}
+      }, 2000);
+    }, [draftKey]);
+
+    // Disparar auto-save quando formData mudar
+    useEffect(() => {
+      if (!initialData) {
+        scheduleAutoSave(formData);
+      }
+      return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+    }, [formData, scheduleAutoSave, initialData]);
+
+    const restoreDraft = () => {
+      try {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setFormData(prev => ({ ...prev, ...parsed.data }));
+          showToast({ type: 'success', message: 'Rascunho restaurado com sucesso!' });
+        }
+      } catch (_) {
+        showToast({ type: 'error', message: 'Erro ao restaurar rascunho.' });
+      }
+      setHasDraft(false);
+    };
+
+    const dismissDraft = () => {
+      try { localStorage.removeItem(draftKey); } catch (_) {}
+      setHasDraft(false);
+    };
+
+    const clearDraft = () => {
+      try { localStorage.removeItem(draftKey); } catch (_) {}
+    };
+
     useEffect(() => {
         if (initialData) {
             setFormData(prev => ({ ...prev, ...initialData }));
@@ -63,6 +151,14 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
       }));
     };
 
+    const scrollToStep = (stepIndex) => {
+      setCurrentStep(stepIndex);
+      const el = document.getElementById(`step-${stepIndex}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
     const handleSubmit = async (e) => {
       e.preventDefault();
       setIsSubmitting(true);
@@ -71,21 +167,23 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
       try {
         if (initialData?.id) {
             await atualizarAnamnese(initialData.id, patient.id, formData);
-            setStatusMessage({ type: 'success', text: 'Anamnese atualizada com sucesso!' });
+            showToast({ type: 'success', message: 'Anamnese atualizada com sucesso!' });
+            clearDraft();
         } else {
             await criarAnamnese({
               id_paciente: patient.id,
               ...formData
             });
-            setStatusMessage({ type: 'success', text: 'Anamnese estruturada salva com sucesso!' });
+            showToast({ type: 'success', message: 'Anamnese estruturada salva com sucesso!' });
+            clearDraft();
         }
         
         if (onSaved) {
-            setTimeout(() => onSaved(), 2000);
+            setTimeout(() => onSaved(), 1500);
         }
       } catch (err) {
         console.error(err);
-        setStatusMessage({ type: 'error', text: 'Erro ao salvar a Anamnese.' });
+        showToast({ type: 'error', message: 'Erro ao salvar a Anamnese. Verifique sua conexão.' });
       } finally {
         setIsSubmitting(false);
       }
@@ -127,21 +225,84 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-10 mt-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-10 mt-6 relative">
+
+            {/* Banner de rascunho salvo (H1 - Auto-save) */}
+            {hasDraft && !initialData && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 animate-in fade-in duration-300">
+                <div className="flex items-center gap-3 min-w-0">
+                  <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Existe um rascunho salvo automaticamente para este paciente.</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button type="button" onClick={dismissDraft} className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
+                    Descartar
+                  </button>
+                  <button type="button" onClick={restoreDraft} className="px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors">
+                    Restaurar Rascunho
+                  </button>
+                </div>
+              </div>
+            )}
             
             {/* Nome do paciente */}
             <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-500 dark:text-indigo-400 font-bold text-lg shrink-0">
                 {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-bold text-slate-900 dark:text-white">{patient?.nome || 'Paciente'}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{initialData ? 'Editando anamnese existente' : 'Nova anamnese'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{initialData ? 'Editando anamnese existente' : 'Nova anamnese estruturada'}</p>
               </div>
+              {/* Indicador de auto-save (H1) */}
+              {autoSaveStatus && (
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-300 shrink-0 ${
+                  autoSaveStatus === 'saving'
+                    ? 'bg-slate-100 dark:bg-white/5 text-slate-400'
+                    : 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400'
+                }`}>
+                  {autoSaveStatus === 'saving' ? (
+                    <>
+                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Salvando rascunho...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Rascunho salvo
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Visual Stepper (H10) */}
+            <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-30 pt-2 border-b border-slate-200 dark:border-white/5">
+              {['Histórico', 'Família', 'Motivo', 'Dinâmicas', 'Quadro Clínico', 'Finalização'].map((label, idx) => (
+                <button
+                  type="button"
+                  key={idx}
+                  onClick={() => scrollToStep(idx)}
+                  className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-full transition-all border ${
+                    currentStep === idx 
+                      ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20' 
+                      : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-200 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             
             {/* Seção 0 */}
-            <section className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg">
+            <section id="step-0" className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg scroll-mt-24">
                 <SectionHeader step="0" title="Histórico Prévio" desc="Relacionamentos anteriores com serviços de Saúde Mental." />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Switch label="Já consultou um psicólogo anteriormente?" name="psicologo_previo" checked={formData.psicologo_previo} />
@@ -156,7 +317,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </section>
 
             {/* Seção 1 */}
-            <section className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg">
+            <section id="step-1" className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg scroll-mt-24">
                 <SectionHeader step="1" title="Dados Familiares" desc="Estrutura e composição do núcleo base." />
                 
                 <div className="space-y-6">
@@ -215,7 +376,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </section>
 
             {/* Seção 2 */}
-            <section className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg">
+            <section id="step-2" className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg scroll-mt-24">
                 <SectionHeader step="2" title="Motivo da Consulta" desc="Razões principais pela busca do atendimento e sua história." />
                 <div className="space-y-4">
                     <div>
@@ -230,11 +391,13 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </section>
 
             {/* Seção 3 */}
-            <section className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg">
+            <section id="step-3" className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg scroll-mt-24">
                 <SectionHeader step="3" title="Dinâmicas de Vida" desc="Estruturação da rotina, relacionamentos sociais e de trabalho." />
                 <div className="space-y-4">
                     <div>
-                       <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">Dinâmica Familiar (Famílias nuclear e constituída)</label>
+                         <Tooltip text="Descreva quem mora na casa, qualidade do relacionamento com familiares próximos, histórico de conflitos, lutos ou separações marcantes." showIcon>
+                           <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">Dinâmica Familiar (Famílias nuclear e constituída)</label>
+                         </Tooltip>
                        <textarea name="dinamica_familiar" value={formData.dinamica_familiar} onChange={handleChange} rows="3" className="w-full p-4 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white resize-y custom-scrollbar focus:ring-1 focus:ring-indigo-500" />
                     </div>
                     <div>
@@ -249,7 +412,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </section>
 
             {/* Seção 4 */}
-            <section className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg relative overflow-hidden">
+            <section id="step-4" className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg relative overflow-hidden scroll-mt-24">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-bl-[100px] pointer-events-none"></div>
                 <SectionHeader step="4" title="Quadro Clínico e Sintomatológico" desc="Fatores de crise, doenças e uso substâncias." />
                 <div className="space-y-4 relative z-10">
@@ -294,7 +457,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </section>
 
              {/* Seção 5 */}
-             <section className="bg-gradient-to-br from-white/5 to-transparent p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg">
+             <section id="step-5" className="bg-gradient-to-br from-white/5 to-transparent p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg scroll-mt-24">
                 <SectionHeader step="5" title="Finalização" desc="Parecer do profissional ou comentários extras não mapeados." />
                 <div>
                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">Observações Gerais Feitas pelo Profissional</label>

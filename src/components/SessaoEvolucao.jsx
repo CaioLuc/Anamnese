@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { criarSessao, lerPerfilPsicologo } from '../services/patientService';
 import { PdfBuilder } from '../services/pdfUtils';
 import { gerarResumoIA } from '../services/iaService';
 import UpgradeProModal from './UpgradeProModal';
+import Tooltip from './Tooltip';
+import { useKeyboard } from '../hooks/useKeyboard';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useToast } from '../contexts/ToastContext';
 
 export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
@@ -25,6 +29,17 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   const [isGeneratingIA, setIsGeneratingIA] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [planoPsicologo, setPlanoPsicologo] = useState('basico');
+  const formRef = useRef(null);
+  const { showToast } = useToast();
+
+  // Detectar alterações não salvas (H3)
+  const hasUnsavedData = !!(formData.observacoes || formData.comportamento || formData.sintomas);
+  useUnsavedChanges(hasUnsavedData);
+
+  // Ctrl+S para salvar (H7)
+  useKeyboard([
+    { key: 's', ctrl: true, action: () => formRef.current?.requestSubmit() },
+  ]);
 
   // Carregar plano do psicólogo
   useEffect(() => {
@@ -75,6 +90,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
       await criarSessao(formData);
       
+      showToast({ type: 'success', message: 'Evolução salva com sucesso!' });
       setStatusMessage({ type: 'success', text: 'Evolução salva com sucesso no banco de dados!' });
       
       // Limpa os dados de texto, mantém paciente e data
@@ -165,7 +181,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
           
           {/* Sessão 1: Cabeçalho */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5">
@@ -297,10 +313,12 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
           {/* Mood Rating */}
           <div className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-              Como você percebeu o paciente hoje?
-              <span className="ml-2 text-slate-600 dark:text-slate-400 font-normal text-xs">(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
-            </label>
+            <Tooltip text="A nota de humor reflete a percepção clínica do terapeuta sobre o estado emocional do paciente durante a sessão. 1 = aparentemente em sofrimento intenso, 10 = bem-estar evidente." showIcon>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                Como você percebeu o paciente hoje?
+                <span className="ml-2 text-slate-600 dark:text-slate-400 font-normal text-xs">(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
+              </label>
+            </Tooltip>
             <div className="flex items-center gap-1.5 flex-wrap">
               {Array.from({ length: 10 }).map((_, i) => {
                 const val = i + 1;
@@ -326,7 +344,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           {/* Sessão 2: Observações */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Observações gerais *</label>
+              <Tooltip text="Descreva os temas principais abordados, intervenções realizadas e percepções clínicas relevantes. Quanto mais detalhado, melhor para acompanhamento futuro." showIcon>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Observações gerais *</label>
+              </Tooltip>
               <button
                 type="button"
                 disabled={isGeneratingIA || !formData.observacoes}
@@ -398,7 +418,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
           {/* Sessão 3: Comportamento */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Comportamento apresentado</label>
+            <Tooltip text="Registre postura corporal, expressão facial, tom de voz, contato visual e reações do paciente durante a sessão." showIcon>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Comportamento apresentado</label>
+            </Tooltip>
             <textarea
               value={formData.comportamento}
               onChange={(e) => setFormData({ ...formData, comportamento: e.target.value })}
@@ -409,7 +431,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
           {/* Sessão 4: Sintomas */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sintomas relatados</label>
+            <Tooltip text="Liste sintomas relatados pelo paciente: ansiedade, insônia, irritabilidade, alterações de apetite, somatizações, etc." showIcon>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sintomas relatados</label>
+            </Tooltip>
             <textarea
               value={formData.sintomas}
               onChange={(e) => setFormData({ ...formData, sintomas: e.target.value })}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { criarPaciente, atualizarPaciente } from '../services/patientService';
-import { formatCPF, cleanCPF } from '../utils/formatUtils';
+import { formatCPF, cleanCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
+import { useEscapeKey } from '../hooks/useKeyboard';
 
 const toTitleCase = (str) => {
   const preps = ["de", "da", "do", "das", "dos", "e"];
@@ -36,6 +37,9 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
     setError('');
   }, [patientToEdit, isOpen]);
 
+  // Fechar com Escape (H7)
+  useEscapeKey(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -46,6 +50,15 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
     try {
       if (!formData.nome || !formData.data_nascimento) {
         throw new Error('Nome e Data de Nascimento são obrigatórios.');
+      }
+
+      if (!formData.cpf) {
+        throw new Error('O CPF é obrigatório.');
+      }
+
+      // Validação de CPF com dígitos verificadores (H5)
+      if (!validarCPF(formData.cpf)) {
+        throw new Error('CPF inválido. Verifique se os dígitos estão corretos.');
       }
 
       const dataToSave = { ...formData, cpf: cleanCPF(formData.cpf) };
@@ -112,14 +125,25 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">CPF (Opcional)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">CPF *</label>
               <input
                 type="text"
                 value={formData.cpf}
                 onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
-                className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={`w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 ${
+                  formData.cpf && cleanCPF(formData.cpf).length === 11 && !validarCPF(formData.cpf)
+                    ? 'border-red-400 dark:border-red-500/50 focus:ring-red-500'
+                    : 'border-slate-300 dark:border-white/10 focus:ring-indigo-500'
+                }`}
                 placeholder="000.000.000-00"
+                required
               />
+              {formData.cpf && cleanCPF(formData.cpf).length === 11 && !validarCPF(formData.cpf) && (
+                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  CPF inválido. Verifique os dígitos.
+                </p>
+              )}
             </div>
           </div>
 
@@ -129,9 +153,10 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
               <input
                 type="text"
                 value={formData.telefone}
-                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, telefone: formatTelefone(e.target.value) })}
                 className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="(00) 00000-0000"
+                maxLength={15}
               />
             </div>
             <div>

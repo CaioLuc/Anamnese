@@ -9,6 +9,8 @@ import SelecionarTemplateModal from './SelecionarTemplateModal';
 import QuestionarioFiller from './QuestionarioFiller';
 import ErrorBoundary from './ErrorBoundary';
 import { formatCPF } from '../utils/formatUtils';
+import { useEscapeKey } from '../hooks/useKeyboard';
+import { useToast } from '../contexts/ToastContext';
 
 function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
   const [respostas, setRespostas] = useState(anamnese.respostas || {});
@@ -78,6 +80,10 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   const [isSavingAnamnese, setIsSavingAnamnese] = useState(false);
   const [anamneseSaveError, setAnamneseSaveError] = useState('');
   const [isEditingAnamnese, setIsEditingAnamnese] = useState(false);
+  const { showToast } = useToast();
+
+  // Fechar com Escape (H7)
+  useEscapeKey(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen && patient) {
@@ -108,6 +114,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       setSessoes(sessoesData);
     } catch (error) {
       console.error(error);
+      showToast({ type: 'error', message: 'Erro ao carregar prontuário. Verifique sua conexão.', action: { label: 'Recarregar', onClick: loadHistory } });
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +132,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       loadHistory();
     } catch (err) {
       console.error('Erro ao deletar sessão:', err);
+      showToast({ type: 'error', message: 'Erro ao apagar a sessão. Tente novamente.' });
     }
   };
 
@@ -137,6 +145,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       loadHistory();
     } catch (err) {
       console.error('Erro ao deletar anamnese:', err);
+      showToast({ type: 'error', message: 'Erro ao excluir anamnese. Tente novamente.' });
     }
   };
 
@@ -154,6 +163,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       loadHistory();
     } catch (err) {
       console.error('Erro ao editar sessão:', err);
+      showToast({ type: 'error', message: 'Erro ao salvar edição da sessão. Tente novamente.' });
     } finally {
       setIsSavingSessao(false);
     }
