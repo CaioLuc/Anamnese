@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { listarTodosPsicologos, atualizarPlanoPsicologo, toggleAtivoPsicologo, getEstatisticasGlobais, contarPacientesDoPsicologo, getMetricasPsicologo, atualizarTrialPsicologo, salvarAvisoGlobal, lerAvisoGlobal } from '../services/adminService';
+import { useState, useEffect, useMemo } from 'react';
+import { listarTodosPsicologos, atualizarPlanoPsicologo, toggleAtivoPsicologo, getEstatisticasGlobais, contarPacientesDoPsicologo, getMetricasPsicologo, atualizarTrialPsicologo, salvarAvisoGlobal, lerAvisoGlobal, obterLogsAuditoria, limparLogsAntigos } from '../services/adminService';
 import { logoutFirebaseUser } from '../services/authService';
 
 // ==========================================
@@ -208,6 +208,306 @@ function RaioXModal({ psi, onClose }) {
 }
 
 // ==========================================
+// ACTION TYPE CONFIG (labels, colors, icons)
+// ==========================================
+const ACTION_CONFIG = {
+  LOGIN:                      { label: 'Login',                   icon: '🔑', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+  LOGOUT:                     { label: 'Logout',                  icon: '🚪', color: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+  CREATE_PATIENT:             { label: 'Paciente Criado',         icon: '👤', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
+  UPDATE_PATIENT:             { label: 'Paciente Editado',        icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  DELETE_PATIENT:             { label: 'Paciente Deletado',       icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  RESTORE_PATIENT:            { label: 'Paciente Restaurado',     icon: '♻️', color: 'bg-teal-500/10 text-teal-500 border-teal-500/20' },
+  CREATE_SESSION:             { label: 'Sessão Criada',           icon: '📝', color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
+  UPDATE_SESSION:             { label: 'Sessão Editada',          icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  DELETE_SESSION:             { label: 'Sessão Deletada',         icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  SESSION_EVOLVED:            { label: 'Evolução Clínica',        icon: '📊', color: 'bg-violet-500/10 text-violet-500 border-violet-500/20' },
+  CREATE_ANAMNESIS:           { label: 'Anamnese Criada',         icon: '📋', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  UPDATE_ANAMNESIS:           { label: 'Anamnese Editada',        icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  DELETE_ANAMNESIS:           { label: 'Anamnese Deletada',       icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  SUBMIT_ANAMNESIS_FORM:      { label: 'Anamnese Salva (Form)',   icon: '📋', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  UPDATE_ANAMNESIS_FORM:      { label: 'Anamnese Edit. (Form)',   icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  SUBMIT_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Salva', icon: '🧒', color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
+  UPDATE_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Edit.', icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  CREATE_QUESTIONNAIRE:       { label: 'Questionário Criado',     icon: '📑', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
+  DELETE_QUESTIONNAIRE:       { label: 'Questionário Deletado',   icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  CREATE_CLINIC:              { label: 'Clínica Criada',          icon: '🏥', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+  DELETE_CLINIC:              { label: 'Clínica Deletada',        icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  SEARCH_SELECT:              { label: 'Busca Global',            icon: '🔍', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+};
+
+function ActionBadge({ type }) {
+  const cfg = ACTION_CONFIG[type] || { label: type, icon: '❓', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${cfg.color} whitespace-nowrap`}>
+      <span>{cfg.icon}</span> {cfg.label}
+    </span>
+  );
+}
+
+function formatLogDate(val) {
+  if (!val) return '—';
+  const d = val?.toDate ? val.toDate() : new Date(val);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function formatDuration(ms) {
+  if (!ms || ms < 0) return null;
+  if (ms < 1000) return `${ms}ms`;
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  if (m > 0) return `${m}m ${rem}s`;
+  return `${s}s`;
+}
+
+// ==========================================
+// AUDITORIA TAB COMPONENT
+// ==========================================
+function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilterType, setLogFilterType, logFilterEmail, setLogFilterEmail, expandedLogId, setExpandedLogId, isClearingLogs, setIsClearingLogs }) {
+  
+  useEffect(() => {
+    loadLogs();
+  }, []);
+
+  const loadLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const data = await obterLogsAuditoria(500);
+      setLogs(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const handleClearOldLogs = async () => {
+    if (!confirm('Deseja realmente apagar logs com mais de 30 dias?')) return;
+    setIsClearingLogs(true);
+    try {
+      const count = await limparLogsAntigos(30);
+      alert(`${count} log(s) antigo(s) removido(s).`);
+      loadLogs();
+    } catch (e) {
+      alert('Erro ao limpar logs.');
+    } finally {
+      setIsClearingLogs(false);
+    }
+  };
+
+  // Unique action types for filter
+  const uniqueTypes = [...new Set(logs.map(l => l.actionType))].sort();
+  const uniqueEmails = [...new Set(logs.map(l => l.psicologoEmail).filter(Boolean))].sort();
+
+  // Filtered logs
+  const filtered = logs.filter(l => {
+    if (logFilterType && l.actionType !== logFilterType) return false;
+    if (logFilterEmail && l.psicologoEmail !== logFilterEmail) return false;
+    return true;
+  });
+
+  // Stats
+  const stats = {
+    total: logs.length,
+    hoje: logs.filter(l => {
+      const d = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
+      return !isNaN(d.getTime()) && d.toDateString() === new Date().toDateString();
+    }).length,
+    uniqueUsers: new Set(logs.map(l => l.psicologoEmail)).size,
+    avgDuration: (() => {
+      const withDuration = logs.filter(l => l.metadata?.durationMs);
+      if (withDuration.length === 0) return null;
+      const avg = withDuration.reduce((sum, l) => sum + l.metadata.durationMs, 0) / withDuration.length;
+      return formatDuration(avg);
+    })(),
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><span className="text-lg">📊</span></div>
+            <div>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.total}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Total de Logs</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"><span className="text-lg">📅</span></div>
+            <div>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.hoje}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Ações Hoje</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center shrink-0"><span className="text-lg">👥</span></div>
+            <div>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.uniqueUsers}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Usuários Ativos</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0"><span className="text-lg">⏱️</span></div>
+            <div>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.avgDuration || '—'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Tempo Médio (Forms)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-4 shadow-lg flex flex-col sm:flex-row gap-3">
+        <select
+          value={logFilterType}
+          onChange={(e) => setLogFilterType(e.target.value)}
+          className="flex-1 px-3 py-2.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Todos os tipos</option>
+          {uniqueTypes.map(t => (
+            <option key={t} value={t}>{ACTION_CONFIG[t]?.label || t}</option>
+          ))}
+        </select>
+        <select
+          value={logFilterEmail}
+          onChange={(e) => setLogFilterEmail(e.target.value)}
+          className="flex-1 px-3 py-2.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Todos os psicólogos</option>
+          {uniqueEmails.map(e => (
+            <option key={e} value={e}>{e}</option>
+          ))}
+        </select>
+        <div className="flex gap-2">
+          <button onClick={loadLogs} className="px-4 py-2 text-sm font-medium text-indigo-500 bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/10 transition-colors flex items-center gap-1.5">
+            <svg className={`w-4 h-4 ${isLoadingLogs ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            Atualizar
+          </button>
+          <button onClick={handleClearOldLogs} disabled={isClearingLogs} className="px-4 py-2 text-sm font-medium text-red-500 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            {isClearingLogs ? 'Limpando...' : 'Limpar +30d'}
+          </button>
+        </div>
+      </div>
+
+      {/* Results count */}
+      <p className="text-xs text-slate-400">
+        Mostrando {filtered.length} de {logs.length} registros
+        {(logFilterType || logFilterEmail) && <button onClick={() => { setLogFilterType(''); setLogFilterEmail(''); }} className="ml-2 text-indigo-400 hover:underline">Limpar filtros</button>}
+      </p>
+
+      {/* Logs List */}
+      <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl shadow-lg overflow-hidden">
+        {isLoadingLogs ? (
+          <div className="flex items-center justify-center p-12">
+            <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+            <span className="text-3xl mb-2">📭</span>
+            <p>Nenhum log encontrado.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-200 dark:divide-white/5">
+            {filtered.map(log => {
+              const isExpanded = expandedLogId === log.id;
+              const meta = log.metadata || {};
+              const dur = formatDuration(meta.durationMs);
+
+              return (
+                <div key={log.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                  <button
+                    onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                    className="w-full text-left p-4 flex items-start gap-3"
+                  >
+                    {/* Action Badge */}
+                    <div className="flex flex-col gap-2 items-start min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <ActionBadge type={log.actionType} />
+                        {dur && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                            ⏱ {dur}
+                          </span>
+                        )}
+                        {meta.completionRate && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            📊 {meta.completionRate}
+                          </span>
+                        )}
+                        {meta.status && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${meta.status === 'Presente' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                            {meta.status}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{log.psicologoEmail || '—'}</span>
+                        <span>·</span>
+                        <span>{formatLogDate(log.createdAt)}</span>
+                      </div>
+                    </div>
+
+                    {/* Expand indicator */}
+                    <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform mt-1 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+
+                  {/* Expanded Metadata */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 animate-in fade-in duration-150">
+                      <div className="bg-slate-50 dark:bg-zinc-950 rounded-xl p-4 border border-slate-200 dark:border-white/5 space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Metadados da Ação</p>
+                        
+                        {Object.keys(meta).length === 0 ? (
+                          <p className="text-xs text-slate-400 italic">Sem metadados adicionais.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {Object.entries(meta).map(([key, val]) => (
+                              <div key={key} className="flex flex-col bg-white/50 dark:bg-white/5 rounded-lg p-2.5 border border-slate-100 dark:border-white/5">
+                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{key}</span>
+                                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 break-all mt-0.5">
+                                  {typeof val === 'boolean' ? (val ? '✅ Sim' : '❌ Não') : String(val)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Extra info */}
+                        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-white/5">
+                          <div className="flex flex-col bg-white/50 dark:bg-white/5 rounded-lg p-2.5 border border-slate-100 dark:border-white/5 flex-1 min-w-[140px]">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">UID Firebase</span>
+                            <span className="text-[11px] font-mono text-slate-500 break-all mt-0.5">{log.psicologoId || '—'}</span>
+                          </div>
+                          {log.userAgent && (
+                            <div className="flex flex-col bg-white/50 dark:bg-white/5 rounded-lg p-2.5 border border-slate-100 dark:border-white/5 flex-1 min-w-[140px]">
+                              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Navegador</span>
+                              <span className="text-[11px] text-slate-500 break-all mt-0.5">{log.userAgent.slice(0, 100)}...</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // MAIN ADMIN PANEL
 // ==========================================
 export default function AdminPanel() {
@@ -220,7 +520,15 @@ export default function AdminPanel() {
   const [selectedPsi, setSelectedPsi] = useState(null);
   const [avisoGlobal, setAvisoGlobal] = useState('');
   const [avisoSaving, setAvisoSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('psicologos'); // 'psicologos' | 'comunicacao'
+  const [activeTab, setActiveTab] = useState('psicologos'); // 'psicologos' | 'comunicacao' | 'auditoria'
+
+  // Logs (Auditoria)
+  const [logs, setLogs] = useState([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [logFilterType, setLogFilterType] = useState('');
+  const [logFilterEmail, setLogFilterEmail] = useState('');
+  const [expandedLogId, setExpandedLogId] = useState(null);
+  const [isClearingLogs, setIsClearingLogs] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -311,6 +619,7 @@ export default function AdminPanel() {
       <div className="bg-white/50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-white/5 px-6 flex gap-1 shrink-0">
         {[
           { id: 'psicologos', label: 'Psicólogos', icon: '👥' },
+          { id: 'auditoria', label: 'Auditoria / Logs', icon: '📊' },
           { id: 'comunicacao', label: 'Comunicação', icon: '📢' },
         ].map(tab => (
           <button
@@ -463,6 +772,21 @@ export default function AdminPanel() {
             )}
           </div>
         )}
+
+        {activeTab === 'auditoria' && <AuditoriaTab
+          logs={logs}
+          setLogs={setLogs}
+          isLoadingLogs={isLoadingLogs}
+          setIsLoadingLogs={setIsLoadingLogs}
+          logFilterType={logFilterType}
+          setLogFilterType={setLogFilterType}
+          logFilterEmail={logFilterEmail}
+          setLogFilterEmail={setLogFilterEmail}
+          expandedLogId={expandedLogId}
+          setExpandedLogId={setExpandedLogId}
+          isClearingLogs={isClearingLogs}
+          setIsClearingLogs={setIsClearingLogs}
+        />}
       </div>
 
       {/* Modal Raio-X */}

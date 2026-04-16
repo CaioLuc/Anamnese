@@ -97,7 +97,7 @@ export default function Financas({ patients, isLoadingPatients }) {
         att.forma_pagamento = '';
       }
       
-      await atualizarSessao(sessao.id, att);
+      await atualizarSessao(sessao.id, sessao.id_paciente, att);
       
       // Update local state
       setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, ...att } : s));
@@ -252,7 +252,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                       <td className="px-6 py-4 text-slate-800 dark:text-slate-200 whitespace-nowrap font-medium">
                         <div className="flex items-center gap-3">
                            <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-xs font-bold ring-1 ring-indigo-500/20">
-                             {p ? p.nome.charAt(0).toUpperCase() : '?'}
+                             {p?.nome?.charAt(0)?.toUpperCase() || '?'}
                            </div>
                            {p?.nome || <span className="italic text-slate-400">Paciente removido</span>}
                         </div>

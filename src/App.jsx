@@ -149,7 +149,7 @@ function AppMain() {
   const renderContent = () => {
     switch (currentPath) {
       case 'dashboard':
-        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={setCurrentPath} />;
+        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} />;
       case 'pacientes':
         return <Pacientes 
                  patients={patients} 
@@ -179,7 +179,7 @@ function AppMain() {
       case 'lixeira':
         return <Lixeira onPatientRestored={fetchPatients} />;
       default:
-        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} />;
+        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} />;
     }
   };
 

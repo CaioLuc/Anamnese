@@ -1,4 +1,4 @@
-import { collection, collectionGroup, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, collectionGroup, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, limit, where, deleteDoc } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
 
 // ==========================================
@@ -186,4 +186,45 @@ export async function getEstatisticasGlobais(psicologos) {
   const basicos = psicologos.filter(p => !p.plano || p.plano === 'basico').length;
   const profissionais = psicologos.filter(p => p.plano === 'profissional').length;
   return { total, ativos, inativos, basicos, profissionais };
+}
+
+// ==========================================
+// ADMIN: LOGS (Auditoria)
+// ==========================================
+export async function obterLogsAuditoria(maxResults = 250) {
+  try {
+    const logsCol = collection(db, 'action_logs');
+    const q = query(logsCol, orderBy('createdAt', 'desc'), limit(maxResults));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error("Erro ao obter logs de auditoria:", error);
+    return [];
+  }
+}
+
+export async function limparLogsAntigos(dias = 30) {
+  try {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - dias);
+
+    const logsCol = collection(db, 'action_logs');
+    // We cannot easily delete by batch without writing more logic, 
+    // but a simple loop works fine for reasonable retention limits
+    const q = query(logsCol, where('createdAt', '<', dataLimite), limit(500));
+    const snapshot = await getDocs(q);
+    
+    let deletados = 0;
+    for (const d of snapshot.docs) {
+      await deleteDoc(d.ref);
+      deletados++;
+    }
+    return deletados;
+  } catch (error) {
+    console.error("Erro ao limpar logs:", error);
+    throw error;
+  }
 }

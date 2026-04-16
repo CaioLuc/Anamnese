@@ -169,7 +169,7 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
       <div>
         <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Ações Rápidas</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <QuickAction icon="👤" label="Novo Paciente" color="indigo" onClick={() => onNavigate && onNavigate('pacientes')} />
+          <QuickAction icon="👤" label="Novo Paciente" color="indigo" onClick={() => onNavigate && onNavigate('pacientes', { addPatient: true })} />
           <QuickAction icon="📝" label="Registrar Sessão" color="cyan" onClick={() => onNavigate && onNavigate('nova-sessao')} />
           <QuickAction icon="📅" label="Ver Agenda" color="violet" onClick={() => onNavigate && onNavigate('agenda')} />
           <QuickAction icon="📋" label="Questionários" color="emerald" onClick={() => onNavigate && onNavigate('questionarios')} />
@@ -261,7 +261,7 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
                 return (
                   <li key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {p.nome?.charAt(0).toUpperCase() || '?'}
+                      {p?.nome?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{p.nome}</p>

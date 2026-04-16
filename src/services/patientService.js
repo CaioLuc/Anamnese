@@ -1,5 +1,6 @@
 import { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
+import { trackAction } from './logService';
 
 const PACIENTES_COL = 'pacientes';
 const ANAMNESES_COL = 'anamneses';
@@ -98,6 +99,7 @@ export async function criarPaciente(pacienteData) {
       userId: auth.currentUser.uid, // Mantido para compatibilidade/migração fácil
       createdAt: serverTimestamp()
     });
+    trackAction('CREATE_PATIENT', { patientId: docRef.id });
     return docRef.id;
   } catch (error) {
     console.error("Erro ao criar paciente:", error);
@@ -146,6 +148,7 @@ export async function lerPaciente(id) {
 export async function atualizarPaciente(id, dadosAtualizados) {
   try {
     await updateDoc(getPacienteDoc(id), dadosAtualizados);
+    trackAction('UPDATE_PATIENT', { patientId: id });
   } catch (error) {
     console.error("Erro ao atualizar paciente:", error);
     throw error;
@@ -156,6 +159,7 @@ export async function deletarPaciente(id) {
   try {
     // SOFT DELETE: Mover para lixeira
     await updateDoc(getPacienteDoc(id), { deletedAt: serverTimestamp() });
+    trackAction('DELETE_PATIENT', { patientId: id });
   } catch (error) {
     console.error("Erro ao mover paciente para lixeira:", error);
     throw error;
@@ -237,6 +241,7 @@ export async function restaurarPaciente(id) {
   try {
     const { deleteField } = await import('firebase/firestore');
     await updateDoc(getPacienteDoc(id), { deletedAt: deleteField() });
+    trackAction('RESTORE_PATIENT', { patientId: id });
   } catch (error) {
     console.error("Erro ao restaurar paciente:", error);
     throw error;
@@ -250,10 +255,11 @@ export async function criarAnamnese(anamneseData) {
     const { id_paciente, ...data } = anamneseData;
     const docRef = await addDoc(getAnamnesesRef(id_paciente), {
       ...data,
-      id_paciente, // Mantido por compatibilidade
+      id_paciente,
       userId: auth.currentUser.uid,
       createdAt: serverTimestamp()
     });
+    trackAction('CREATE_ANAMNESIS', { patientId: id_paciente, anamneseId: docRef.id });
     return docRef.id;
   } catch (error) {
     console.error("Erro ao criar anamnese:", error);
@@ -295,6 +301,7 @@ export async function atualizarAnamnese(id, id_paciente, dadosAtualizados) {
   try {
     const docRef = doc(getAnamnesesRef(id_paciente), id);
     await updateDoc(docRef, dadosAtualizados);
+    trackAction('UPDATE_ANAMNESIS', { patientId: id_paciente, anamneseId: id });
   } catch (error) {
     console.error("Erro ao atualizar anamnese:", error);
     throw error;
@@ -305,6 +312,7 @@ export async function deletarAnamnese(id, id_paciente) {
   try {
     const docRef = doc(getAnamnesesRef(id_paciente), id);
     await deleteDoc(docRef);
+    trackAction('DELETE_ANAMNESIS', { patientId: id_paciente, anamneseId: id });
   } catch (error) {
     console.error("Erro ao deletar anamnese:", error);
     throw error;
@@ -325,6 +333,7 @@ export async function criarSessao(sessaoData) {
       userId: auth.currentUser.uid,
       createdAt: serverTimestamp()
     });
+    trackAction('CREATE_SESSION', { patientId: id_paciente, sessionId: docRef.id, status: data.status || 'Presente' });
     return docRef.id;
   } catch (error) {
     console.error("Erro ao criar sessão de evolução:", error);
@@ -351,6 +360,7 @@ export async function deletarSessao(id, id_paciente) {
   try {
     const docRef = doc(getSessoesRef(id_paciente), id);
     await deleteDoc(docRef);
+    trackAction('DELETE_SESSION', { patientId: id_paciente, sessionId: id });
   } catch (error) {
     console.error("Erro ao deletar sessão:", error);
     throw error;
@@ -361,6 +371,7 @@ export async function atualizarSessao(id, id_paciente, dadosAtualizados) {
   try {
     const docRef = doc(getSessoesRef(id_paciente), id);
     await updateDoc(docRef, dadosAtualizados);
+    trackAction('UPDATE_SESSION', { patientId: id_paciente, sessionId: id });
   } catch (error) {
     console.error("Erro ao atualizar sessão:", error);
     throw error;
@@ -426,6 +437,7 @@ export async function criarQuestionario(dados) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    trackAction('CREATE_QUESTIONNAIRE', { questionnaireId: docRef.id });
     return docRef.id;
   } catch (error) {
     console.error("Erro ao criar questionário:", error);
@@ -474,6 +486,7 @@ export async function atualizarQuestionario(id, dados) {
 export async function deletarQuestionario(id) {
   try {
     await deleteDoc(doc(getQuestionariosRef(), id));
+    trackAction('DELETE_QUESTIONNAIRE', { questionnaireId: id });
   } catch (error) {
     console.error("Erro ao deletar questionário:", error);
     throw error;
@@ -503,6 +516,7 @@ export async function criarClinica(clinicaData) {
       ...clinicaData,
       createdAt: serverTimestamp()
     });
+    trackAction('CREATE_CLINIC', { clinicId: docRef.id });
     return docRef.id;
   } catch (error) {
     console.error("Erro ao criar clínica:", error);
@@ -524,6 +538,7 @@ export async function lerClinicas() {
 export async function deletarClinica(id) {
   try {
     await deleteDoc(getClinicaDoc(id));
+    trackAction('DELETE_CLINIC', { clinicId: id });
   } catch (error) {
     console.error("Erro ao deletar clínica:", error);
     throw error;

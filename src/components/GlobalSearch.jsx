@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useEscapeKey } from '../hooks/useKeyboard';
+import { trackAction } from '../services/logService';
 
 /**
  * GlobalSearch — Command Palette estilo Spotlight (Ctrl+K).
@@ -25,7 +26,7 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
   // Ações rápidas
   const quickActions = useMemo(() => [
     { type: 'action', icon: '👤', label: 'Novo Paciente', description: 'Cadastrar um novo paciente', path: 'pacientes', actionType: 'addPatient' },
-    { type: 'action', icon: '📝', label: 'Nova Sessão', description: 'Registrar evolução clínica', path: 'sessao' },
+    { type: 'action', icon: '📝', label: 'Nova Sessão', description: 'Registrar evolução clínica', path: 'nova-sessao' },
     { type: 'action', icon: '📅', label: 'Abrir Agenda', description: 'Ver agendamentos', path: 'agenda' },
     { type: 'action', icon: '💰', label: 'Financeiro', description: 'Ver painel financeiro', path: 'financas' },
     { type: 'action', icon: '📋', label: 'Questionários', description: 'Gerenciar modelos', path: 'questionarios' },
@@ -104,6 +105,7 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
 
   const handleSelect = (item) => {
     onClose();
+    trackAction('SEARCH_SELECT', { query, type: item.type, label: item.label, path: item.path });
     if (item.type === 'patient') {
       onNavigate(item.path, { openPatient: item.patient });
     } else if (item.actionType === 'addPatient') {

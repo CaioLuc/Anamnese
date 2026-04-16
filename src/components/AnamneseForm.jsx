@@ -4,6 +4,7 @@ import Tooltip from './Tooltip';
 import { useKeyboard } from '../hooks/useKeyboard';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useToast } from '../contexts/ToastContext';
+import { trackAction } from '../services/logService';
 
 export default function AnamneseForm({ patient, onSaved, initialData }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,6 +56,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
 
     const [currentStep, setCurrentStep] = useState(0);
     const formRef = useRef(null);
+    const formStartTime = useRef(Date.now());
     const { showToast } = useToast();
     const [autoSaveStatus, setAutoSaveStatus] = useState(''); // '', 'saving', 'saved'
     const [hasDraft, setHasDraft] = useState(false);
@@ -181,6 +183,20 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
         if (onSaved) {
             setTimeout(() => onSaved(), 1500);
         }
+
+        // Log telemetry
+        const durationMs = Date.now() - formStartTime.current;
+        const totalFields = Object.keys(formData).length;
+        const filledFields = Object.entries(formData).filter(([, v]) => v !== '' && v !== false && v !== 0).length;
+        trackAction(initialData?.id ? 'UPDATE_ANAMNESIS_FORM' : 'SUBMIT_ANAMNESIS_FORM', {
+          patientId: patient?.id,
+          durationMs,
+          durationFormatted: `${Math.floor(durationMs / 60000)}m ${Math.floor((durationMs % 60000) / 1000)}s`,
+          totalFields,
+          filledFields,
+          completionRate: `${Math.round((filledFields / totalFields) * 100)}%`,
+          isEdit: !!initialData?.id
+        });
       } catch (err) {
         console.error(err);
         showToast({ type: 'error', message: 'Erro ao salvar a Anamnese. Verifique sua conexão.' });

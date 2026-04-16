@@ -101,6 +101,15 @@ service cloud.firestore {
       allow write: if false; // Somente Cloud Functions (admin SDK) escrevem
     }
 
+    // ===================================
+    // LOGS DE AUDITORIA (Telemetria)
+    // ===================================
+    match /action_logs/{logId} {
+      allow create: if isAuthenticated();
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
     // Bloqueio padrão para qualquer outra rota não especificada
     match /{document=**} {
       allow read, write: if false;

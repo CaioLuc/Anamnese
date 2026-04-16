@@ -16,9 +16,12 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
   const [filterClinica, setFilterClinica] = useState(''); // '' = todas
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, patient: null });
 
-  // Auto-open patient modal when coming from Agenda 'Atender'
+  // Auto-open patient modal when coming from Agenda 'Atender' or Dashboard 'Novo Paciente'
   useEffect(() => {
-    if (autoOpenPatient) {
+    if (autoOpenPatient === '__add__') {
+      setIsPatientModalOpen(true);
+      if (onAutoOpenDone) onAutoOpenDone();
+    } else if (autoOpenPatient) {
       setSelectedPatient(autoOpenPatient);
       setProfileInitialTab(autoOpenTab || 'evolucoes');
       setIsProfileModalOpen(true);
@@ -173,7 +176,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 mr-4">
                             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500/10 to-cyan-500/10 border border-indigo-500/20 dark:border-indigo-500/30 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-300">
-                              {patient.nome ? patient.nome.charAt(0).toUpperCase() : '?'}
+                              {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
                             </div>
                           </div>
                           <div>

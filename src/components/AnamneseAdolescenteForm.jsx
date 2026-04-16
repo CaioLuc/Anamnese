@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { criarAnamnese, atualizarAnamnese } from '../services/patientService';
+import { trackAction } from '../services/logService';
 
 export default function AnamneseAdolescenteForm({ patient, onSaved, initialData }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
+    const formStartTime = useRef(Date.now());
   
     // ==========================================
     // ESTRUTURA DE ESTADO DA ANAMNESE ADOLESCENTE
@@ -100,6 +102,20 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
         if (onSaved) {
             setTimeout(() => onSaved(), 2000);
         }
+
+        // Log telemetry
+        const durationMs = Date.now() - formStartTime.current;
+        const totalFields = Object.keys(formData).length;
+        const filledFields = Object.entries(formData).filter(([, v]) => v !== '' && v !== false && v !== 0).length;
+        trackAction(initialData?.id ? 'UPDATE_ANAMNESIS_ADOLESCENT' : 'SUBMIT_ANAMNESIS_ADOLESCENT', {
+          patientId: patient?.id,
+          durationMs,
+          durationFormatted: `${Math.floor(durationMs / 60000)}m ${Math.floor((durationMs % 60000) / 1000)}s`,
+          totalFields,
+          filledFields,
+          completionRate: `${Math.round((filledFields / totalFields) * 100)}%`,
+          isEdit: !!initialData?.id
+        });
       } catch (err) {
         console.error(err);
         setStatusMessage({ type: 'error', text: 'Erro ao salvar a Anamnese.' });

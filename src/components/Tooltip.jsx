@@ -16,7 +16,6 @@ import { useState, useRef, useEffect } from 'react';
  */
 export default function Tooltip({ children, text, showIcon = false, position = 'top' }) {
   const [visible, setVisible] = useState(false);
-  const tooltipRef = useRef(null);
   const containerRef = useRef(null);
 
   // Fechar ao clicar fora (mobile)
@@ -35,18 +34,11 @@ export default function Tooltip({ children, text, showIcon = false, position = '
     };
   }, [visible]);
 
-  const positionClasses = {
-    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
-    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
-    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
-    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
-  };
-
-  const arrowClasses = {
-    top: 'top-full left-1/2 -translate-x-1/2 border-t-zinc-800 dark:border-t-zinc-700 border-l-transparent border-r-transparent border-b-transparent',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-zinc-800 dark:border-b-zinc-700 border-l-transparent border-r-transparent border-t-transparent',
-    left: 'left-full top-1/2 -translate-y-1/2 border-l-zinc-800 dark:border-l-zinc-700 border-t-transparent border-b-transparent border-r-transparent',
-    right: 'right-full top-1/2 -translate-y-1/2 border-r-zinc-800 dark:border-r-zinc-700 border-t-transparent border-b-transparent border-l-transparent',
+  const positionStyles = {
+    top: 'bottom-full left-0 mb-2',
+    bottom: 'top-full left-0 mt-2',
+    left: 'right-full top-0 mr-2',
+    right: 'left-full top-0 ml-2',
   };
 
   return (
@@ -60,7 +52,7 @@ export default function Tooltip({ children, text, showIcon = false, position = '
           onFocus={() => setVisible(true)}
           onBlur={() => setVisible(false)}
           onClick={() => setVisible(v => !v)}
-          className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-400 hover:bg-indigo-500/20 hover:text-indigo-400 transition-colors text-[10px] font-bold cursor-help shrink-0"
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/30 hover:text-indigo-300 transition-colors text-[10px] font-bold cursor-help shrink-0 border border-indigo-500/20"
           aria-label="Mais informações"
         >
           ?
@@ -68,14 +60,16 @@ export default function Tooltip({ children, text, showIcon = false, position = '
       )}
       {visible && text && (
         <span
-          ref={tooltipRef}
           role="tooltip"
-          className={`absolute z-[300] ${positionClasses[position]} pointer-events-none`}
+          className={`absolute z-[300] ${positionStyles[position]} pointer-events-none`}
+          style={{ width: '280px' }}
         >
-          <span className="block max-w-xs px-3 py-2 text-xs text-white bg-zinc-800 dark:bg-zinc-700 rounded-lg shadow-xl whitespace-normal leading-relaxed">
+          <span
+            className="block w-full px-4 py-3 text-[13px] text-slate-100 bg-zinc-800 dark:bg-zinc-700 rounded-xl shadow-2xl leading-relaxed border border-white/10"
+            style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+          >
             {text}
           </span>
-          <span className={`absolute w-0 h-0 border-[5px] ${arrowClasses[position]}`} />
         </span>
       )}
     </span>

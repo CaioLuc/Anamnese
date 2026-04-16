@@ -438,7 +438,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                     {filteredPatients.map(p => (
                       <button key={p.id} type="button" onClick={() => handleSelectPatient(p)}
                         className="w-full text-left px-4 py-2 text-sm text-slate-800 dark:text-white hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors">
-                        <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
+                        <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold shrink-0">{p?.nome?.charAt(0)?.toUpperCase() || '?'}</span>
                         {p.nome}
                       </button>
                     ))}

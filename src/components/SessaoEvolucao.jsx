@@ -7,6 +7,7 @@ import Tooltip from './Tooltip';
 import { useKeyboard } from '../hooks/useKeyboard';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useToast } from '../contexts/ToastContext';
+import { trackAction } from '../services/logService';
 
 export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
@@ -30,6 +31,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [planoPsicologo, setPlanoPsicologo] = useState('basico');
   const formRef = useRef(null);
+  const formStartTime = useRef(Date.now());
   const { showToast } = useToast();
 
   // Detectar alterações não salvas (H3)
@@ -90,6 +92,24 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
       await criarSessao(formData);
       
+      const durationMs = Date.now() - formStartTime.current;
+      const obsLength = (formData.observacoes || '').trim().length;
+      const comportLength = (formData.comportamento || '').trim().length;
+      const sintomasLength = (formData.sintomas || '').trim().length;
+      trackAction('SESSION_EVOLVED', {
+        patientId: formData.id_paciente,
+        durationMs,
+        durationFormatted: `${Math.floor(durationMs / 60000)}m ${Math.floor((durationMs % 60000) / 1000)}s`,
+        status: formData.status,
+        humor: formData.humor,
+        obsLength,
+        comportLength,
+        sintomasLength,
+        totalChars: obsLength + comportLength + sintomasLength,
+        pago: formData.pago,
+        valor: formData.valor || '0'
+      });
+
       showToast({ type: 'success', message: 'Evolução salva com sucesso!' });
       setStatusMessage({ type: 'success', text: 'Evolução salva com sucesso no banco de dados!' });
       
@@ -104,6 +124,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         forma_pagamento: ''
       }));
 
+      formStartTime.current = Date.now(); // Reset timer for next session
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 5000);
 
     } catch (err) {
@@ -212,7 +233,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                         onMouseDown={() => handleSelectPatient(p)}
                         className="w-full text-left px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors"
                       >
-                        <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{p.nome.charAt(0).toUpperCase()}</span>
+                        <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{p?.nome?.charAt(0)?.toUpperCase() || '?'}</span>
                         {p.nome}
                       </button>
                     ))}

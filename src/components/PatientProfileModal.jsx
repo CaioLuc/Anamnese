@@ -301,7 +301,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
           <div className="flex items-center gap-4">
              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 p-0.5 shadow-lg">
                 <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-[15px] flex items-center justify-center text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-indigo-400 to-cyan-400">
-                  {patient.nome.charAt(0).toUpperCase()}
+                  {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
                 </div>
              </div>
              <div>

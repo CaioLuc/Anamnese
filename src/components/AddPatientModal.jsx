@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { criarPaciente, atualizarPaciente } from '../services/patientService';
+import { criarPaciente, atualizarPaciente, buscarPacientePorCPF } from '../services/patientService';
 import { formatCPF, cleanCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
 import { useEscapeKey } from '../hooks/useKeyboard';
 
@@ -61,7 +61,18 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
         throw new Error('CPF inválido. Verifique se os dígitos estão corretos.');
       }
 
-      const dataToSave = { ...formData, cpf: cleanCPF(formData.cpf) };
+      const cpfLimpo = cleanCPF(formData.cpf);
+
+      // Verificar CPF duplicado para o mesmo psicólogo
+      const existente = await buscarPacientePorCPF(cpfLimpo);
+      if (existente) {
+        // Se estiver editando o mesmo paciente, ignorar
+        if (!patientToEdit || existente.id !== patientToEdit.id) {
+          throw new Error(`Já existe um paciente cadastrado com este CPF: ${existente.nome}. Não é possível duplicar.`);
+        }
+      }
+
+      const dataToSave = { ...formData, cpf: cpfLimpo };
 
       if (patientToEdit) {
         await atualizarPaciente(patientToEdit.id, dataToSave);
