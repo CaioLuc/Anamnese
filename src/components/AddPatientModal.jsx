@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { criarPaciente, atualizarPaciente, buscarPacientePorCPF } from '../services/patientService';
+import { criarPaciente, atualizarPaciente, buscarPacientePorCPF, lerClinicas } from '../services/patientService';
 import { formatCPF, cleanCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
 import { useEscapeKey } from '../hooks/useKeyboard';
 
@@ -19,6 +19,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
   const [formData, setFormData] = useState({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [clinicas, setClinicas] = useState([]);
 
 
   useEffect(() => {
@@ -35,6 +36,15 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
       setFormData({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
     }
     setError('');
+    
+    if (isOpen) {
+      lerClinicas().then(data => {
+        setClinicas(data);
+        if (!patientToEdit && data.length > 0) {
+          setFormData(prev => ({ ...prev, clinica: data[0].nome }));
+        }
+      }).catch(console.error);
+    }
   }, [patientToEdit, isOpen]);
 
   // Fechar com Escape (H7)
@@ -186,13 +196,29 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Local de Atendimento</label>
-            <input
-              type="text"
-              value={formData.clinica}
-              onChange={(e) => setFormData({ ...formData, clinica: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Ex: Consultório Particular, Clínica Bem Estar..."
-            />
+            {clinicas.length > 0 ? (
+              <select
+                value={formData.clinica}
+                onChange={(e) => setFormData({ ...formData, clinica: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none custom-select"
+              >
+                <option value="">Selecione o local...</option>
+                {clinicas.map(c => (
+                  <option key={c.id} value={c.nome}>{c.nome}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={formData.clinica}
+                onChange={(e) => setFormData({ ...formData, clinica: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Ex: Consultório Particular, Clínica Bem Estar..."
+              />
+            )}
+            {clinicas.length === 0 && (
+               <p className="text-xs text-slate-500 mt-1.5">Configure seus locais de atendimento na guia Clínicas.</p>
+            )}
           </div>
 
           <div className="pt-4 flex justify-end gap-3">

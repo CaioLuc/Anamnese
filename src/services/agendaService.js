@@ -3,6 +3,7 @@ import {
   doc, query, where, serverTimestamp
 } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
+import { trackAction } from './logService';
 
 const AGENDAMENTOS_COL = 'agendamentos';
 const SLOTS_COL = 'horarios_ocupados'; // Espelho público (só hora+data+status)
@@ -48,6 +49,7 @@ export async function criarAgendamento(data) {
   });
   // Espelhar
   await espelharSlot(uid, docRef.id, data);
+  trackAction('CREATE_APPOINTMENT', { appointmentId: docRef.id, patientId: data.id_paciente, date: data.data, time: data.hora, duration: data.duracao_min });
   return docRef.id;
 }
 
@@ -64,6 +66,7 @@ export async function atualizarAgendamento(id, dados) {
   if (dados.data || dados.hora || dados.status) {
     await espelharSlot(uid, id, dados);
   }
+  trackAction('UPDATE_APPOINTMENT', { appointmentId: id, status: dados.status, date: dados.data, time: dados.hora });
 }
 
 export async function deletarAgendamento(id) {
@@ -72,6 +75,7 @@ export async function deletarAgendamento(id) {
   await deleteDoc(doc(db, 'psicologos', uid, AGENDAMENTOS_COL, id));
   // Remover espelho
   await removerSlot(uid, id);
+  trackAction('DELETE_APPOINTMENT', { appointmentId: id });
 }
 
 // ============================
@@ -88,6 +92,7 @@ export async function salvarConfigAgenda(config) {
     const slugRef = doc(db, 'slugs', config.slug.toLowerCase().trim());
     await setDoc(slugRef, { uid, updatedAt: serverTimestamp() });
   }
+  trackAction('SAVE_AGENDA_CONFIG', { slug: config.slug || null });
 }
 
 export async function lerConfigAgenda() {

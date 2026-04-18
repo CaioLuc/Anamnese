@@ -11,6 +11,7 @@ import ErrorBoundary from './ErrorBoundary';
 import { formatCPF } from '../utils/formatUtils';
 import { useEscapeKey } from '../hooks/useKeyboard';
 import { useToast } from '../contexts/ToastContext';
+import { trackAction } from '../services/logService';
 
 function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
   const [respostas, setRespostas] = useState(anamnese.respostas || {});
@@ -89,6 +90,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
     if (isOpen && patient) {
       loadHistory();
       setActiveTab(initialTab);
+      trackAction('VIEW_PATIENT_PROFILE', { patientId: patient.id, patientName: patient.nome, tab: initialTab || 'evolucoes' });
     }
   }, [isOpen, patient, initialTab]);
 
@@ -161,6 +163,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       });
       setEditingSessao(null);
       loadHistory();
+      trackAction('EDIT_SESSION_INLINE', { patientId: patient.id, sessionId: editingSessao.id });
     } catch (err) {
       console.error('Erro ao editar sessão:', err);
       showToast({ type: 'error', message: 'Erro ao salvar edição da sessão. Tente novamente.' });
@@ -255,6 +258,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
      }
 
      pdf.save(`Anamnese_${patient.nome.replace(/\s+/g,'_')}.pdf`);
+     trackAction('EXPORT_PDF_ANAMNESIS', { patientId: patient.id, patientName: patient.nome, anamneseType: anamneses[0]?.tipo || 'adulto' });
   };
 
   const gerarPdfSessao = (sessao) => {
@@ -287,6 +291,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       ? sessao.data_sessao.split('-').reverse().join('-') 
       : new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
     pdf.save(`Sessao_${patient.nome.replace(/\s+/g,'_')}_${dataNomeArquivo}.pdf`);
+    trackAction('EXPORT_PDF_SESSION', { patientId: patient.id, patientName: patient.nome, sessionDate: sessao.data_sessao });
   };
 
   return (
@@ -783,6 +788,14 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
         message={`Deseja apagar permanentemente a evolução do dia ${confirmSessao.sessao?.data_sessao ? confirmSessao.sessao.data_sessao.split('-').reverse().join('/') : ''}? Esta ação não pode ser desfeita.`}
         onConfirm={confirmExcluirSessao}
         onCancel={() => setConfirmSessao({ isOpen: false, sessao: null })}
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={confirmDeleteAnamnese.isOpen}
+        title="Excluir Anamnese"
+        message="Deseja realmente excluir esta anamnese permanentemente? Esta ação não pode ser desfeita."
+        onConfirm={confirmExcluirAnamnese}
+        onCancel={() => setConfirmDeleteAnamnese({ isOpen: false, anamnese: null })}
         variant="danger"
       />
     </div>

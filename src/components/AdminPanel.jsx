@@ -211,16 +211,22 @@ function RaioXModal({ psi, onClose }) {
 // ACTION TYPE CONFIG (labels, colors, icons)
 // ==========================================
 const ACTION_CONFIG = {
+  // Auth
   LOGIN:                      { label: 'Login',                   icon: '🔑', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
   LOGOUT:                     { label: 'Logout',                  icon: '🚪', color: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+  // Pacientes
   CREATE_PATIENT:             { label: 'Paciente Criado',         icon: '👤', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
   UPDATE_PATIENT:             { label: 'Paciente Editado',        icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   DELETE_PATIENT:             { label: 'Paciente Deletado',       icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
   RESTORE_PATIENT:            { label: 'Paciente Restaurado',     icon: '♻️', color: 'bg-teal-500/10 text-teal-500 border-teal-500/20' },
+  VIEW_PATIENT_PROFILE:       { label: 'Prontuário Aberto',      icon: '📂', color: 'bg-sky-500/10 text-sky-500 border-sky-500/20' },
+  // Sessões
   CREATE_SESSION:             { label: 'Sessão Criada',           icon: '📝', color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
   UPDATE_SESSION:             { label: 'Sessão Editada',          icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   DELETE_SESSION:             { label: 'Sessão Deletada',         icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
   SESSION_EVOLVED:            { label: 'Evolução Clínica',        icon: '📊', color: 'bg-violet-500/10 text-violet-500 border-violet-500/20' },
+  EDIT_SESSION_INLINE:        { label: 'Sessão Edit. Inline',     icon: '✏️', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  // Anamneses
   CREATE_ANAMNESIS:           { label: 'Anamnese Criada',         icon: '📋', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
   UPDATE_ANAMNESIS:           { label: 'Anamnese Editada',        icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   DELETE_ANAMNESIS:           { label: 'Anamnese Deletada',       icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
@@ -228,10 +234,24 @@ const ACTION_CONFIG = {
   UPDATE_ANAMNESIS_FORM:      { label: 'Anamnese Edit. (Form)',   icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   SUBMIT_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Salva', icon: '🧒', color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
   UPDATE_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Edit.', icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  // Questionários & Clínicas
   CREATE_QUESTIONNAIRE:       { label: 'Questionário Criado',     icon: '📑', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
   DELETE_QUESTIONNAIRE:       { label: 'Questionário Deletado',   icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
   CREATE_CLINIC:              { label: 'Clínica Criada',          icon: '🏥', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
   DELETE_CLINIC:              { label: 'Clínica Deletada',        icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  // Agenda
+  CREATE_APPOINTMENT:         { label: 'Agendamento Criado',      icon: '📅', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
+  UPDATE_APPOINTMENT:         { label: 'Agendamento Editado',     icon: '✏️', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  DELETE_APPOINTMENT:         { label: 'Agendamento Deletado',    icon: '🗑️', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
+  SAVE_AGENDA_CONFIG:         { label: 'Config. Agenda Salva',    icon: '⚙️', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+  // Finanças
+  TOGGLE_PAYMENT:             { label: 'Pagamento Alternado',     icon: '💰', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  // PDF Exports
+  EXPORT_PDF_EVOLUTION:       { label: 'PDF Evolução',            icon: '📄', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+  EXPORT_PDF_ANAMNESIS:       { label: 'PDF Anamnese',            icon: '📄', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+  EXPORT_PDF_SESSION:         { label: 'PDF Sessão',              icon: '📄', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+  // Navegação & Busca
+  NAVIGATE:                   { label: 'Navegação',               icon: '🧭', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
   SEARCH_SELECT:              { label: 'Busca Global',            icon: '🔍', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
 };
 

@@ -168,6 +168,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
       pdf.addTextBlock('Sintomas Relatados', formData.sintomas);
 
       pdf.save(`Evolucao_${patientName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`);
+      trackAction('EXPORT_PDF_EVOLUTION', { patientId: formData.id_paciente, patientName, date: formattedDate });
       
       setStatusMessage({ type: 'success', text: 'PDF exportado com sucesso!' });
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 3000);

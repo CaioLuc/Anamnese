@@ -17,6 +17,7 @@ import AgendaPublica from './components/AgendaPublica';
 import OnboardingOverlay from './components/OnboardingOverlay';
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
+import { trackAction } from './services/logService';
 
 // ================================
 // APP PRINCIPAL (Autenticado)
@@ -37,6 +38,7 @@ function AppMain() {
   // Navegação com opções extras (para GlobalSearch)
   const handleNavigate = (path, opts) => {
     setCurrentPath(path);
+    trackAction('NAVIGATE', { from: currentPath, to: path });
     if (opts?.openPatient) {
       setAutoOpenPatientForProfile(opts.openPatient);
       setAutoOpenTabForProfile('evolucoes');
