@@ -3,6 +3,13 @@ import { listarTodosPsicologos, atualizarPlanoPsicologo, toggleAtivoPsicologo, g
 import { logoutFirebaseUser } from '../services/authService';
 import { exportarDadosCSV } from '../services/exportService';
 import { useToast } from '../contexts/ToastContext';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { 
+  Users, Activity, Bell, Download, LogOut, ShieldAlert, X,
+  Search, ShieldCheck, Shield, Users as UsersIcon, FileText, Database,
+  Settings, Clock, CheckCircle2, XCircle, AlertTriangle, AlertCircle, RefreshCw, Trash2, ChevronDown
+} from 'lucide-react';
 
 // ==========================================
 // HELPERS
@@ -31,14 +38,19 @@ function diasAte(val) {
 // ==========================================
 // SUB-COMPONENTS
 // ==========================================
-function StatCard({ label, value, color, icon }) {
+function StatCard({ label, value, colorType, icon: Icon }) {
   return (
-    <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
+    <div className="ds-card p-5" style={{ backgroundColor: 'var(--bg-card)' }}>
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>{icon}</div>
+        <div 
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `var(--status-${colorType}-bg)`, color: `var(--status-${colorType})` }}
+        >
+          <Icon size={20} />
+        </div>
         <div>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{value}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+          <p className="text-2xl font-heading font-extrabold" style={{ color: 'var(--text-primary)' }}>{value}</p>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</p>
         </div>
       </div>
     </div>
@@ -48,27 +60,27 @@ function StatCard({ label, value, color, icon }) {
 function PlanoBadge({ plano }) {
   const isPro = plano === 'profissional';
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${isPro ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20'}`}>
+    <Badge variant={isPro ? 'warning' : 'neutral'}>
       {isPro ? '⭐ Pro' : '📋 Básico'}
-    </span>
+    </Badge>
   );
 }
 
 function StatusBadge({ ativo }) {
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${ativo !== false ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${ativo !== false ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+    <Badge variant={ativo !== false ? 'success' : 'danger'}>
+      <span className="w-1.5 h-1.5 rounded-full mr-1" style={{ backgroundColor: ativo !== false ? 'var(--status-success)' : 'var(--status-danger)' }}></span>
       {ativo !== false ? 'Ativo' : 'Inativo'}
-    </span>
+    </Badge>
   );
 }
 
 function TrialBadge({ trialAte }) {
   const dias = diasAte(trialAte);
-  if (dias === null) return <span className="text-xs text-slate-400">Sem trial</span>;
-  if (dias < 0) return <span className="px-2 py-0.5 text-xs font-bold text-red-500 bg-red-500/10 rounded-lg border border-red-500/20">Expirado</span>;
-  if (dias <= 7) return <span className="px-2 py-0.5 text-xs font-bold text-amber-500 bg-amber-500/10 rounded-lg border border-amber-500/20">{dias}d restantes</span>;
-  return <span className="px-2 py-0.5 text-xs font-bold text-emerald-500 bg-emerald-500/10 rounded-lg border border-emerald-500/20">{dias}d restantes</span>;
+  if (dias === null) return <Badge variant="neutral">Sem trial</Badge>;
+  if (dias < 0) return <Badge variant="danger">Expirado</Badge>;
+  if (dias <= 7) return <Badge variant="warning">{dias}d restantes</Badge>;
+  return <Badge variant="success">{dias}d restantes</Badge>;
 }
 
 // ==========================================
@@ -103,21 +115,21 @@ function RaioXModal({ psi, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-lg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
+      <div className="relative w-full max-w-lg rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
         
         {/* Header */}
-        <div className="sticky top-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl z-10 p-6 pb-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
+        <div className="sticky top-0 z-10 p-6 pb-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
               {(psi.email || '?')[0].toUpperCase()}
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-white">{psi.nome || psi.email}</h3>
-              <p className="text-xs text-slate-400">{psi.email}</p>
+              <h3 className="font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{psi.nome || psi.email}</h3>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{psi.email}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 rounded-xl transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <button onClick={onClose} className="p-2 rounded-xl transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-muted)' }}>
+            <X size={20} />
           </button>
         </div>
 
@@ -131,16 +143,16 @@ function RaioXModal({ psi, onClose }) {
 
           {/* Info Rápida */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3">
-              <p className="text-xs text-slate-400 mb-0.5">Conta criada em</p>
-              <p className="font-semibold text-sm text-slate-900 dark:text-white">{formatDate(psi.createdAt)}</p>
-              {diasCriacao !== null && <p className="text-xs text-slate-400">({diasCriacao} dias atrás)</p>}
+            <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Conta criada em</p>
+              <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{formatDate(psi.createdAt)}</p>
+              {diasCriacao !== null && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>({diasCriacao} dias atrás)</p>}
             </div>
-            <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3">
-              <p className="text-xs text-slate-400 mb-0.5">Último acesso</p>
-              <p className="font-semibold text-sm text-slate-900 dark:text-white">{formatDate(psi.lastLogin || psi.updatedAt)}</p>
+            <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Último acesso</p>
+              <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{formatDate(psi.lastLogin || psi.updatedAt)}</p>
               {diasUltimoLogin !== null && (
-                <p className={`text-xs ${diasUltimoLogin > 10 ? 'text-red-400 font-bold' : 'text-slate-400'}`}>
+                <p className={`text-xs ${diasUltimoLogin > 10 ? 'font-bold text-red-500' : ''}`} style={diasUltimoLogin <= 10 ? { color: 'var(--text-muted)' } : {}}>
                   ({diasUltimoLogin} dias atrás){diasUltimoLogin > 10 && ' ⚠️'}
                 </p>
               )}
@@ -150,58 +162,53 @@ function RaioXModal({ psi, onClose }) {
           {/* Métricas */}
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
-              <svg className="w-6 h-6 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+              <RefreshCw className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} />
             </div>
           ) : metricas && (
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-4 text-center">
-                <p className="text-2xl font-extrabold text-indigo-500">{metricas.totalPacientes}</p>
-                <p className="text-xs text-slate-500 mt-0.5">Pacientes</p>
+              <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)' }}>
+                <p className="text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{metricas.totalPacientes}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Pacientes</p>
               </div>
-              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 text-center">
-                <p className="text-2xl font-extrabold text-cyan-500">{metricas.totalSessoes}</p>
-                <p className="text-xs text-slate-500 mt-0.5">Sessões</p>
+              <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--status-info-bg)', border: '1px solid var(--status-info)' }}>
+                <p className="text-2xl font-extrabold" style={{ color: 'var(--status-info)' }}>{metricas.totalSessoes}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Sessões</p>
               </div>
-              <div className="bg-purple-500/5 border border-purple-500/10 rounded-xl p-4 text-center">
-                <p className="text-2xl font-extrabold text-purple-500">{metricas.totalAnamneses}</p>
-                <p className="text-xs text-slate-500 mt-0.5">Anamneses</p>
+              <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
+                <p className="text-2xl font-extrabold" style={{ color: 'var(--status-warning)' }}>{metricas.totalAnamneses}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Anamneses</p>
               </div>
             </div>
           )}
 
           {/* Engajamento */}
           {metricas && metricas.totalPacientes > 0 && (
-            <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">Indicadores</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                Média de <strong className="text-indigo-500">{(metricas.totalSessoes / metricas.totalPacientes).toFixed(1)}</strong> sessões por paciente
+            <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Indicadores</p>
+              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                Média de <strong style={{ color: 'var(--accent)' }}>{(metricas.totalSessoes / metricas.totalPacientes).toFixed(1)}</strong> sessões por paciente
               </p>
             </div>
           )}
 
           {/* Trial / Vencimento */}
-          <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-4 space-y-3">
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Gestão de Acesso / Trial</p>
+          <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Gestão de Acesso / Trial</p>
             <div className="flex gap-2">
               <input
                 type="date"
                 value={trialDate}
                 onChange={(e) => setTrialDate(e.target.value)}
-                className="flex-1 px-3 py-2 bg-white dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="ds-input flex-1"
               />
-              <button
-                onClick={handleSaveTrial}
-                className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl transition-colors"
-              >
-                Salvar
-              </button>
+              <Button onClick={handleSaveTrial}>Salvar</Button>
             </div>
           </div>
 
           {/* UID (debug) */}
-          <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3">
-            <p className="text-xs text-slate-400 mb-0.5">UID (Firebase)</p>
-            <p className="text-xs font-mono text-slate-500 break-all select-all">{psi.id}</p>
+          <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>UID (Firebase)</p>
+            <p className="text-xs font-mono break-all select-all" style={{ color: 'var(--text-muted)' }}>{psi.id}</p>
           </div>
         </div>
       </div>
@@ -214,55 +221,55 @@ function RaioXModal({ psi, onClose }) {
 // ==========================================
 const ACTION_CONFIG = {
   // Auth
-  LOGIN:                      { label: 'Login',                   icon: '🔑', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-  LOGOUT:                     { label: 'Logout',                  icon: '🚪', color: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+  LOGIN:                      { label: 'Login',                   icon: '🔑', color: 'success' },
+  LOGOUT:                     { label: 'Logout',                  icon: '🚪', color: 'neutral' },
   // Pacientes
-  CREATE_PATIENT:             { label: 'Paciente Criado',         icon: '👤', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
-  UPDATE_PATIENT:             { label: 'Paciente Editado',        icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  DELETE_PATIENT:             { label: 'Paciente Deletado',       icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  RESTORE_PATIENT:            { label: 'Paciente Restaurado',     icon: '♻️', color: 'bg-teal-500/10 text-teal-500 border-teal-500/20' },
-  VIEW_PATIENT_PROFILE:       { label: 'Prontuário Aberto',      icon: '📂', color: 'bg-sky-500/10 text-sky-500 border-sky-500/20' },
+  CREATE_PATIENT:             { label: 'Paciente Criado',         icon: '👤', color: 'info' },
+  UPDATE_PATIENT:             { label: 'Paciente Editado',        icon: '✏️', color: 'info' },
+  DELETE_PATIENT:             { label: 'Paciente Deletado',       icon: '🗑️', color: 'danger' },
+  RESTORE_PATIENT:            { label: 'Paciente Restaurado',     icon: '♻️', color: 'success' },
+  VIEW_PATIENT_PROFILE:       { label: 'Prontuário Aberto',      icon: '📂', color: 'info' },
   // Sessões
-  CREATE_SESSION:             { label: 'Sessão Criada',           icon: '📝', color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
-  UPDATE_SESSION:             { label: 'Sessão Editada',          icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  DELETE_SESSION:             { label: 'Sessão Deletada',         icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  SESSION_EVOLVED:            { label: 'Evolução Clínica',        icon: '📊', color: 'bg-violet-500/10 text-violet-500 border-violet-500/20' },
-  EDIT_SESSION_INLINE:        { label: 'Sessão Edit. Inline',     icon: '✏️', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  CREATE_SESSION:             { label: 'Sessão Criada',           icon: '📝', color: 'info' },
+  UPDATE_SESSION:             { label: 'Sessão Editada',          icon: '✏️', color: 'info' },
+  DELETE_SESSION:             { label: 'Sessão Deletada',         icon: '🗑️', color: 'danger' },
+  SESSION_EVOLVED:            { label: 'Evolução Clínica',        icon: '📊', color: 'warning' },
+  EDIT_SESSION_INLINE:        { label: 'Sessão Edit. Inline',     icon: '✏️', color: 'info' },
   // Anamneses
-  CREATE_ANAMNESIS:           { label: 'Anamnese Criada',         icon: '📋', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-  UPDATE_ANAMNESIS:           { label: 'Anamnese Editada',        icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  DELETE_ANAMNESIS:           { label: 'Anamnese Deletada',       icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  SUBMIT_ANAMNESIS_FORM:      { label: 'Anamnese Salva (Form)',   icon: '📋', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-  UPDATE_ANAMNESIS_FORM:      { label: 'Anamnese Edit. (Form)',   icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  SUBMIT_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Salva', icon: '🧒', color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
-  UPDATE_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Edit.', icon: '✏️', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  CREATE_ANAMNESIS:           { label: 'Anamnese Criada',         icon: '📋', color: 'warning' },
+  UPDATE_ANAMNESIS:           { label: 'Anamnese Editada',        icon: '✏️', color: 'warning' },
+  DELETE_ANAMNESIS:           { label: 'Anamnese Deletada',       icon: '🗑️', color: 'danger' },
+  SUBMIT_ANAMNESIS_FORM:      { label: 'Anamnese Salva (Form)',   icon: '📋', color: 'warning' },
+  UPDATE_ANAMNESIS_FORM:      { label: 'Anamnese Edit. (Form)',   icon: '✏️', color: 'warning' },
+  SUBMIT_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Salva', icon: '🧒', color: 'info' },
+  UPDATE_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Edit.', icon: '✏️', color: 'info' },
   // Questionários & Clínicas
-  CREATE_QUESTIONNAIRE:       { label: 'Questionário Criado',     icon: '📑', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
-  DELETE_QUESTIONNAIRE:       { label: 'Questionário Deletado',   icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  CREATE_CLINIC:              { label: 'Clínica Criada',          icon: '🏥', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-  DELETE_CLINIC:              { label: 'Clínica Deletada',        icon: '🗑️', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+  CREATE_QUESTIONNAIRE:       { label: 'Questionário Criado',     icon: '📑', color: 'warning' },
+  DELETE_QUESTIONNAIRE:       { label: 'Questionário Deletado',   icon: '🗑️', color: 'danger' },
+  CREATE_CLINIC:              { label: 'Clínica Criada',          icon: '🏥', color: 'success' },
+  DELETE_CLINIC:              { label: 'Clínica Deletada',        icon: '🗑️', color: 'danger' },
   // Agenda
-  CREATE_APPOINTMENT:         { label: 'Agendamento Criado',      icon: '📅', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
-  UPDATE_APPOINTMENT:         { label: 'Agendamento Editado',     icon: '✏️', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  DELETE_APPOINTMENT:         { label: 'Agendamento Deletado',    icon: '🗑️', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
-  SAVE_AGENDA_CONFIG:         { label: 'Config. Agenda Salva',    icon: '⚙️', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+  CREATE_APPOINTMENT:         { label: 'Agendamento Criado',      icon: '📅', color: 'info' },
+  UPDATE_APPOINTMENT:         { label: 'Agendamento Editado',     icon: '✏️', color: 'info' },
+  DELETE_APPOINTMENT:         { label: 'Agendamento Deletado',    icon: '🗑️', color: 'danger' },
+  SAVE_AGENDA_CONFIG:         { label: 'Config. Agenda Salva',    icon: '⚙️', color: 'neutral' },
   // Finanças
-  TOGGLE_PAYMENT:             { label: 'Pagamento Alternado',     icon: '💰', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  TOGGLE_PAYMENT:             { label: 'Pagamento Alternado',     icon: '💰', color: 'success' },
   // PDF Exports
-  EXPORT_PDF_EVOLUTION:       { label: 'PDF Evolução',            icon: '📄', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
-  EXPORT_PDF_ANAMNESIS:       { label: 'PDF Anamnese',            icon: '📄', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
-  EXPORT_PDF_SESSION:         { label: 'PDF Sessão',              icon: '📄', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+  EXPORT_PDF_EVOLUTION:       { label: 'PDF Evolução',            icon: '📄', color: 'danger' },
+  EXPORT_PDF_ANAMNESIS:       { label: 'PDF Anamnese',            icon: '📄', color: 'danger' },
+  EXPORT_PDF_SESSION:         { label: 'PDF Sessão',              icon: '📄', color: 'danger' },
   // Navegação & Busca
-  NAVIGATE:                   { label: 'Navegação',               icon: '🧭', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
-  SEARCH_SELECT:              { label: 'Busca Global',            icon: '🔍', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+  NAVIGATE:                   { label: 'Navegação',               icon: '🧭', color: 'neutral' },
+  SEARCH_SELECT:              { label: 'Busca Global',            icon: '🔍', color: 'neutral' },
 };
 
 function ActionBadge({ type }) {
-  const cfg = ACTION_CONFIG[type] || { label: type, icon: '❓', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
+  const cfg = ACTION_CONFIG[type] || { label: type, icon: '❓', color: 'neutral' };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${cfg.color} whitespace-nowrap`}>
+    <Badge variant={cfg.color}>
       <span>{cfg.icon}</span> {cfg.label}
-    </span>
+    </Badge>
   );
 }
 
@@ -349,50 +356,18 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><span className="text-lg">📊</span></div>
-            <div>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.total}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Total de Logs</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"><span className="text-lg">📅</span></div>
-            <div>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.hoje}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Ações Hoje</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center shrink-0"><span className="text-lg">👥</span></div>
-            <div>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.uniqueUsers}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Usuários Ativos</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0"><span className="text-lg">⏱️</span></div>
-            <div>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.avgDuration || '—'}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Tempo Médio (Forms)</p>
-            </div>
-          </div>
-        </div>
+        <StatCard label="Total de Logs" value={stats.total} colorType="info" icon={Database} />
+        <StatCard label="Ações Hoje" value={stats.hoje} colorType="success" icon={Activity} />
+        <StatCard label="Usuários Ativos" value={stats.uniqueUsers} colorType="warning" icon={UsersIcon} />
+        <StatCard label="Tempo Médio (Forms)" value={stats.avgDuration || '—'} colorType="danger" icon={Clock} />
       </div>
 
       {/* Filters */}
-      <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-4 shadow-lg flex flex-col sm:flex-row gap-3">
+      <div className="ds-card p-4 flex flex-col sm:flex-row gap-3" style={{ backgroundColor: 'var(--bg-card)' }}>
         <select
           value={logFilterType}
           onChange={(e) => setLogFilterType(e.target.value)}
-          className="flex-1 px-3 py-2.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="ds-input flex-1"
         >
           <option value="">Todos os tipos</option>
           {uniqueTypes.map(t => (
@@ -402,7 +377,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
         <select
           value={logFilterEmail}
           onChange={(e) => setLogFilterEmail(e.target.value)}
-          className="flex-1 px-3 py-2.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="ds-input flex-1"
         >
           <option value="">Todos os psicólogos</option>
           {uniqueEmails.map(e => (
@@ -410,43 +385,41 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
           ))}
         </select>
         <div className="flex gap-2">
-          <button onClick={loadLogs} className="px-4 py-2 text-sm font-medium text-indigo-500 bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/10 transition-colors flex items-center gap-1.5">
-            <svg className={`w-4 h-4 ${isLoadingLogs ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            Atualizar
-          </button>
-          <button onClick={handleClearOldLogs} disabled={isClearingLogs} className="px-4 py-2 text-sm font-medium text-red-500 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            {isClearingLogs ? 'Limpando...' : 'Limpar +30d'}
-          </button>
+          <Button onClick={loadLogs} variant="secondary">
+            <RefreshCw size={16} className={isLoadingLogs ? 'animate-spin' : ''} /> Atualizar
+          </Button>
+          <Button onClick={handleClearOldLogs} disabled={isClearingLogs} variant="ghost" style={{ color: 'var(--status-danger)' }}>
+            <Trash2 size={16} /> {isClearingLogs ? 'Limpando...' : 'Limpar +30d'}
+          </Button>
         </div>
       </div>
 
       {/* Results count */}
-      <p className="text-xs text-slate-400">
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         Mostrando {filtered.length} de {logs.length} registros
-        {(logFilterType || logFilterEmail) && <button onClick={() => { setLogFilterType(''); setLogFilterEmail(''); }} className="ml-2 text-indigo-400 hover:underline">Limpar filtros</button>}
+        {(logFilterType || logFilterEmail) && <button onClick={() => { setLogFilterType(''); setLogFilterEmail(''); }} className="ml-2 hover:underline" style={{ color: 'var(--accent)' }}>Limpar filtros</button>}
       </p>
 
       {/* Logs List */}
-      <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl shadow-lg overflow-hidden">
+      <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
         {isLoadingLogs ? (
           <div className="flex items-center justify-center p-12">
-            <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <RefreshCw className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 text-slate-500">
-            <span className="text-3xl mb-2">📭</span>
+          <div className="flex flex-col items-center justify-center p-12" style={{ color: 'var(--text-muted)' }}>
+            <Database size={48} className="mb-2 opacity-20" />
             <p>Nenhum log encontrado.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-200 dark:divide-white/5">
+          <div style={{ divideColor: 'var(--border)', divideWidth: '0.5px', divideStyle: 'solid' }}>
             {filtered.map(log => {
               const isExpanded = expandedLogId === log.id;
               const meta = log.metadata || {};
               const dur = formatDuration(meta.durationMs);
 
               return (
-                <div key={log.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                <div key={log.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderBottom: '0.5px solid var(--border)' }}>
                   <button
                     onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
                     className="w-full text-left p-4 flex items-start gap-3"
@@ -456,46 +429,40 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                       <div className="flex items-center gap-2 flex-wrap">
                         <ActionBadge type={log.actionType} />
                         {dur && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                            ⏱ {dur}
-                          </span>
+                          <Badge variant="warning">⏱ {dur}</Badge>
                         )}
                         {meta.completionRate && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            📊 {meta.completionRate}
-                          </span>
+                          <Badge variant="info">📊 {meta.completionRate}</Badge>
                         )}
                         {meta.status && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${meta.status === 'Presente' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                            {meta.status}
-                          </span>
+                          <Badge variant={meta.status === 'Presente' ? 'success' : 'danger'}>{meta.status}</Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <span className="font-medium text-slate-700 dark:text-slate-300">{log.psicologoEmail || '—'}</span>
+                      <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{log.psicologoEmail || '—'}</span>
                         <span>·</span>
                         <span>{formatLogDate(log.createdAt)}</span>
                       </div>
                     </div>
 
                     {/* Expand indicator */}
-                    <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform mt-1 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    <ChevronDown size={16} className={`transition-transform mt-1 ${isExpanded ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} />
                   </button>
 
                   {/* Expanded Metadata */}
                   {isExpanded && (
                     <div className="px-4 pb-4 animate-in fade-in duration-150">
-                      <div className="bg-slate-50 dark:bg-zinc-950 rounded-xl p-4 border border-slate-200 dark:border-white/5 space-y-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Metadados da Ação</p>
+                      <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Metadados da Ação</p>
                         
                         {Object.keys(meta).length === 0 ? (
-                          <p className="text-xs text-slate-400 italic">Sem metadados adicionais.</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Sem metadados adicionais.</p>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {Object.entries(meta).map(([key, val]) => (
-                              <div key={key} className="flex flex-col bg-white/50 dark:bg-white/5 rounded-lg p-2.5 border border-slate-100 dark:border-white/5">
-                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{key}</span>
-                                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 break-all mt-0.5">
+                              <div key={key} className="flex flex-col rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{key}</span>
+                                <span className="text-sm font-medium break-all mt-0.5" style={{ color: 'var(--text-primary)' }}>
                                   {typeof val === 'boolean' ? (val ? '✅ Sim' : '❌ Não') : String(val)}
                                 </span>
                               </div>
@@ -504,15 +471,15 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                         )}
 
                         {/* Extra info */}
-                        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-white/5">
-                          <div className="flex flex-col bg-white/50 dark:bg-white/5 rounded-lg p-2.5 border border-slate-100 dark:border-white/5 flex-1 min-w-[140px]">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">UID Firebase</span>
-                            <span className="text-[11px] font-mono text-slate-500 break-all mt-0.5">{log.psicologoId || '—'}</span>
+                        <div className="flex flex-wrap gap-2 mt-3 pt-3" style={{ borderTop: '0.5px solid var(--border)' }}>
+                          <div className="flex flex-col rounded-lg p-2.5 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>UID Firebase</span>
+                            <span className="text-[11px] font-mono break-all mt-0.5" style={{ color: 'var(--text-secondary)' }}>{log.psicologoId || '—'}</span>
                           </div>
                           {log.userAgent && (
-                            <div className="flex flex-col bg-white/50 dark:bg-white/5 rounded-lg p-2.5 border border-slate-100 dark:border-white/5 flex-1 min-w-[140px]">
-                              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Navegador</span>
-                              <span className="text-[11px] text-slate-500 break-all mt-0.5">{log.userAgent.slice(0, 100)}...</span>
+                            <div className="flex flex-col rounded-lg p-2.5 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}>
+                              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Navegador</span>
+                              <span className="text-[11px] break-all mt-0.5" style={{ color: 'var(--text-secondary)' }}>{log.userAgent.slice(0, 100)}...</span>
                             </div>
                           )}
                         </div>
@@ -615,24 +582,23 @@ export default function AdminPanel() {
   });
 
   return (
-    <div className="h-full w-full bg-slate-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
+    <div className="h-full w-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="px-6 py-4 flex items-center justify-between shrink-0" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}>
+            <ShieldAlert size={20} />
           </div>
           <div>
-            <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">Painel Administrativo</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Caritas — Gestão de Acessos</p>
+            <h1 className="text-lg font-heading font-extrabold" style={{ color: 'var(--text-primary)' }}>Painel Administrativo</h1>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Caritas — Gestão de Acessos</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleExportCSV} className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/20 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-colors" title="Exportar lista de psicólogos">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            Psicólogos (CSV)
-          </button>
-          <button 
+          <Button onClick={handleExportCSV} variant="secondary" size="sm" className="hidden sm:flex">
+            <Download size={14} /> Psicólogos (CSV)
+          </Button>
+          <Button 
             onClick={async () => {
               if (isExporting) return;
               setIsExporting(true);
@@ -647,31 +613,35 @@ export default function AdminPanel() {
               }
             }}
             disabled={isExporting}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-50" title="Exportar dados clínicos"
+            variant="secondary"
+            size="sm"
+            className="hidden sm:flex"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            {isExporting ? 'Exportando...' : 'Dados Clínicos (CSV)'}
-          </button>
-          <button onClick={() => logoutFirebaseUser()} className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors bg-slate-100 dark:bg-white/5 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/5">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            Sair
-          </button>
+            <Download size={14} /> {isExporting ? 'Exportando...' : 'Dados Clínicos (CSV)'}
+          </Button>
+          <Button onClick={() => logoutFirebaseUser()} variant="ghost" size="sm" style={{ color: 'var(--status-danger)' }}>
+            <LogOut size={16} /> Sair
+          </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white/50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-white/5 px-6 flex gap-1 shrink-0">
+      <div className="px-6 flex gap-1 shrink-0" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
         {[
-          { id: 'psicologos', label: 'Psicólogos', icon: '👥' },
-          { id: 'auditoria', label: 'Auditoria / Logs', icon: '📊' },
-          { id: 'comunicacao', label: 'Comunicação', icon: '📢' },
+          { id: 'psicologos', label: 'Psicólogos', icon: Users },
+          { id: 'auditoria', label: 'Auditoria / Logs', icon: Database },
+          { id: 'comunicacao', label: 'Comunicação', icon: Bell },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2`}
+            style={{ 
+                borderColor: activeTab === tab.id ? 'var(--accent)' : 'transparent',
+                color: activeTab === tab.id ? 'var(--accent)' : 'var(--text-secondary)'
+            }}
           >
-            {tab.icon} {tab.label}
+            <tab.icon size={16} /> {tab.label}
           </button>
         ))}
       </div>
@@ -683,50 +653,49 @@ export default function AdminPanel() {
           <>
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <StatCard label="Total" value={stats.total} color="bg-indigo-500/10" icon={<svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} />
-              <StatCard label="Ativos" value={stats.ativos} color="bg-emerald-500/10" icon={<svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
-              <StatCard label="Inativos" value={stats.inativos} color="bg-red-500/10" icon={<svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>} />
-              <StatCard label="Plano Básico" value={stats.basicos} color="bg-slate-500/10" icon={<span className="text-lg">📋</span>} />
-              <StatCard label="Plano Pro" value={stats.profissionais} color="bg-amber-500/10" icon={<span className="text-lg">⭐</span>} />
+              <StatCard label="Total" value={stats.total} colorType="info" icon={Users} />
+              <StatCard label="Ativos" value={stats.ativos} colorType="success" icon={CheckCircle2} />
+              <StatCard label="Inativos" value={stats.inativos} colorType="danger" icon={XCircle} />
+              <StatCard label="Plano Básico" value={stats.basicos} colorType="neutral" icon={FileText} />
+              <StatCard label="Plano Pro" value={stats.profissionais} colorType="warning" icon={ShieldCheck} />
             </div>
 
             {/* Search */}
-            <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-4 shadow-lg">
+            <div className="ds-card p-4" style={{ backgroundColor: 'var(--bg-card)' }}>
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou e-mail..." className="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou e-mail..." className="ds-input pl-10" />
               </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl shadow-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-950/50 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-white">Psicólogos Cadastrados</h3>
-                <button onClick={loadData} className="text-indigo-500 hover:text-indigo-400 text-sm font-medium flex items-center gap-1">
-                  <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                  Atualizar
-                </button>
+            <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
+              <div className="px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '0.5px solid var(--border)' }}>
+                <h3 className="font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Psicólogos Cadastrados</h3>
+                <Button variant="ghost" size="sm" onClick={loadData}>
+                  <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> Atualizar
+                </Button>
               </div>
 
               {isLoading ? (
-                <div className="flex items-center justify-center p-12"><svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></div>
+                <div className="flex items-center justify-center p-12"><RefreshCw className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} /></div>
               ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 text-slate-500"><p>Nenhum psicólogo encontrado.</p></div>
+                <div className="flex flex-col items-center justify-center p-12" style={{ color: 'var(--text-muted)' }}><p>Nenhum psicólogo encontrado.</p></div>
               ) : (
-                <div className="divide-y divide-slate-200 dark:divide-white/5">
+                <div style={{ divideColor: 'var(--border)', divideWidth: '0.5px', divideStyle: 'solid' }}>
                   {filtered.map(psi => {
                     const diasLogin = diasDesde(psi.lastLogin || psi.updatedAt);
                     return (
-                      <div key={psi.id} className="p-5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => setSelectedPsi(psi)}>
+                      <div key={psi.id} className="p-5 transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5" onClick={() => setSelectedPsi(psi)} style={{ borderBottom: '0.5px solid var(--border)' }}>
                         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                           {/* Info */}
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
                               {(psi.email || '?')[0].toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{psi.nome || psi.email || psi.id}</p>
-                              <p className="text-xs text-slate-400 truncate">{psi.email || 'E-mail não registrado'}</p>
+                              <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{psi.nome || psi.email || psi.id}</p>
+                              <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{psi.email || 'E-mail não registrado'}</p>
                             </div>
                           </div>
 
@@ -735,28 +704,28 @@ export default function AdminPanel() {
                             <PlanoBadge plano={psi.plano} />
                             <StatusBadge ativo={psi.ativo} />
                             <TrialBadge trialAte={psi.trialAte} />
-                            <span className="text-xs text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg">{pacienteCounts[psi.id] !== undefined ? `${pacienteCounts[psi.id]} pac.` : '...'}</span>
+                            <Badge variant="neutral">{pacienteCounts[psi.id] !== undefined ? `${pacienteCounts[psi.id]} pac.` : '...'}</Badge>
                             {diasLogin !== null && (
-                              <span className={`text-xs px-2 py-1 rounded-lg ${diasLogin > 10 ? 'text-red-400 bg-red-500/5 font-bold' : 'text-slate-400 bg-slate-100 dark:bg-white/5'}`}>
+                              <Badge variant={diasLogin > 10 ? 'danger' : 'neutral'}>
                                 {diasLogin === 0 ? 'Hoje' : diasLogin === 1 ? 'Ontem' : `${diasLogin}d atrás`}
-                              </span>
+                              </Badge>
                             )}
                           </div>
 
                           {/* Actions */}
                           <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                             {actionLoading === psi.id ? (
-                              <svg className="w-5 h-5 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                              <RefreshCw size={20} className="animate-spin" style={{ color: 'var(--accent)' }} />
                             ) : (
                               <>
                                 {(!psi.plano || psi.plano === 'basico') ? (
-                                  <button onClick={() => handlePlano(psi.id, 'profissional')} className="px-3 py-1.5 text-xs font-bold text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors" title="Promover para Profissional">⭐ Pro</button>
+                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'profissional')} title="Promover para Profissional">⭐ Pro</Button>
                                 ) : (
-                                  <button onClick={() => handlePlano(psi.id, 'basico')} className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-500/10 hover:bg-slate-500/20 border border-slate-500/20 rounded-lg transition-colors" title="Rebaixar para Básico">📋 Basic</button>
+                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'basico')} title="Rebaixar para Básico">📋 Basic</Button>
                                 )}
-                                <button onClick={() => handleToggleAtivo(psi.id, psi.ativo)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${psi.ativo !== false ? 'text-red-500 bg-red-500/10 hover:bg-red-500/20 border-red-500/20' : 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20'}`} title={psi.ativo !== false ? 'Desativar' : 'Ativar'}>
-                                  {psi.ativo !== false ? '🔒' : '🔓'}
-                                </button>
+                                <Button size="sm" variant={psi.ativo !== false ? 'secondary' : 'primary'} onClick={() => handleToggleAtivo(psi.id, psi.ativo)} title={psi.ativo !== false ? 'Desativar' : 'Ativar'}>
+                                  {psi.ativo !== false ? '🔒 Desativar' : '🔓 Ativar'}
+                                </Button>
                               </>
                             )}
                           </div>
@@ -772,34 +741,27 @@ export default function AdminPanel() {
 
         {activeTab === 'comunicacao' && (
           <div className="max-w-2xl mx-auto space-y-6">
-            <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-lg space-y-4">
+            <div className="ds-card p-6 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-lg">📢 Aviso Global</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Esta mensagem aparecerá como banner no topo do Dashboard de todos os psicólogos. Deixe vazio para desativar.</p>
+                <h3 className="font-heading font-bold text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    <Bell size={20} style={{ color: 'var(--accent)' }} /> Aviso Global
+                </h3>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Esta mensagem aparecerá como banner no topo do Dashboard de todos os psicólogos. Deixe vazio para desativar.</p>
               </div>
               <textarea
                 value={avisoGlobal}
                 onChange={(e) => setAvisoGlobal(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none"
+                className="ds-input resize-none"
                 placeholder="Ex: Manutenção programada para domingo às 22h. O sistema ficará indisponível por 30 minutos."
               />
               <div className="flex justify-between items-center">
-                <p className="text-xs text-slate-400">{avisoGlobal ? `${avisoGlobal.length} caracteres` : 'Aviso desativado'}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{avisoGlobal ? `${avisoGlobal.length} caracteres` : 'Aviso desativado'}</p>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => { setAvisoGlobal(''); handleSalvarAviso(); }}
-                    className="px-4 py-2 text-sm text-slate-500 hover:text-red-500 bg-slate-100 dark:bg-white/5 rounded-xl transition-colors"
-                  >
-                    Limpar
-                  </button>
-                  <button
-                    onClick={handleSalvarAviso}
-                    disabled={avisoSaving}
-                    className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
-                  >
+                  <Button variant="ghost" onClick={() => { setAvisoGlobal(''); handleSalvarAviso(); }}>Limpar</Button>
+                  <Button onClick={handleSalvarAviso} disabled={avisoSaving}>
                     {avisoSaving ? 'Salvando...' : 'Publicar Aviso'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -807,10 +769,10 @@ export default function AdminPanel() {
             {/* Preview */}
             {avisoGlobal && (
               <div className="space-y-2">
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Prévia do aviso:</p>
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 flex items-start gap-3">
-                  <span className="text-lg shrink-0">📢</span>
-                  <p className="text-sm text-indigo-700 dark:text-indigo-300">{avisoGlobal}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Prévia do aviso:</p>
+                <div className="rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: 'var(--status-info-bg)', border: '1px solid var(--status-info)' }}>
+                  <Bell size={20} className="shrink-0 mt-0.5" style={{ color: 'var(--status-info)' }} />
+                  <p className="text-sm font-medium" style={{ color: 'var(--status-info)' }}>{avisoGlobal}</p>
                 </div>
               </div>
             )}

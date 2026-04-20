@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { HelpCircle } from 'lucide-react';
 
 /**
  * Tooltip — Componente reutilizável de tooltip contextual.
@@ -52,10 +53,11 @@ export default function Tooltip({ children, text, showIcon = false, position = '
           onFocus={() => setVisible(true)}
           onBlur={() => setVisible(false)}
           onClick={() => setVisible(v => !v)}
-          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/30 hover:text-indigo-300 transition-colors text-[10px] font-bold cursor-help shrink-0 border border-indigo-500/20"
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full cursor-help shrink-0 transition-colors duration-150"
+          style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}
           aria-label="Mais informações"
         >
-          ?
+          <HelpCircle size={12} />
         </button>
       )}
       {visible && text && (
@@ -65,8 +67,16 @@ export default function Tooltip({ children, text, showIcon = false, position = '
           style={{ width: '280px' }}
         >
           <span
-            className="block w-full px-4 py-3 text-[13px] text-slate-100 bg-zinc-800 dark:bg-zinc-700 rounded-xl shadow-2xl leading-relaxed border border-white/10"
-            style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+            className="block w-full px-4 py-3 text-[13px] rounded-lg leading-relaxed"
+            style={{ 
+              backgroundColor: 'var(--bg-sidebar)', 
+              color: '#E6EDF3',
+              boxShadow: 'var(--shadow)',
+              border: '0.5px solid rgba(255,255,255,0.1)',
+              wordBreak: 'normal', 
+              overflowWrap: 'break-word', 
+              whiteSpace: 'normal' 
+            }}
           >
             {text}
           </span>

@@ -181,19 +181,19 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   return (
     <div className="animate-in fade-in duration-500 w-full max-w-5xl mx-auto pb-10">
       <div className="mb-8">
-        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Nova Evolução</h2>
-        <p className="mt-1 text-slate-600 dark:text-slate-400">Registre o status, comportamento e sintomas do atendimento atual.</p>
+        <h2 className="text-2xl font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Nova Evolução</h2>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Registre o status, comportamento e sintomas do atendimento atual.</p>
       </div>
 
-      <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-2xl rounded-3xl p-6 sm:p-10 relative overflow-hidden">
+      <div className="ds-card p-6 sm:p-10 relative overflow-hidden">
         
         {statusMessage.text && (
-          <div className={`mb-8 p-4 rounded-xl border flex items-start gap-3 transition-all ${
-            statusMessage.type === 'success' 
-            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-            : 'bg-red-500/10 border-red-500/20 text-red-400'
-          }`}>
-            <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${statusMessage.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="mb-8 p-4 rounded-lg border flex items-start gap-3 transition-all" style={{
+            backgroundColor: statusMessage.type === 'success' ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
+            borderColor: statusMessage.type === 'success' ? 'var(--status-success)' : 'var(--status-danger)',
+            color: statusMessage.type === 'success' ? 'var(--status-success-text)' : 'var(--status-danger-text)'
+          }}>
+            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: statusMessage.type === 'success' ? 'var(--status-success)' : 'var(--status-danger)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {statusMessage.type === 'success' 
                 ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -206,13 +206,13 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
           
           {/* Sessão 1: Cabeçalho */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 rounded-xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
             {/* Paciente - Campo com Busca */}
             <div className="lg:col-span-1">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Paciente *</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Paciente *</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
                 <input
                   type="text"
@@ -223,62 +223,63 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                   placeholder="Buscar paciente..."
                   disabled={isLoadingPatients}
                   required
-                  className="w-full pl-9 pr-4 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="ds-input pl-9"
                 />
                 {showDropdown && filteredPatientsList.length > 0 && (
-                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto">
+                  <div className="absolute z-20 mt-1 w-full border rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                     {filteredPatientsList.map(p => (
                       <button
                         key={p.id}
                         type="button"
                         onMouseDown={() => handleSelectPatient(p)}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        style={{ color: 'var(--text-primary)' }}
                       >
-                        <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{p?.nome?.charAt(0)?.toUpperCase() || '?'}</span>
+                        <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>{p?.nome?.charAt(0)?.toUpperCase() || '?'}</span>
                         {p.nome}
                       </button>
                     ))}
                   </div>
                 )}
                 {showDropdown && patientSearch && filteredPatientsList.length === 0 && (
-                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl shadow-xl px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                  <div className="absolute z-20 mt-1 w-full border rounded-xl shadow-lg px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
                     Nenhum paciente encontrado.
                   </div>
                 )}
               </div>
               {/* Campo hidden para validação */}
               {!formData.id_paciente && patientSearch && (
-                <p className="text-xs text-amber-400 mt-1">Selecione um paciente da lista.</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--status-warning)' }}>Selecione um paciente da lista.</p>
               )}
             </div>
 
             {/* Data */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Data da Sessão *</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Data da Sessão *</label>
               <input
                 type="date"
                 value={formData.data_sessao}
                 onChange={(e) => setFormData({ ...formData, data_sessao: e.target.value })}
-                className="w-full px-4 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 css-date-input"
+                className="ds-input css-date-input"
                 required
               />
             </div>
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status do Comparecimento *</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Status do Comparecimento *</label>
               <div className="relative">
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full pl-4 pr-10 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
+                  className="ds-input appearance-none pr-10"
                 >
                   <option value="Presente">Presente</option>
                   <option value="Faltou">Faltou</option>
                   <option value="Remarcado">Remarcado</option>
                   <option value="Cancelado">Cancelado</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-600 dark:text-slate-400">
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4" style={{ color: 'var(--text-secondary)' }}>
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
               </div>
@@ -286,28 +287,29 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
             {/* Valor da Sessão */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Valor da Sessão (R$)</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Valor da Sessão (R$)</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 value={formData.valor}
                 onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
-                className="w-full px-4 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="ds-input"
                 placeholder="0.00"
               />
             </div>
 
             {/* Pagamento Efetuado */}
             <div className="flex flex-col justify-end pb-1 lg:col-span-2">
-              <label className="flex items-center gap-3 p-3 bg-white/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl cursor-pointer hover:bg-white/80 dark:hover:bg-zinc-900 transition-colors">
+              <label className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                 <input
                   type="checkbox"
                   checked={formData.pago}
                   onChange={(e) => setFormData({ ...formData, pago: e.target.checked })}
-                  className="w-5 h-5 text-indigo-500 bg-white dark:bg-zinc-900 border-slate-300 dark:border-white/20 rounded focus:ring-indigo-500 focus:ring-2"
+                  className="w-5 h-5 rounded"
+                  style={{ accentColor: 'var(--accent)' }}
                 />
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Marcar como Pago</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Marcar como Pago</span>
               </label>
 
               {formData.pago && (
@@ -315,7 +317,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                   <select
                     value={formData.forma_pagamento}
                     onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
-                    className="w-full pl-4 pr-10 py-3 bg-white/80 dark:bg-zinc-950/80 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
+                    className="ds-input appearance-none pr-10"
                     required={formData.pago}
                   >
                     <option value="" disabled>Selecione a forma de pagamento...</option>
@@ -325,7 +327,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                     <option value="Dinheiro">Dinheiro</option>
                     <option value="Transferência">Transferência Bancária</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-600 dark:text-slate-400">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4" style={{ color: 'var(--text-secondary)' }}>
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
@@ -334,27 +336,27 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           </div>
 
           {/* Mood Rating */}
-          <div className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5">
+          <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
             <Tooltip text="A nota de humor reflete a percepção clínica do terapeuta sobre o estado emocional do paciente durante a sessão. 1 = aparentemente em sofrimento intenso, 10 = bem-estar evidente." showIcon>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+              <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
                 Como você percebeu o paciente hoje?
-                <span className="ml-2 text-slate-600 dark:text-slate-400 font-normal text-xs">(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
+                <span className="ml-2 font-normal text-xs" style={{ color: 'var(--text-secondary)' }}>(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
               </label>
             </Tooltip>
             <div className="flex items-center gap-1.5 flex-wrap">
               {Array.from({ length: 10 }).map((_, i) => {
                 const val = i + 1;
                 const isSelected = formData.humor === val;
-                const color = val <= 3 ? 'red' : val <= 6 ? 'yellow' : 'green';
-                const colorMap = {
-                  red:    isSelected ? 'bg-red-500 text-slate-900 dark:text-white border-red-500' : 'text-red-400 border-red-500/20 hover:border-red-500/50',
-                  yellow: isSelected ? 'bg-yellow-500 text-slate-900 dark:text-white border-yellow-500' : 'text-yellow-400 border-yellow-500/20 hover:border-yellow-500/50',
-                  green:  isSelected ? 'bg-emerald-500 text-slate-900 dark:text-white border-emerald-500' : 'text-emerald-400 border-emerald-500/20 hover:border-emerald-500/50',
-                };
+                const color = val <= 3 ? 'var(--status-danger)' : val <= 6 ? 'var(--status-warning)' : 'var(--status-success)';
                 return (
                   <button key={val} type="button"
                     onClick={() => setFormData(prev => ({ ...prev, humor: val }))}
-                    className={`w-10 h-10 rounded-xl text-sm font-bold border transition-all ${colorMap[color]} bg-slate-50/50 dark:bg-zinc-950/50`}
+                    className="w-10 h-10 rounded-lg text-sm font-bold border transition-all"
+                    style={{
+                      backgroundColor: isSelected ? color : 'var(--bg-card)',
+                      color: isSelected ? '#FFFFFF' : color,
+                      borderColor: isSelected ? color : 'var(--border)'
+                    }}
                   >
                     {val}
                   </button>
@@ -367,7 +369,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           <div>
             <div className="flex items-center justify-between mb-2">
               <Tooltip text="Descreva os temas principais abordados, intervenções realizadas e percepções clínicas relevantes. Quanto mais detalhado, melhor para acompanhamento futuro." showIcon>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Observações gerais *</label>
+                <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Observações gerais *</label>
               </Tooltip>
               <button
                 type="button"
@@ -398,9 +400,8 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                     setIsGeneratingIA(false);
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all disabled:opacity-40
-                  bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/20
-                  hover:shadow-purple-500/40 hover:scale-105 active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all disabled:opacity-40 text-white"
+                style={{ backgroundColor: 'var(--accent)' }}
               >
                 {isGeneratingIA ? (
                   <>
@@ -421,18 +422,18 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
               </button>
             </div>
             {isGeneratingIA && (
-              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-purple-500/20 flex items-center gap-3 animate-pulse">
-                <svg className="w-5 h-5 animate-spin text-purple-400" fill="none" viewBox="0 0 24 24">
+              <div className="mb-3 p-3 rounded-xl border flex items-start gap-3 animate-pulse" style={{ backgroundColor: 'var(--status-info-bg)', borderColor: 'var(--status-info)' }}>
+                <svg className="w-5 h-5 animate-spin" style={{ color: 'var(--status-info)' }} fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                <span className="text-sm font-medium text-purple-300">A I.A. está analisando suas anotações e gerando um resumo clínico...</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--status-info-text)' }}>A I.A. está analisando suas anotações e gerando um resumo clínico...</span>
               </div>
             )}
             <textarea
               value={formData.observacoes}
               onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-              className="w-full p-4 bg-slate-50/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[150px] custom-scrollbar"
+              className="ds-input resize-y min-h-[150px] custom-scrollbar"
               placeholder="Resumo da sessão e os principais temas abordados..."
               required
             />
@@ -441,12 +442,12 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           {/* Sessão 3: Comportamento */}
           <div>
             <Tooltip text="Registre postura corporal, expressão facial, tom de voz, contato visual e reações do paciente durante a sessão." showIcon>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Comportamento apresentado</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Comportamento apresentado</label>
             </Tooltip>
             <textarea
               value={formData.comportamento}
               onChange={(e) => setFormData({ ...formData, comportamento: e.target.value })}
-              className="w-full p-4 bg-slate-50/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[120px] custom-scrollbar"
+              className="ds-input resize-y min-h-[120px] custom-scrollbar"
               placeholder="Descreva a postura, afeto, humor e reações do paciente durante o atendimento..."
             />
           </div>
@@ -454,19 +455,19 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           {/* Sessão 4: Sintomas */}
           <div>
             <Tooltip text="Liste sintomas relatados pelo paciente: ansiedade, insônia, irritabilidade, alterações de apetite, somatizações, etc." showIcon>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sintomas relatados</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Sintomas relatados</label>
             </Tooltip>
             <textarea
               value={formData.sintomas}
               onChange={(e) => setFormData({ ...formData, sintomas: e.target.value })}
-              className="w-full p-4 bg-slate-50/50 dark:bg-zinc-950/50 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[120px] custom-scrollbar"
+              className="ds-input resize-y min-h-[120px] custom-scrollbar"
               placeholder="Ansiedade, insônia, sudorese, etc..."
             />
           </div>
 
           {/* Botões */}
-          <div className="pt-6 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm hidden md:block">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid var(--border)' }}>
+            <p className="text-xs max-w-sm hidden md:block" style={{ color: 'var(--text-secondary)' }}>
               Este histórico ficará salvo eternamente no banco de dados e poderá ser recuperado no prontuário do paciente.
             </p>
             
@@ -475,9 +476,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                 type="button"
                 onClick={handleExportPDF}
                 disabled={!formData.id_paciente || !formData.observacoes}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ds-btn ds-btn-secondary flex-1 sm:flex-none py-3"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Exportar PDF
@@ -486,7 +487,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
               <button 
                 type="submit" 
                 disabled={isSubmitting || patients.length === 0}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-white transition-all bg-indigo-500 rounded-xl hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 shadow-xl shadow-indigo-500/20"
+                className="ds-btn ds-btn-primary flex-1 sm:flex-none py-3"
               >
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">

@@ -123,9 +123,9 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-lg ds-card rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Search Input */}
-        <div className="flex items-center gap-3 px-4 border-b border-slate-200 dark:border-white/10">
+        <div className="flex items-center gap-3 px-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -136,9 +136,10 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Buscar paciente, ação ou tela..."
-            className="flex-1 py-4 bg-transparent text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+            className="flex-1 py-4 bg-transparent text-sm placeholder-slate-400 focus:outline-none"
+            style={{ color: 'var(--text-primary)' }}
           />
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded">
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
             ESC
           </kbd>
         </div>
@@ -147,38 +148,35 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
         <div ref={listRef} className="max-h-72 overflow-y-auto custom-scrollbar py-2">
           {results.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum resultado para "{query}"</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Nenhum resultado para "{query}"</p>
             </div>
           ) : (
             <>
               {!query.trim() && (
-                <p className="px-4 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ações Rápidas</p>
+                <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Ações Rápidas</p>
               )}
               {query.trim() && results.some(r => r.type === 'patient') && (
-                <p className="px-4 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pacientes</p>
+                <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Pacientes</p>
               )}
               {results.map((item, idx) => (
                 <button
                   key={`${item.type}-${item.label}-${idx}`}
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors ${
-                    selectedIndex === idx
-                      ? 'bg-indigo-500/10 dark:bg-indigo-500/20'
-                      : 'hover:bg-slate-50 dark:hover:bg-white/5'
-                  }`}
+                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors"
+                  style={{
+                    backgroundColor: selectedIndex === idx ? 'var(--accent-light)' : 'transparent'
+                  }}
                 >
                   <span className="text-lg shrink-0">{item.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${
-                      selectedIndex === idx ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-900 dark:text-white'
-                    }`}>
+                    <p className="text-sm font-medium truncate" style={{ color: selectedIndex === idx ? 'var(--accent)' : 'var(--text-primary)' }}>
                       {item.label}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.description}</p>
+                    <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{item.description}</p>
                   </div>
                   {selectedIndex === idx && (
-                    <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded">
+                    <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
                       ↵
                     </kbd>
                   )}
@@ -189,16 +187,16 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-zinc-950">
-          <div className="flex items-center gap-3 text-[10px] text-slate-400">
+        <div className="flex items-center justify-between px-4 py-2" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
+          <div className="flex items-center gap-3 text-[10px]" style={{ color: 'var(--text-muted)' }}>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-white/10 rounded text-[9px] font-mono">↑↓</kbd> navegar
+              <kbd className="px-1 py-0.5 rounded text-[9px] font-mono" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>↑↓</kbd> navegar
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-white/10 rounded text-[9px] font-mono">↵</kbd> abrir
+              <kbd className="px-1 py-0.5 rounded text-[9px] font-mono" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>↵</kbd> abrir
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-white/10 rounded text-[9px] font-mono">esc</kbd> fechar
+              <kbd className="px-1 py-0.5 rounded text-[9px] font-mono" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>esc</kbd> fechar
             </span>
           </div>
         </div>

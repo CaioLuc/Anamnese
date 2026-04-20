@@ -4,21 +4,36 @@
  * @param {'sm'|'md'} size
  */
 export default function Badge({ children, variant = 'neutral', size = 'sm', className = '' }) {
-  const variants = {
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    danger: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
-    warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-    info: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-    neutral: 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border-slate-200 dark:border-zinc-700',
+  const baseClasses = "ds-badge";
+  
+  const variantClasses = {
+    success: 'ds-badge-success',
+    danger: 'ds-badge-danger',
+    warning: 'ds-badge-warning',
+    info: '', // fallback to default ds-badge colors
+    neutral: '', // fallback to default ds-badge colors
+  };
+
+  const styles = {
+    neutral: {
+      backgroundColor: 'var(--bg-secondary)',
+      color: 'var(--text-secondary)',
+      border: '0.5px solid var(--border)'
+    }
   };
 
   const sizes = {
-    sm: 'px-2 py-0.5 text-[10px]',
-    md: 'px-2.5 py-1 text-xs',
+    sm: 'text-[10px] px-2 py-0.5',
+    md: 'text-xs px-2.5 py-1',
   };
 
+  const customStyle = variant === 'neutral' ? styles.neutral : {};
+
   return (
-    <span className={`inline-flex items-center font-bold rounded-full border ${variants[variant] || variants.neutral} ${sizes[size] || sizes.sm} ${className}`}>
+    <span 
+      className={`${baseClasses} ${variantClasses[variant] || ''} ${sizes[size] || sizes.sm} ${className}`}
+      style={customStyle}
+    >
       {children}
     </span>
   );

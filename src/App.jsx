@@ -216,12 +216,12 @@ function AppMain() {
   // 1. Loading auth
   if (isAuthChecking || isCheckingRole) {
     return (
-      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 items-center justify-center flex-col gap-3">
-        <svg className="w-10 h-10 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+      <div className="flex h-screen overflow-hidden items-center justify-center flex-col gap-3" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <svg className="w-10 h-10 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Verificando credenciais...</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Verificando credenciais...</p>
       </div>
     );
   }
@@ -229,7 +229,7 @@ function AppMain() {
   // 2. Not logged in
   if (!user) {
     return (
-      <div className="h-screen overflow-auto bg-slate-50 dark:bg-zinc-950">
+      <div className="h-screen overflow-auto" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <Login />
       </div>
     );
@@ -238,10 +238,10 @@ function AppMain() {
   // 3. Admin
   if (isAdmin) {
     return (
-      <div className="h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
+      <div className="h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <Suspense fallback={
           <div className="flex h-screen items-center justify-center">
-            <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
           </div>
         }>
           <AdminPanel />
@@ -253,7 +253,7 @@ function AppMain() {
   // 4. Psicólogo com conta bloqueada
   if (perfilPsicologo && perfilPsicologo.ativo === false) {
     return (
-      <div className="h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
+      <div className="h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <ContaBloqueada />
       </div>
     );
@@ -261,11 +261,11 @@ function AppMain() {
 
   // 5. Psicólogo normal
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
+    <div className="h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <Layout currentPath={currentPath} onNavigate={handleNavigate} userEmail={user.email} fullHeight={currentPath === 'questionarios'} patients={patients}>
         <Suspense fallback={
           <div className="flex h-full items-center justify-center">
-            <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
           </div>
         }>
           {renderContent()}

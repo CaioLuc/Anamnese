@@ -1,16 +1,9 @@
 /**
- * Card reutilizável com glassmorphism.
- * @param {'default'|'bordered'|'elevated'} variant
+ * Card reutilizável.
  */
-export default function Card({ children, className = '', variant = 'default', ...props }) {
-  const variants = {
-    default: 'bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl',
-    bordered: 'bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl shadow-sm',
-    elevated: 'bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl shadow-lg',
-  };
-
+export default function Card({ children, className = '', ...props }) {
   return (
-    <div className={`${variants[variant] || variants.default} ${className}`} {...props}>
+    <div className={`ds-card ${className}`} {...props}>
       {children}
     </div>
   );
@@ -21,7 +14,13 @@ export default function Card({ children, className = '', variant = 'default', ..
  */
 export function CardHeader({ children, className = '' }) {
   return (
-    <div className={`px-5 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] ${className}`}>
+    <div 
+      className={`px-5 py-4 ${className}`}
+      style={{ 
+        borderBottom: '0.5px solid var(--border)',
+        backgroundColor: 'var(--bg-secondary)'
+      }}
+    >
       {children}
     </div>
   );

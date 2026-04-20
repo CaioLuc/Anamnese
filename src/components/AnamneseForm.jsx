@@ -210,11 +210,11 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
     // COMPONENTES INTERNOS (UI)
     // ==========================================
     const Switch = ({ label, name, checked }) => (
-      <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl bg-white/50 dark:bg-zinc-900/50 border border-slate-200 dark:border-white/5 hover:border-indigo-500/30 transition-all group">
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{label}</span>
+      <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border transition-all group hover:border-blue-500/30" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <span className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{label}</span>
         <div className="relative">
           <input type="checkbox" name={name} checked={checked} onChange={handleChange} className="sr-only" />
-          <div className={`block w-10 h-6 rounded-full transition-colors ${checked ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-zinc-700'}`}></div>
+          <div className="block w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: checked ? 'var(--accent)' : 'var(--border)' }}></div>
           <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm ${checked ? 'transform translate-x-4' : ''}`}></div>
         </div>
       </label>
@@ -222,12 +222,12 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
 
     const SectionHeader = ({ title, desc, step }) => (
         <div className="flex items-center gap-4 mb-6 pt-8 first:pt-0">
-          <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0 border border-indigo-500/30">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
              {step}
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
-            {desc && <p className="text-sm text-slate-500 dark:text-slate-400">{desc}</p>}
+            <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+            {desc && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{desc}</p>}
           </div>
         </div>
     );
@@ -238,31 +238,31 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
       <div>
         {tip ? (
           <Tooltip text={tip} showIcon>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+            <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                {label}
-               {!isFilled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Campo não preenchido"></span>}
+               {!isFilled && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--status-warning)' }} title="Campo não preenchido"></span>}
             </label>
           </Tooltip>
         ) : (
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+          <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
              {label}
-             {!isFilled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Campo não preenchido"></span>}
+             {!isFilled && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--status-warning)' }} title="Campo não preenchido"></span>}
           </label>
         )}
         <div className="relative">
           <textarea
             name={name} value={formData[name] || ''} onChange={handleChange} rows={rows}
             placeholder={placeholder}
-            className={`w-full p-4 bg-white/80 dark:bg-zinc-950/80 border rounded-xl text-slate-900 dark:text-white resize-y custom-scrollbar focus:ring-1 transition-colors text-sm leading-relaxed ${
+            className={`ds-input resize-y min-h-[80px] custom-scrollbar text-sm leading-relaxed ${
               danger 
-                ? 'border-red-500/20 focus:ring-red-500/50 focus:border-red-500/50' 
+                ? 'border-red-400' 
                 : !isFilled
-                  ? 'border-amber-200 dark:border-amber-500/20 focus:ring-amber-400 focus:border-amber-400'
-                  : 'border-slate-200 dark:border-white/10 focus:ring-indigo-500 focus:border-indigo-500/50'
+                  ? 'border-orange-300'
+                  : ''
             }`}
           />
           {isFilled && (
-            <span className="absolute bottom-2 right-3 text-[10px] text-slate-400 pointer-events-none">
+            <span className="absolute bottom-2 right-3 text-[10px] pointer-events-none" style={{ color: 'var(--text-muted)' }}>
               {(formData[name] || '').length} caracteres
             </span>
           )}
@@ -271,17 +271,17 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
       );
     };
 
-    const sectionClass = "bg-white/40 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm scroll-mt-24";
+    const sectionClass = "ds-card p-6 scroll-mt-24";
 
     return (
       <div className="w-full max-w-4xl mx-auto custom-scrollbar h-full overflow-y-auto pr-2 pb-10">
         
         {statusMessage.text && (
-          <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 transition-all sticky top-0 z-10 ${
-            statusMessage.type === 'success' 
-            ? 'bg-emerald-500/90 backdrop-blur-md border-emerald-500/20 text-emerald-50 shadow-xl' 
-            : 'bg-red-500/90 backdrop-blur-md border-red-500/20 text-red-50 shadow-xl'
-          }`}>
+          <div className="mb-6 p-4 rounded-xl border flex items-start gap-3 transition-all sticky top-0 z-10 shadow-lg" style={{
+            backgroundColor: statusMessage.type === 'success' ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
+            borderColor: statusMessage.type === 'success' ? 'var(--status-success)' : 'var(--status-danger)',
+            color: statusMessage.type === 'success' ? 'var(--status-success-text)' : 'var(--status-danger-text)'
+          }}>
             <p className="text-sm font-medium">{statusMessage.text}</p>
           </div>
         )}
@@ -290,18 +290,18 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
 
             {/* Draft banner */}
             {hasDraft && !initialData && (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 animate-in fade-in duration-300">
+              <div className="border rounded-2xl p-4 flex items-center justify-between gap-3 animate-in fade-in duration-300" style={{ backgroundColor: 'var(--status-warning-bg)', borderColor: 'var(--status-warning)' }}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5 shrink-0" style={{ color: 'var(--status-warning)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Existe um rascunho salvo automaticamente para este paciente.</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--status-warning-text)' }}>Existe um rascunho salvo automaticamente para este paciente.</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button type="button" onClick={dismissDraft} className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
+                  <button type="button" onClick={dismissDraft} className="ds-btn ds-btn-ghost px-3 py-1.5 text-xs">
                     Descartar
                   </button>
-                  <button type="button" onClick={restoreDraft} className="px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors">
+                  <button type="button" onClick={restoreDraft} className="ds-btn px-3 py-1.5 text-xs text-white" style={{ backgroundColor: 'var(--status-warning)' }}>
                     Restaurar Rascunho
                   </button>
                 </div>
@@ -309,29 +309,28 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             )}
             
             {/* Patient card + auto-save + progress */}
-            <div className="bg-indigo-500/5 border border-indigo-500/15 rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md">
+            <div className="border rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--accent-light)', borderColor: 'var(--border)' }}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md" style={{ backgroundColor: 'var(--accent)' }}>
                 {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900 dark:text-white">{patient?.nome || 'Paciente'}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{initialData ? 'Editando anamnese existente' : 'Nova anamnese estruturada — Adulto'}</p>
+                <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{patient?.nome || 'Paciente'}</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{initialData ? 'Editando anamnese existente' : 'Nova anamnese estruturada — Adulto'}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 {/* Completion */}
                 <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-24 h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-500" style={{ width: `${completionPct}%` }} />
+                  <div className="w-24 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completionPct}%`, backgroundColor: 'var(--status-success)' }} />
                   </div>
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums">{completionPct}%</span>
+                  <span className="text-[11px] font-bold tabular-nums" style={{ color: 'var(--text-secondary)' }}>{completionPct}%</span>
                 </div>
                 {/* Auto-save indicator */}
                 {autoSaveStatus && (
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all duration-300 shrink-0 ${
-                    autoSaveStatus === 'saving'
-                      ? 'bg-slate-100 dark:bg-white/5 text-slate-400'
-                      : 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400'
-                  }`}>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all duration-300 shrink-0" style={{
+                    backgroundColor: autoSaveStatus === 'saving' ? 'var(--bg-primary)' : 'var(--status-success-bg)',
+                    color: autoSaveStatus === 'saving' ? 'var(--text-muted)' : 'var(--status-success-text)'
+                  }}>
                     {autoSaveStatus === 'saving' ? (
                       <><svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Salvando...</>
                     ) : (
@@ -343,17 +342,19 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </div>
 
             {/* Stepper */}
-            <div className="flex gap-1.5 overflow-x-auto pb-3 custom-scrollbar sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-30 pt-2 px-1 border-b border-slate-200 dark:border-white/5">
+            <div className="flex gap-1.5 overflow-x-auto pb-3 custom-scrollbar sticky top-0 z-30 pt-2 px-1 border-b" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
               {STEPS.map((s, idx) => (
                 <button
                   type="button"
                   key={idx}
                   onClick={() => scrollToStep(idx)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold whitespace-nowrap rounded-xl transition-all border ${
-                    currentStep === idx 
-                      ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20' 
-                      : 'bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-100 dark:hover:bg-zinc-700 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
+                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold whitespace-nowrap rounded-xl transition-all border"
+                  style={{
+                    backgroundColor: currentStep === idx ? 'var(--accent)' : 'var(--bg-card)',
+                    color: currentStep === idx ? '#FFFFFF' : 'var(--text-secondary)',
+                    borderColor: currentStep === idx ? 'var(--accent)' : 'transparent',
+                    boxShadow: currentStep === idx ? 'var(--shadow)' : 'none'
+                  }}
                 >
                   <span>{s.icon}</span> {s.label}
                 </button>
@@ -370,7 +371,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                     <Switch label="Já consultou um psiquiatra anteriormente?" name="psiquiatra_previo" checked={formData.psiquiatra_previo} />
                 </div>
                 {formData.psiquiatra_previo && (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 animate-in fade-in zoom-in-95 duration-200">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 p-4 rounded-xl border animate-in fade-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--accent-light)', borderColor: 'var(--border)' }}>
                       <Switch label="Se sim, foi em ambulatório?" name="foi_ambulatorio" checked={formData.foi_ambulatorio} />
                       <Switch label="Se sim, houve internamento?" name="houve_internamento" checked={formData.houve_internamento} />
                    </div>
@@ -386,50 +387,50 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                     {/* Pai */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className="md:col-span-1">
-                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Nome do Pai</label>
-                           <input type="text" name="nome_pai" value={formData.nome_pai} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500 transition-colors" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Nome do Pai</label>
+                           <input type="text" name="nome_pai" value={formData.nome_pai} onChange={handleChange} className="ds-input" />
                         </div>
                         <div>
-                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Idade</label>
-                           <input type="number" name="idade_pai" value={formData.idade_pai} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500 transition-colors" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Idade</label>
+                           <input type="number" name="idade_pai" value={formData.idade_pai} onChange={handleChange} className="ds-input" />
                         </div>
                         <div>
-                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Profissão</label>
-                           <input type="text" name="profissao_pai" value={formData.profissao_pai} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500 transition-colors" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Profissão</label>
+                           <input type="text" name="profissao_pai" value={formData.profissao_pai} onChange={handleChange} className="ds-input" />
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-slate-100 dark:bg-white/5"></div>
+                    <div className="h-px w-full" style={{ backgroundColor: 'var(--border)' }}></div>
 
                     {/* Mãe */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className="md:col-span-1">
-                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Nome da Mãe</label>
-                           <input type="text" name="nome_mae" value={formData.nome_mae} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500 transition-colors" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Nome da Mãe</label>
+                           <input type="text" name="nome_mae" value={formData.nome_mae} onChange={handleChange} className="ds-input" />
                         </div>
                         <div>
-                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Idade</label>
-                           <input type="number" name="idade_mae" value={formData.idade_mae} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500 transition-colors" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Idade</label>
+                           <input type="number" name="idade_mae" value={formData.idade_mae} onChange={handleChange} className="ds-input" />
                         </div>
                         <div>
-                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Profissão</label>
-                           <input type="text" name="profissao_mae" value={formData.profissao_mae} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500 transition-colors" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Profissão</label>
+                           <input type="text" name="profissao_mae" value={formData.profissao_mae} onChange={handleChange} className="ds-input" />
                         </div>
                     </div>
 
                     {/* Irmãos */}
-                    <div className="grid grid-cols-3 gap-3 bg-slate-50 dark:bg-zinc-950 p-4 rounded-xl border border-slate-200 dark:border-white/5">
+                    <div className="grid grid-cols-3 gap-3 p-4 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                         <div>
-                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Qtd. Irmãos</label>
-                           <input type="number" name="qtd_irmaos" value={formData.qtd_irmaos} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Qtd. Irmãos</label>
+                           <input type="number" name="qtd_irmaos" value={formData.qtd_irmaos} onChange={handleChange} className="ds-input" />
                         </div>
                         <div>
-                           <label className="block text-xs font-medium text-blue-500 dark:text-blue-400 mb-1">Masculino</label>
-                           <input type="number" name="irmaos_masculino" value={formData.irmaos_masculino} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--status-info)' }}>Masculino</label>
+                           <input type="number" name="irmaos_masculino" value={formData.irmaos_masculino} onChange={handleChange} className="ds-input" />
                         </div>
                         <div>
-                           <label className="block text-xs font-medium text-pink-500 dark:text-pink-400 mb-1">Feminino</label>
-                           <input type="number" name="irmaos_feminino" value={formData.irmaos_feminino} onChange={handleChange} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--status-danger)' }}>Feminino</label>
+                           <input type="number" name="irmaos_feminino" value={formData.irmaos_feminino} onChange={handleChange} className="ds-input" />
                         </div>
                     </div>
 
@@ -466,7 +467,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             {/* ==========================================
                 SEÇÃO 4: Hábitos e Rotina (NOVO)
             ========================================== */}
-            <section id="step-4" className={`${sectionClass} border-l-4 border-l-indigo-500`}>
+            <section id="step-4" className={sectionClass} style={{ borderLeft: '4px solid var(--accent)' }}>
                 <SectionHeader step="4" title="Hábitos e Rotina" desc="Padrões de sono, alimentação, exercício e lazer." />
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -500,12 +501,12 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                     <TextArea name="uso_substancias" label="Uso de Substâncias Psicoativas" tip="Tabagismo, álcool, drogas ilícitas. Frequência, quantidade e tempo de uso." rows={2} danger />
 
                     {/* Suicide alert */}
-                    <div className="bg-red-500/10 border border-red-500/30 p-5 rounded-xl mt-4">
-                       <label className="block text-xs font-bold text-red-400 mb-2 flex items-center gap-2">
+                    <div className="p-5 rounded-xl mt-4 border" style={{ backgroundColor: 'var(--status-danger-bg)', borderColor: 'var(--status-danger)' }}>
+                       <label className="block text-xs font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--status-danger-text)' }}>
                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                          Atenção: Houve tentativas ou ideação suicida?
                        </label>
-                       <textarea name="tentativa_suicidio" value={formData.tentativa_suicidio} onChange={handleChange} rows="2" className="w-full p-3 bg-zinc-950/90 border border-red-500/20 rounded-lg text-red-100 placeholder-red-900/50 resize-y focus:ring-1 focus:ring-red-500 text-sm" placeholder="Se sim, detalhe época, método, desfecho e acompanhamento pós-crise..." />
+                       <textarea name="tentativa_suicidio" value={formData.tentativa_suicidio} onChange={handleChange} rows="2" className="ds-input resize-y" placeholder="Se sim, detalhe época, método, desfecho e acompanhamento pós-crise..." />
                     </div>
                 </div>
             </section>
@@ -522,17 +523,17 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </section>
 
             {/* Submit button */}
-            <div className="sticky bottom-0 mt-6 py-4 bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-white/5 flex items-center justify-between z-20 gap-4">
+            <div className="sticky bottom-0 mt-6 py-4 flex items-center justify-between z-20 gap-4" style={{ backgroundColor: 'var(--bg-primary)', borderTop: '1px solid var(--border)' }}>
               <div className="flex items-center gap-2 sm:hidden">
-                <div className="w-16 h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-500" style={{ width: `${completionPct}%` }} />
+                <div className="w-16 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completionPct}%`, backgroundColor: 'var(--status-success)' }} />
                 </div>
-                <span className="text-[10px] font-bold text-slate-500 tabular-nums">{completionPct}%</span>
+                <span className="text-[10px] font-bold tabular-nums" style={{ color: 'var(--text-secondary)' }}>{completionPct}%</span>
               </div>
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="inline-flex items-center justify-center px-8 py-3.5 text-sm font-bold text-white transition-all bg-indigo-500 hover:bg-indigo-600 rounded-xl shadow-xl shadow-indigo-500/20 disabled:opacity-50 ml-auto"
+                className="ds-btn ds-btn-primary px-8 py-3.5 ml-auto text-sm font-bold shadow-lg"
               >
                 {isSubmitting ? 'Salvando...' : initialData?.id ? 'Atualizar Ficha' : 'Assinar e Concluir Anamnese'}
               </button>

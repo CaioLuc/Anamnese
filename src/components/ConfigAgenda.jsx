@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { salvarConfigAgenda, lerConfigAgenda, verificarSlugDisponivel } from '../services/agendaService';
+import Button from './ui/Button';
+import { Check, X } from 'lucide-react';
 
 const DIAS = [
   { id: 'seg', label: 'Segunda' },
@@ -114,7 +116,7 @@ export default function ConfigAgenda({ onClose }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+        <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
         </svg>
@@ -127,121 +129,134 @@ export default function ConfigAgenda({ onClose }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Configurar Agenda Pública</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">Defina seus horários e gere um link para seus pacientes agendarem online.</p>
+          <h1 className="text-2xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Configurar Agenda Pública</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Defina seus horários e gere um link para seus pacientes agendarem online.</p>
         </div>
-        <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 transition-colors">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        <button onClick={onClose} className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+          <X size={20} />
         </button>
       </div>
 
       {/* Link Público */}
-      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Link Público</h3>
+      <div className="ds-card p-5 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <h3 className="text-sm font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Link Público</h3>
 
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Seu slug (URL personalizada)</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Seu slug (URL personalizada)</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center border border-slate-300 dark:border-white/10 rounded-xl overflow-hidden bg-slate-50 dark:bg-zinc-950">
-              <span className="px-3 text-xs text-slate-400 bg-slate-100 dark:bg-zinc-800 py-2.5 border-r border-slate-300 dark:border-white/10 whitespace-nowrap">/agendar/</span>
+            <div className="flex-1 flex items-center rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+              <span className="px-3 text-xs py-2.5 whitespace-nowrap" style={{ color: 'var(--text-muted)', borderRight: '0.5px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>/agendar/</span>
               <input
                 type="text"
                 value={slug}
                 onChange={e => handleSlugChange(e.target.value)}
                 placeholder="dra-maria"
-                className="flex-1 px-3 py-2.5 bg-transparent text-slate-900 dark:text-white text-sm focus:outline-none"
+                className="flex-1 px-3 py-2.5 bg-transparent text-sm focus:outline-none"
+                style={{ color: 'var(--text-primary)' }}
               />
             </div>
-            {slugStatus === 'checking' && <span className="text-xs text-slate-400">Verificando...</span>}
-            {slugStatus === 'ok' && <span className="text-xs text-emerald-400 font-semibold">✓ Disponível</span>}
-            {slugStatus === 'taken' && <span className="text-xs text-red-400 font-semibold">✗ Em uso</span>}
+            {slugStatus === 'checking' && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Verificando...</span>}
+            {slugStatus === 'ok' && <span className="text-xs font-semibold" style={{ color: 'var(--status-success)' }}>✓ Disponível</span>}
+            {slugStatus === 'taken' && <span className="text-xs font-semibold" style={{ color: 'var(--status-danger)' }}>✗ Em uso</span>}
           </div>
         </div>
 
         {publicUrl && slugStatus === 'ok' && (
-          <div className="flex items-center gap-2 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
-            <span className="text-xs text-indigo-400 truncate flex-1 font-mono">{publicUrl}</span>
-            <button onClick={handleCopy} className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-colors">
+          <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', border: '0.5px solid var(--accent)' }}>
+            <span className="text-xs truncate flex-1 font-mono" style={{ color: 'var(--accent)' }}>{publicUrl}</span>
+            <Button size="sm" onClick={handleCopy}>
               {copied ? 'Copiado!' : 'Copiar'}
-            </button>
+            </Button>
           </div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Nome Público</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nome Público</label>
             <input
               type="text"
               value={nomePublico}
               onChange={e => setNomePublico(e.target.value)}
               placeholder="Dra. Maria Silva"
-              className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+              className="ds-input"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Especialidade / CRP</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Especialidade / CRP</label>
             <input
               type="text"
               value={especialidade}
               onChange={e => setEspecialidade(e.target.value)}
               placeholder="Psicóloga Clínica - CRP 05/12345"
-              className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+              className="ds-input"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Duração da sessão (min)</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Duração da sessão (min)</label>
             <input
               type="number" min="15" max="180" step="5"
               value={duracaoPadrao}
               onChange={e => setDuracaoPadrao(Number(e.target.value))}
-              className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+              className="ds-input"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Valor da consulta (R$)</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Valor da consulta (R$)</label>
             <input
               type="text"
               value={valorConsulta}
               onChange={e => setValorConsulta(e.target.value)}
               placeholder="150,00"
-              className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+              className="ds-input"
             />
           </div>
         </div>
       </div>
 
       {/* Horários de Trabalho */}
-      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Horários de Atendimento</h3>
+      <div className="ds-card p-5 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <h3 className="text-sm font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Horários de Atendimento</h3>
         <div className="space-y-2">
           {DIAS.map(dia => {
             const d = dias[dia.id];
             return (
-              <div key={dia.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${d.ativo ? 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10' : 'bg-slate-100/50 dark:bg-zinc-950/50 border-transparent opacity-50'}`}>
+              <div 
+                key={dia.id} 
+                className={`flex items-center gap-3 p-3 rounded-xl transition-all`}
+                style={{ 
+                    backgroundColor: d.ativo ? 'var(--bg-secondary)' : 'transparent',
+                    border: `0.5px solid ${d.ativo ? 'var(--border)' : 'transparent'}`,
+                    opacity: d.ativo ? 1 : 0.5
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => toggleDia(dia.id)}
-                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${d.ativo ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0`}
+                  style={{ backgroundColor: d.ativo ? 'var(--accent)' : 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${d.ativo ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <span 
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow transition-all duration-200 ${d.ativo ? 'translate-x-4' : 'translate-x-0'}`} 
+                    style={{ backgroundColor: '#FFFFFF' }}
+                  />
                 </button>
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 w-20">{dia.label}</span>
+                <span className="text-sm font-medium w-20" style={{ color: 'var(--text-primary)' }}>{dia.label}</span>
                 {d.ativo && (
                   <div className="flex items-center gap-2 flex-wrap">
                     <input type="time" value={d.inicio} onChange={e => updateDia(dia.id, 'inicio', e.target.value)}
-                      className="px-2 py-1.5 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-lg text-xs text-slate-900 dark:text-white" />
-                    <span className="text-xs text-slate-400">até</span>
+                      className="ds-input py-1.5 px-2 text-xs" />
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>até</span>
                     <input type="time" value={d.fim} onChange={e => updateDia(dia.id, 'fim', e.target.value)}
-                      className="px-2 py-1.5 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-lg text-xs text-slate-900 dark:text-white" />
-                    <span className="text-[10px] text-slate-400 mx-1">Intervalo:</span>
+                      className="ds-input py-1.5 px-2 text-xs" />
+                    <span className="text-[10px] mx-1" style={{ color: 'var(--text-muted)' }}>Intervalo:</span>
                     <input type="time" value={d.intervalo_inicio} onChange={e => updateDia(dia.id, 'intervalo_inicio', e.target.value)}
-                      className="px-2 py-1.5 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-lg text-xs text-slate-900 dark:text-white" />
-                    <span className="text-xs text-slate-400">-</span>
+                      className="ds-input py-1.5 px-2 text-xs" />
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>-</span>
                     <input type="time" value={d.intervalo_fim} onChange={e => updateDia(dia.id, 'intervalo_fim', e.target.value)}
-                      className="px-2 py-1.5 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-lg text-xs text-slate-900 dark:text-white" />
+                      className="ds-input py-1.5 px-2 text-xs" />
                   </div>
                 )}
               </div>
@@ -252,14 +267,10 @@ export default function ConfigAgenda({ onClose }) {
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all"
-        >
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? 'Salvando...' : 'Salvar Configuração'}
-        </button>
-        {saved && <span className="text-sm text-emerald-400 font-semibold animate-in fade-in">✓ Salvo com sucesso!</span>}
+        </Button>
+        {saved && <span className="text-sm font-semibold animate-in fade-in flex items-center gap-1" style={{ color: 'var(--status-success)' }}><Check size={16} /> Salvo com sucesso!</span>}
       </div>
     </div>
   );

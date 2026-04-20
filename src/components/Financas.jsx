@@ -60,24 +60,24 @@ function formatDateBR(dateStr) {
 
 // KPI Card
 function FinCard({ label, value, subtext, type, icon }) {
-  const styles = {
-    total:    { bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-600 dark:text-indigo-400', iconBg: 'bg-indigo-500/20', iconText: 'text-indigo-500 dark:text-indigo-300' },
-    pago:     { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', iconBg: 'bg-emerald-500/20', iconText: 'text-emerald-600 dark:text-emerald-300' },
-    pendente: { bg: 'bg-rose-500/10', border: 'border-rose-500/20', text: 'text-rose-600 dark:text-rose-400', iconBg: 'bg-rose-500/20', iconText: 'text-rose-600 dark:text-rose-300' },
-    count:    { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-600 dark:text-cyan-400', iconBg: 'bg-cyan-500/20', iconText: 'text-cyan-600 dark:text-cyan-300' },
+  const colorMap = {
+    total:    { main: 'var(--accent)', bg: 'var(--accent-light)' },
+    pago:     { main: 'var(--status-success)', bg: 'var(--status-success-bg)' },
+    pendente: { main: 'var(--status-danger)', bg: 'var(--status-danger-bg)' },
+    count:    { main: 'var(--status-info)', bg: 'var(--status-info-bg)' },
   };
-  const s = styles[type] || styles.total;
+  const c = colorMap[type] || colorMap.total;
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5 flex flex-col gap-3 group hover:scale-[1.02] transition-transform duration-200`}>
+    <div className="ds-card relative overflow-hidden p-5 flex flex-col gap-3 group hover:scale-[1.02] transition-transform duration-200">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">{label}</span>
-        <div className={`p-2 rounded-xl ${s.iconBg} ${s.iconText}`}>{icon}</div>
+        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+        <div className="p-2 rounded-xl" style={{ backgroundColor: c.bg, color: c.main }}>{icon}</div>
       </div>
-      <div className={`text-3xl font-black tracking-tight ${s.text}`}>
+      <div className="text-3xl font-black tracking-tight" style={{ color: c.main }}>
         {typeof value === 'number' ? <><span className="text-xl mr-0.5">R$</span>{formatCurrency(value)}</> : value}
       </div>
-      {subtext && <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-1">{subtext}</p>}
+      {subtext && <p className="text-[11px] -mt-1" style={{ color: 'var(--text-muted)' }}>{subtext}</p>}
     </div>
   );
 }
@@ -266,20 +266,21 @@ export default function Financas({ patients, isLoadingPatients }) {
       {/* Header & Filtros */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Financeiro</h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Controle de faturamento, receitas e inadimplências.</p>
+          <h2 className="text-3xl font-heading font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Financeiro</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Controle de faturamento, receitas e inadimplências.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-1 flex items-center shadow-sm">
+          <div className="ds-card p-1 flex items-center">
             {PERIODOS.map(p => (
               <button
                 key={p.id}
                 onClick={() => setPeriodo(p.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  periodo === p.id
-                    ? 'bg-indigo-500 text-white shadow-md'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                style={{
+                  backgroundColor: periodo === p.id ? 'var(--accent)' : 'transparent',
+                  color: periodo === p.id ? '#FFFFFF' : 'var(--text-secondary)',
+                  boxShadow: periodo === p.id ? 'var(--shadow)' : 'none'
+                }}
               >
                 {p.label}
               </button>
@@ -287,7 +288,7 @@ export default function Financas({ patients, isLoadingPatients }) {
           </div>
           <button 
             onClick={handleExportPDF}
-            className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-md hover:scale-[1.02] transition-transform text-xs"
+            className="ds-btn ds-btn-secondary flex items-center gap-1.5 text-xs font-bold"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             PDF
@@ -297,13 +298,13 @@ export default function Financas({ patients, isLoadingPatients }) {
 
       {/* Warning: sessions without value */}
       {stats.sessoesSemValor > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        <div className="rounded-2xl p-4 flex items-start gap-3" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
+          <svg className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--status-warning)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
           <div>
-            <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+            <p className="text-sm font-bold" style={{ color: 'var(--status-warning-text)' }}>
               {stats.sessoesSemValor} sessão(ões) sem valor definido
             </p>
-            <p className="text-xs text-amber-500/80 mt-0.5">
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               Defina o valor da sessão no cadastro do paciente para que o financeiro funcione corretamente.
             </p>
           </div>
@@ -346,8 +347,8 @@ export default function Financas({ patients, isLoadingPatients }) {
       {sessoesPeriodo.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Bar Chart */}
-          <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
-            <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wider">Recebido vs Pendente</h3>
+          <div className="ds-card p-5">
+            <h3 className="font-bold text-sm mb-4 uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Recebido vs Pendente</h3>
             <div className="h-52 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData}>
@@ -367,8 +368,8 @@ export default function Financas({ patients, isLoadingPatients }) {
 
           {/* Pie Chart - Payment Methods */}
           {pieData.length > 0 && (
-            <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-5 shadow-lg">
-              <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wider">Formas de Pagamento</h3>
+            <div className="ds-card p-5">
+              <h3 className="font-bold text-sm mb-4 uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Formas de Pagamento</h3>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -386,9 +387,9 @@ export default function Financas({ patients, isLoadingPatients }) {
       )}
 
       {/* Filters Row */}
-      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 shadow-sm">
+      <div className="ds-card p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Filtrar:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider ml-1" style={{ color: 'var(--text-muted)' }}>Filtrar:</span>
           {[
             { id: 'todos', label: 'Todos', count: stats.totalSessoes },
             { id: 'pago', label: 'Pagos', count: stats.pagas },
@@ -397,22 +398,22 @@ export default function Financas({ patients, isLoadingPatients }) {
             <button
               key={f.id}
               onClick={() => setFilterPago(f.id)}
-              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                filterPago === f.id
-                  ? 'bg-indigo-500 text-white'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
-              }`}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+              style={{
+                backgroundColor: filterPago === f.id ? 'var(--accent)' : 'transparent',
+                color: filterPago === f.id ? '#FFFFFF' : 'var(--text-secondary)'
+              }}
             >
               {f.label} ({f.count})
             </button>
           ))}
         </div>
         <div className="sm:ml-auto flex items-center gap-1.5">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ordenar:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Ordenar:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-2 py-1.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="ds-input px-2 py-1.5 text-xs"
           >
             <option value="data_desc">Data (recente)</option>
             <option value="data_asc">Data (antigo)</option>
@@ -423,27 +424,27 @@ export default function Financas({ patients, isLoadingPatients }) {
       </div>
 
       {/* Session Table */}
-      <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-lg">
-        <div className="px-5 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
-          <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
+          <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+            <svg className="w-4 h-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             Sessões ({sessoesFiltradas.length})
           </h3>
         </div>
         
         {isLoading || isLoadingPatients ? (
           <div className="flex items-center justify-center py-16">
-             <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+             <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
           </div>
         ) : sessoesFiltradas.length === 0 ? (
           <div className="py-16 text-center">
             <span className="text-3xl block mb-2">📭</span>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Nenhuma sessão encontrada para este filtro.</p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Nenhuma sessão encontrada para este filtro.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/5 bg-slate-50/80 dark:bg-zinc-950/50">
+              <thead className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
                 <tr>
                   <th className="px-5 py-3 font-semibold">Data</th>
                   <th className="px-5 py-3 font-semibold">Paciente</th>
@@ -453,7 +454,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                   <th className="px-5 py-3 font-semibold text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+              <tbody style={{ borderColor: 'var(--border)' }} className="divide-y">
                 {paginatedSessoes.map(s => {
                   const p = patients.find(pt => pt.id === s.id_paciente);
                   const isUpdating = updatingId === s.id;
@@ -461,32 +462,32 @@ export default function Financas({ patients, isLoadingPatients }) {
                   const isEditing = editingPayment === s.id;
                   
                   return (
-                    <tr key={s.id} className={`transition-colors ${isUpdating ? 'opacity-50' : 'hover:bg-slate-50 dark:hover:bg-white/[0.02]'}`}>
-                      <td className="px-5 py-3.5 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs">
+                    <tr key={s.id} className={`transition-colors ${isUpdating ? 'opacity-50' : ''}`}>
+                      <td className="px-5 py-3.5 font-medium whitespace-nowrap text-xs" style={{ color: 'var(--text-secondary)' }}>
                         {formatDateBR(s.data_sessao)}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
-                           <div className="w-7 h-7 rounded-full bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center text-[10px] font-bold ring-1 ring-indigo-500/20 shrink-0">
+                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
                              {p?.nome?.charAt(0)?.toUpperCase() || '?'}
                            </div>
-                           <span className="text-slate-800 dark:text-slate-200 font-medium text-xs">{p?.nome || <span className="italic text-slate-400">Removido</span>}</span>
+                           <span className="font-medium text-xs" style={{ color: 'var(--text-primary)' }}>{p?.nome || <span className="italic" style={{ color: 'var(--text-muted)' }}>Removido</span>}</span>
                         </div>
                       </td>
-                      <td className={`px-5 py-3.5 font-bold whitespace-nowrap text-xs ${valor === 0 ? 'text-amber-500' : 'text-slate-900 dark:text-white'}`}>
+                      <td className="px-5 py-3.5 font-bold whitespace-nowrap text-xs" style={{ color: valor === 0 ? 'var(--status-warning)' : 'var(--text-primary)' }}>
                         {valor === 0 ? (
-                          <span className="text-amber-500/70 italic">Sem valor</span>
+                          <span className="italic" style={{ color: 'var(--status-warning)' }}>Sem valor</span>
                         ) : (
                           `R$ ${formatCurrency(valor)}`
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                          s.pago 
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                          : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                        }`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${s.pago ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                        <span className="ds-badge" style={{
+                          backgroundColor: s.pago ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
+                          color: s.pago ? 'var(--status-success-text)' : 'var(--status-danger-text)',
+                          border: `1px solid ${s.pago ? 'var(--status-success)' : 'var(--status-danger)'}`
+                        }}>
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.pago ? 'var(--status-success)' : 'var(--status-danger)' }}></div>
                           {s.pago ? 'Pago' : 'Pendente'}
                         </span>
                       </td>
@@ -496,13 +497,13 @@ export default function Financas({ patients, isLoadingPatients }) {
                             value={s.forma_pagamento || ''}
                             onChange={(e) => handleChangeForma(s, e.target.value)}
                             disabled={isUpdating}
-                            className="px-2 py-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                            className="ds-input px-2 py-1 text-[11px] disabled:opacity-50"
                           >
                             <option value="">—</option>
                             {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
                           </select>
                         ) : (
-                          <span className="text-[11px] text-slate-400">—</span>
+                          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>—</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap text-right">
@@ -510,7 +511,8 @@ export default function Financas({ patients, isLoadingPatients }) {
                           <button
                             onClick={() => setEditingPayment(s.id)}
                             disabled={isUpdating}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white hover:border-transparent transition-all disabled:opacity-50"
+                            className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
+                            style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success-text)', border: '1px solid var(--status-success)' }}
                           >
                             💰 Dar Baixa
                           </button>
@@ -521,14 +523,15 @@ export default function Financas({ patients, isLoadingPatients }) {
                                 key={f}
                                 onClick={() => handleTogglePago(s, f)}
                                 disabled={isUpdating}
-                                className="px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
+                                className="ds-btn px-2 py-1 text-[10px] font-bold transition-all disabled:opacity-50"
+                                style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success-text)', border: '1px solid var(--status-success)' }}
                               >
                                 {f}
                               </button>
                             ))}
                             <button
                               onClick={() => setEditingPayment(null)}
-                              className="px-1.5 py-1 rounded-md text-[10px] text-slate-400 hover:text-slate-600"
+                              className="px-1.5 py-1 rounded-md text-[10px]" style={{ color: 'var(--text-muted)' }}
                             >
                               ✕
                             </button>
@@ -537,7 +540,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                           <button
                             onClick={() => handleTogglePago(s)}
                             disabled={isUpdating}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 transition-all disabled:opacity-50"
+                            className="ds-btn ds-btn-ghost text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
                           >
                             Desfazer
                           </button>

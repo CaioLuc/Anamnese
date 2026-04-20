@@ -9,13 +9,14 @@ const TemplateCarda = ({ template, onSelecionar }) => {
   return (
     <button
       onClick={() => onSelecionar(template)}
-      className="w-full text-left group bg-white dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border border-slate-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-500/50 rounded-2xl p-4 transition-all hover:shadow-md"
+      className="w-full text-left group ds-card hover:shadow-md p-4 transition-all"
+      style={{ borderColor: 'var(--border)' }}
     >
       <div className="flex items-start gap-3">
         <span className="text-2xl mt-0.5 flex-shrink-0">{template.icone || '📋'}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-slate-900 dark:text-white text-sm leading-tight group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
+            <span className="font-semibold text-sm leading-tight transition-colors" style={{ color: 'var(--text-primary)' }}>
               {template.nome || 'Questionário Sem Nome'}
             </span>
             {isPadrao && (
@@ -25,13 +26,13 @@ const TemplateCarda = ({ template, onSelecionar }) => {
             )}
           </div>
           {template.descricao && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{template.descricao}</p>
+            <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{template.descricao}</p>
           )}
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
             📋 {totalCampos} campo{totalCampos !== 1 ? 's' : ''}
           </p>
         </div>
-        <svg className="w-5 h-5 text-slate-300 dark:text-slate-600 group-hover:text-indigo-400 transition-colors flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 transition-colors flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </div>
@@ -69,15 +70,15 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'var(--overlay)' }}>
+      <div className="ds-card relative w-full max-w-lg flex flex-col max-h-[80vh]" style={{ borderRadius: '16px' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100 dark:border-white/5 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Escolher Questionário</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Selecione o modelo para esta anamnese</p>
+            <h2 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Escolher Questionário</h2>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Selecione o modelo para esta anamnese</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
+          <button onClick={onClose} className="transition-colors" style={{ color: 'var(--text-muted)' }}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -95,7 +96,7 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar questionário..."
-              className="w-full pl-9 pr-4 py-2 text-sm bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="ds-input pl-9"
             />
           </div>
         </div>
@@ -111,7 +112,7 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
             </div>
           ) : filtrados.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-slate-500 dark:text-slate-400 text-sm">Nenhum questionário encontrado.</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Nenhum questionário encontrado.</p>
             </div>
           ) : (
             filtrados.map(template => (

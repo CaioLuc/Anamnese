@@ -80,9 +80,9 @@ export default function OnboardingOverlay({ onComplete }) {
       <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md" />
 
       {/* Card */}
-      <div className={`relative w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+      <div className={`relative w-full max-w-md ds-card overflow-hidden transition-all duration-500 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`} style={{ borderRadius: '24px' }}>
         {/* Gradient accent top */}
-        <div className="h-1 bg-gradient-to-r from-indigo-500 via-cyan-500 to-emerald-500" />
+        <div className="h-1" style={{ background: 'linear-gradient(to right, var(--accent), var(--status-info), var(--status-success))' }} />
 
         {/* Content */}
         <div className="p-8 text-center">
@@ -92,10 +92,10 @@ export default function OnboardingOverlay({ onComplete }) {
           </div>
 
           {/* Texts */}
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+          <h2 className="text-xl font-heading font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
             {step.title}
           </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {step.description}
           </p>
         </div>
@@ -109,11 +109,15 @@ export default function OnboardingOverlay({ onComplete }) {
                 key={idx}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === currentStep
-                    ? 'w-8 bg-indigo-500'
+                    ? 'w-8'
                     : idx < currentStep
-                    ? 'w-1.5 bg-indigo-500/50'
-                    : 'w-1.5 bg-slate-200 dark:bg-white/10'
+                    ? 'w-1.5'
+                    : 'w-1.5'
                 }`}
+                style={{
+                  backgroundColor: idx === currentStep ? 'var(--accent)' : idx < currentStep ? 'var(--accent)' : 'var(--border)',
+                  opacity: idx < currentStep ? 0.5 : 1
+                }}
               />
             ))}
           </div>
@@ -122,13 +126,14 @@ export default function OnboardingOverlay({ onComplete }) {
           <div className="flex gap-3">
             <button
               onClick={handleComplete}
-              className="flex-1 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors rounded-xl"
+              className="flex-1 py-3 text-sm font-medium transition-colors rounded-xl"
+              style={{ color: 'var(--text-muted)' }}
             >
               Pular tour
             </button>
             <button
               onClick={handleNext}
-              className="flex-1 py-3 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all hover:shadow-indigo-500/30 active:scale-[0.98]"
+              className="ds-btn ds-btn-primary flex-1 py-3 text-sm font-bold shadow-lg transition-all active:scale-[0.98]"
             >
               {isLast ? 'Começar a usar!' : 'Próximo'}
             </button>

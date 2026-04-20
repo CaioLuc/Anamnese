@@ -7,14 +7,17 @@ import { buscarPacientePorCPF, criarPaciente } from '../services/patientService'
 import ConfirmDialog from './ConfirmDialog';
 import ConfigAgenda from './ConfigAgenda';
 import { useToast } from '../contexts/ToastContext';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Settings, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, Calendar as CalendarIcon, MessageCircle } from 'lucide-react';
 
 const STATUS_CONFIG = {
-  pendente:   { label: 'Pendente',   color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  agendado:   { label: 'Agendado',   color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  confirmado: { label: 'Confirmado', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-  realizado:  { label: 'Realizado',  color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
-  faltou:     { label: 'Faltou',     color: 'bg-red-500/20 text-red-300 border-red-500/30' },
-  cancelado:  { label: 'Cancelado',  color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
+  pendente:   { label: 'Pendente',   color: 'warning' },
+  agendado:   { label: 'Agendado',   color: 'info' },
+  confirmado: { label: 'Confirmado', color: 'success' },
+  realizado:  { label: 'Realizado',  color: 'success' },
+  faltou:     { label: 'Faltou',     color: 'danger' },
+  cancelado:  { label: 'Cancelado',  color: 'neutral' },
 };
 
 const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -163,57 +166,55 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
     return <ConfigAgenda onClose={() => setShowConfig(false)} />;
   }
 
+  const Spinner = () => (
+    <div className="flex-1 flex items-center justify-center">
+      <svg className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+      </svg>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Agenda</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">Organize seus atendimentos</p>
+          <h1 className="text-3xl font-heading font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Agenda</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Organize seus atendimentos</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowConfig(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-white/10 hover:border-indigo-500/40 text-slate-600 dark:text-slate-400 hover:text-indigo-400 text-sm font-semibold rounded-xl transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+          <Button variant="secondary" onClick={() => setShowConfig(true)}>
+            <Settings size={18} />
             Configurar
-          </button>
-          <button
-            onClick={() => openNew()}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+          </Button>
+          <Button variant="primary" onClick={() => openNew()}>
+            <Plus size={18} />
             Novo Agendamento
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Calendar */}
-        <div className="xl:col-span-2 bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-3xl p-6">
+        <div className="xl:col-span-2 ds-card p-6" style={{ backgroundColor: 'var(--bg-card)' }}>
           {/* Month nav */}
           <div className="flex items-center justify-between mb-6">
-            <button onClick={prevMonth} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <button onClick={prevMonth} className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+              <ChevronLeft size={20} />
             </button>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white capitalize">
+            <h2 className="text-lg font-heading font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>
               {monthName} {currentYear}
             </h2>
-            <button onClick={nextMonth} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            <button onClick={nextMonth} className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+              <ChevronRight size={20} />
             </button>
           </div>
 
           {/* Week day headers */}
           <div className="grid grid-cols-7 mb-2">
             {WEEK_DAYS.map(d => (
-              <div key={d} className="text-center text-xs font-medium text-slate-600 dark:text-slate-400 py-1">{d}</div>
+              <div key={d} className="text-center text-xs font-medium py-1" style={{ color: 'var(--text-muted)' }}>{d}</div>
             ))}
           </div>
 
@@ -229,23 +230,33 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
               const dayAgendamentos = getAgendamentosForDay(day);
               const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
               const isSelected = day === selectedDay;
+              
+              const selectedStyles = isSelected 
+                ? { backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)' }
+                : { border: '1px solid transparent' };
+
               return (
                 <button
                   key={day}
                   onClick={() => setSelectedDay(isSelected ? null : day)}
-                  className={`relative rounded-xl p-1.5 min-h-[56px] flex flex-col items-center text-xs font-semibold transition-all
-                    ${isSelected ? 'bg-indigo-500/20 border border-indigo-500/40' : 'hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent'}
-                    ${isToday ? 'text-indigo-400' : 'text-slate-700 dark:text-slate-300'}
-                  `}
+                  className={`relative rounded-xl p-1.5 min-h-[56px] flex flex-col items-center text-xs font-semibold transition-all hover:bg-slate-100 dark:hover:bg-white/5`}
+                  style={{ ...selectedStyles, color: isToday ? 'var(--accent)' : 'var(--text-primary)' }}
                 >
-                  <span className={`w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-indigo-500 text-slate-900 dark:text-white' : ''}`}>
+                  <span 
+                    className={`w-6 h-6 flex items-center justify-center rounded-full mb-1`}
+                    style={isToday ? { backgroundColor: 'var(--accent)', color: '#FFFFFF' } : {}}
+                  >
                     {day}
                   </span>
-                  <div className="flex flex-wrap justify-center gap-0.5">
-                    {dayAgendamentos.slice(0, 3).map((ag, idx) => (
-                      <div key={idx} className={`w-1.5 h-1.5 rounded-full ${ag.status === 'faltou' ? 'bg-red-400' : ag.status === 'realizado' ? 'bg-emerald-400' : ag.status === 'cancelado' ? 'bg-zinc-500' : 'bg-blue-400'}`} />
-                    ))}
-                    {dayAgendamentos.length > 3 && <span className="text-[8px] text-slate-600 dark:text-slate-400">+{dayAgendamentos.length - 3}</span>}
+                  <div className="flex flex-wrap justify-center gap-0.5 mt-auto">
+                    {dayAgendamentos.slice(0, 3).map((ag, idx) => {
+                        const statusColor = ag.status === 'faltou' ? 'var(--status-danger)' 
+                            : ag.status === 'realizado' ? 'var(--status-success)' 
+                            : ag.status === 'cancelado' ? 'var(--text-muted)' 
+                            : 'var(--status-info)';
+                        return <div key={idx} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />;
+                    })}
+                    {dayAgendamentos.length > 3 && <span className="text-[8px] mt-0.5 leading-none" style={{ color: 'var(--text-muted)' }}>+{dayAgendamentos.length - 3}</span>}
                   </div>
                 </button>
               );
@@ -253,10 +264,15 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-white/5">
-            {[['bg-blue-400','Agendado'],['bg-emerald-400','Realizado'],['bg-red-400','Faltou'],['bg-zinc-500','Cancelado']].map(([c,l]) => (
-              <div key={l} className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
-                <div className={`w-2 h-2 rounded-full ${c}`}/>
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4" style={{ borderTop: '0.5px solid var(--border)' }}>
+            {[
+                ['var(--status-info)','Agendado'],
+                ['var(--status-success)','Realizado'],
+                ['var(--status-danger)','Faltou'],
+                ['var(--text-muted)','Cancelado']
+            ].map(([c,l]) => (
+              <div key={l} className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c }}/>
                 {l}
               </div>
             ))}
@@ -264,9 +280,9 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
         </div>
 
         {/* Right panel: selected day or upcoming */}
-        <div className="bg-white/60 dark:bg-zinc-900/60 border border-slate-200 dark:border-white/5 rounded-3xl p-5 flex flex-col">
+        <div className="ds-card p-5 flex flex-col" style={{ backgroundColor: 'var(--bg-card)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+            <h3 className="font-heading font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
               {selectedDay
                 ? `${selectedDay} de ${monthName}`
                 : 'Selecione um dia'}
@@ -274,50 +290,53 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
             {selectedDay && (
               <button
                 onClick={() => openNew(selectedDay)}
-                className="text-indigo-400 hover:text-indigo-300 text-xs font-semibold flex items-center gap-1"
+                className="text-xs font-semibold flex items-center gap-1 transition-colors"
+                style={{ color: 'var(--accent)' }}
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <Plus size={14} />
                 Adicionar
               </button>
             )}
           </div>
 
           {!selectedDay ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-600">
-              <svg className="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-sm">Clique em um dia para ver os agendamentos</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <CalendarIcon size={48} className="mb-3 opacity-30" style={{ color: 'var(--text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Clique em um dia para ver os agendamentos</p>
             </div>
           ) : isLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <svg className="w-6 h-6 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-              </svg>
-            </div>
+            <Spinner />
           ) : selectedDayAgendamentos.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-600">
-              <p className="text-sm">Nenhum agendamento neste dia.</p>
-              <button onClick={() => openNew(selectedDay)} className="mt-3 text-xs text-indigo-400 hover:underline">+ Adicionar</button>
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Nenhum agendamento neste dia.</p>
+              <button onClick={() => openNew(selectedDay)} className="mt-3 text-xs hover:underline" style={{ color: 'var(--accent)' }}>+ Adicionar</button>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
               {selectedDayAgendamentos.map(ag => {
                 const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.agendado;
                 return (
-                  <div key={ag.id} className="bg-slate-100 dark:bg-white/5 rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-all">
+                  <div 
+                    key={ag.id} 
+                    className="rounded-xl p-4 transition-all"
+                    style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{ag.nome_paciente || 'Paciente'}</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{ag.hora} · {ag.duracao_min} min</p>
-                        {ag.telefone_paciente && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Tel: {ag.telefone_paciente}</p>}
-                        {ag.observacoes && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">{ag.observacoes}</p>}
-                        {ag.origem === 'publico' && <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full font-semibold">Via Link Público</span>}
+                        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{ag.nome_paciente || 'Paciente'}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{ag.hora} · {ag.duracao_min} min</p>
+                        {ag.telefone_paciente && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Tel: {ag.telefone_paciente}</p>}
+                        {ag.observacoes && <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>{ag.observacoes}</p>}
+                        {ag.origem === 'publico' && (
+                            <span className="inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info)', border: '0.5px solid var(--status-info)' }}>
+                                Via Link Público
+                            </span>
+                        )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${sc.color}`}>{sc.label}</span>
-                        <div className="flex gap-1 mt-1 items-center">
+                        <Badge variant={sc.color}>{sc.label}</Badge>
+                        
+                        <div className="flex gap-1.5 mt-2 items-center">
                           {ag.status !== 'realizado' && ag.status !== 'cancelado' && (
                             <button
                               onClick={async () => {
@@ -378,7 +397,8 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                                   showToast({ type: 'error', message: 'Não foi possível iniciar o atendimento. Verifique sua conexão e tente novamente.' });
                                 }
                               }}
-                              className="mr-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded shadow-sm hover:bg-indigo-500 hover:text-slate-900 dark:hover:text-white transition-all"
+                              className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
+                              style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '0.5px solid var(--accent)' }}
                               title="Iniciar Sessão"
                             >
                               Atender
@@ -389,17 +409,28 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                               href={`https://wa.me/${ag.telefone_paciente.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${ag.nome_paciente || ''}! Sua sessão está marcada para ${ag.data?.split('-').reverse().join('/')} às ${ag.hora}. Confirma?`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded transition-colors"
+                              className="p-1.5 rounded transition-colors"
+                              style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success)', border: '0.5px solid var(--status-success)' }}
                               title="Enviar WhatsApp"
                             >
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                              <MessageCircle size={14} />
                             </a>
                           )}
-                          <button onClick={() => openEdit(ag)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-400 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                          <button 
+                            onClick={() => openEdit(ag)} 
+                            className="p-1.5 rounded transition-colors"
+                            style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
+                            title="Editar"
+                          >
+                            <Edit2 size={14} />
                           </button>
-                          <button onClick={() => setConfirmDelete({ isOpen: true, id: ag.id })} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-red-400 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          <button 
+                            onClick={() => setConfirmDelete({ isOpen: true, id: ag.id })} 
+                            className="p-1.5 rounded transition-colors"
+                            style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
+                            title="Excluir"
+                          >
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
@@ -414,16 +445,16 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
       {/* Modal: Create/Edit */}
       {showModal && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-lg p-6">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-5">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{ backgroundColor: 'var(--overlay)' }}>
+          <div className="ds-card w-full max-w-lg p-6 animate-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <h2 className="text-lg font-heading font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>
               {editingId ? 'Editar Agendamento' : 'Novo Agendamento'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
 
               {/* Patient search */}
               <div className="relative">
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Paciente</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Paciente</label>
                 <input
                   type="text"
                   value={patientSearch}
@@ -431,14 +462,20 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                   onFocus={() => setShowPatientDropdown(true)}
                   onBlur={() => setTimeout(() => setShowPatientDropdown(false), 200)}
                   placeholder="Buscar paciente..."
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500"
+                  className="ds-input"
                 />
                 {showPatientDropdown && filteredPatients.length > 0 && (
-                  <div className="absolute z-[160] w-full mt-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-40 overflow-y-auto custom-scrollbar">
+                  <div 
+                    className="absolute z-[160] w-full mt-1 rounded-xl shadow-lg overflow-hidden max-h-40 overflow-y-auto custom-scrollbar"
+                    style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}
+                  >
                     {filteredPatients.map(p => (
                       <button key={p.id} type="button" onClick={() => handleSelectPatient(p)}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-800 dark:text-white hover:bg-indigo-500 hover:text-white flex items-center gap-3 transition-colors">
-                        <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold shrink-0">{p?.nome?.charAt(0)?.toUpperCase() || '?'}</span>
+                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
+                        style={{ color: 'var(--text-primary)' }}>
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+                            {p?.nome?.charAt(0)?.toUpperCase() || '?'}
+                        </span>
                         {p.nome}
                       </button>
                     ))}
@@ -449,32 +486,32 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
               {/* Date + Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Data</label>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Data</label>
                   <input type="date" required value={form.data}
                     onChange={e => setForm(p => ({ ...p, data: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                    className="ds-input" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Horário</label>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Horário</label>
                   <input type="time" required value={form.hora}
                     onChange={e => setForm(p => ({ ...p, hora: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                    className="ds-input" />
                 </div>
               </div>
 
               {/* Duration + Status */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Duração (min)</label>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Duração (min)</label>
                   <input type="number" min="15" max="180" step="5" value={form.duracao_min}
                     onChange={e => setForm(p => ({ ...p, duracao_min: Number(e.target.value) }))}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500" />
+                    className="ds-input" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Status</label>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Status</label>
                   <select value={form.status}
                     onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500">
+                    className="ds-input">
                     {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>
                     ))}
@@ -484,21 +521,19 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Observações</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Observações</label>
                 <textarea rows={2} value={form.observacoes}
                   onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm resize-none focus:ring-1 focus:ring-indigo-500" />
+                  className="ds-input resize-none" />
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/20 rounded-xl transition-all">
+              <div className="flex gap-3 pt-4">
+                <Button variant="secondary" className="flex-1" type="button" onClick={() => setShowModal(false)}>
                   Cancelar
-                </button>
-                <button type="submit" disabled={isSubmitting}
-                  className="flex-1 py-2.5 text-sm font-bold text-white bg-indigo-500 hover:bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all">
+                </Button>
+                <Button variant="primary" className="flex-1" type="submit" disabled={isSubmitting}>
                   {isSubmitting ? 'Salvando...' : editingId ? 'Atualizar' : 'Agendar'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -512,6 +547,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
         confirmText="Excluir"
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete({ isOpen: false, id: null })}
+        variant="danger"
       />
     </div>
   );

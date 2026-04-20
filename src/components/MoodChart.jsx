@@ -21,7 +21,7 @@ export default function MoodChart({ sessoes }) {
 
   if (data.length < 2) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-slate-600 text-sm">
+      <div className="flex flex-col items-center justify-center py-8 text-sm" style={{ color: 'var(--text-secondary)' }}>
         <svg className="w-10 h-10 mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
@@ -73,13 +73,13 @@ export default function MoodChart({ sessoes }) {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-          <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <h4 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <svg className="w-4 h-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
           </svg>
           Evolução do Humor
         </h4>
-        <div className="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-3 text-[10px]" style={{ color: 'var(--text-secondary)' }}>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block"/>Crítico</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"/>Moderado</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"/>Bom</span>

@@ -7,7 +7,7 @@ export default function UpgradeProModal({ isOpen, onClose }) {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="relative w-full max-w-md ds-card overflow-hidden animate-in fade-in zoom-in duration-300" style={{ borderRadius: '24px' }}>
         
         {/* Gradient Header */}
         <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 px-8 py-10 text-center overflow-hidden">
@@ -37,8 +37,8 @@ export default function UpgradeProModal({ isOpen, onClose }) {
               <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">Resumos em segundos</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">A I.A. transforma suas notas brutas em texto clínico estruturado instantaneamente.</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Resumos em segundos</p>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>A I.A. transforma suas notas brutas em texto clínico estruturado instantaneamente.</p>
             </div>
           </div>
 
@@ -47,8 +47,8 @@ export default function UpgradeProModal({ isOpen, onClose }) {
               <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">Prontuários impecáveis</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Resumos de anamnese e evolução com linguagem técnica e profissional.</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Prontuários impecáveis</p>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Resumos de anamnese e evolução com linguagem técnica e profissional.</p>
             </div>
           </div>
 
@@ -57,8 +57,8 @@ export default function UpgradeProModal({ isOpen, onClose }) {
               <svg className="w-4 h-4 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">Economize horas</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Pare de gastar tempo formatando. Foque no que importa: seus pacientes.</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Economize horas</p>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Pare de gastar tempo formatando. Foque no que importa: seus pacientes.</p>
             </div>
           </div>
         </div>
@@ -73,7 +73,8 @@ export default function UpgradeProModal({ isOpen, onClose }) {
           </button>
           <button
             onClick={onClose}
-            className="w-full py-2.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+            className="w-full py-2.5 text-sm transition-colors"
+            style={{ color: 'var(--text-muted)' }}
           >
             Agora não
           </button>

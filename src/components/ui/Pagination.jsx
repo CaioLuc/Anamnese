@@ -1,3 +1,5 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 /**
  * Componente reutilizável de paginação.
  * Exibe controles de navegação com indicador de range e botões de página.
@@ -33,20 +35,23 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white/50 dark:bg-zinc-900/50 border-t border-slate-200 dark:border-white/5 sm:px-6">
+    <div 
+      className="flex items-center justify-between px-4 py-3 sm:px-6"
+      style={{ borderTop: '0.5px solid var(--border)' }}
+    >
       {/* Mobile: simple prev/next */}
       <div className="flex justify-between flex-1 sm:hidden">
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 dark:bg-zinc-800 dark:border-white/10 dark:text-slate-300"
+          className="ds-btn ds-btn-secondary py-1.5"
         >
           Anterior
         </button>
         <button
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 dark:bg-zinc-800 dark:border-white/10 dark:text-slate-300"
+          className="ds-btn ds-btn-secondary py-1.5 ml-3"
         >
           Próximo
         </button>
@@ -55,38 +60,43 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
       {/* Desktop: full pagination */}
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
-            Mostrando <span className="font-medium">{startIndex + 1}</span> a{' '}
-            <span className="font-medium">{Math.min(startIndex + itemsPerPage, totalItems)}</span> de{' '}
-            <span className="font-medium">{totalItems}</span> {itemLabel}
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Mostrando <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{startIndex + 1}</span> a{' '}
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{Math.min(startIndex + itemsPerPage, totalItems)}</span> de{' '}
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{totalItems}</span> {itemLabel}
           </p>
         </div>
         <div>
-          <nav className="inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+          <nav className="inline-flex -space-x-px rounded-md" style={{ boxShadow: 'var(--shadow)' }} aria-label="Pagination">
             <button
               onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 dark:ring-white/10 dark:hover:bg-zinc-800"
+              className="relative inline-flex items-center rounded-l-md px-2 py-2 focus:z-20 disabled:opacity-50 transition-colors duration-150"
+              style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)', color: 'var(--text-secondary)' }}
             >
               <span className="sr-only">Anterior</span>
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-              </svg>
+              <ChevronLeft size={18} />
             </button>
             {getVisiblePages().map((item, idx) =>
               item.type === 'ellipsis' ? (
-                <span key={`e-${item.value}`} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-inset ring-slate-300 dark:ring-white/10">
+                <span 
+                  key={`e-${item.value}`} 
+                  className="relative inline-flex items-center px-4 py-2 text-sm font-semibold"
+                  style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)', color: 'var(--text-secondary)' }}
+                >
                   ...
                 </span>
               ) : (
                 <button
                   key={item.value}
                   onClick={() => onPageChange(item.value)}
-                  className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                    currentPage === item.value
-                      ? 'z-10 bg-indigo-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
-                      : 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-zinc-800'
-                  }`}
+                  className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold transition-colors duration-150`}
+                  style={{
+                    border: '0.5px solid var(--border)',
+                    backgroundColor: currentPage === item.value ? 'var(--accent)' : 'var(--bg-card)',
+                    color: currentPage === item.value ? '#FFFFFF' : 'var(--text-primary)',
+                    zIndex: currentPage === item.value ? 10 : 1,
+                  }}
                 >
                   {item.value}
                 </button>
@@ -95,12 +105,11 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
             <button
               onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 dark:ring-white/10 dark:hover:bg-zinc-800"
+              className="relative inline-flex items-center rounded-r-md px-2 py-2 focus:z-20 disabled:opacity-50 transition-colors duration-150"
+              style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)', color: 'var(--text-secondary)' }}
             >
               <span className="sr-only">Próximo</span>
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-              </svg>
+              <ChevronRight size={18} />
             </button>
           </nav>
         </div>

@@ -5,6 +5,9 @@ import PatientProfileModal from './PatientProfileModal';
 import ConfirmDialog from './ConfirmDialog';
 import { formatCPF } from '../utils/formatUtils';
 import Pagination from './ui/Pagination';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Plus, Search, Users, Phone, FileText, Trash2 } from 'lucide-react';
 
 export default function Pacientes({ patients, isLoading, onPatientAddedLocal, autoOpenPatient, autoOpenTab, onAutoOpenDone }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -80,92 +83,90 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedPatients = filteredPatients.slice(startIndex, startIndex + itemsPerPage);
 
+  const Spinner = () => (
+    <div className="flex flex-col items-center justify-center h-64 p-8">
+      <svg className="w-8 h-8 animate-spin mb-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Buscando dados no Firebase...</span>
+    </div>
+  );
+
   return (
-    <div className="animate-in fade-in duration-500 w-full">
+    <div className="w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Pacientes cadastrados</h2>
-          <p className="mt-1 text-slate-600 dark:text-slate-400">Gerencie sua lista de pacientes e acompanhe as evoluções psicoterapêuticas.</p>
+          <h2 className="text-3xl font-heading font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Pacientes cadastrados</h2>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Gerencie sua lista de pacientes e acompanhe as evoluções psicoterapêuticas.</p>
         </div>
-        <button
-          onClick={() => setIsPatientModalOpen(true)}
-          className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-white transition-all bg-indigo-500 border border-transparent rounded-xl hover:bg-indigo-600 shadow-lg shadow-indigo-500/20 flex-shrink-0"
-        >
-          <svg className="w-5 h-5 mr-2 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+        <Button onClick={() => setIsPatientModalOpen(true)} className="flex-shrink-0">
+          <Plus size={18} />
           Adicionar Paciente
-        </button>
+        </Button>
       </div>
 
-      <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-2xl rounded-3xl overflow-hidden relative">
+      <div className="ds-card overflow-hidden">
         {/* Barra de Busca Exclusiva */}
-        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-white/5 bg-zinc-950/30 flex items-center justify-between gap-4 flex-col sm:flex-row">
+        <div 
+          className="p-4 sm:p-6 flex items-center justify-between gap-4 flex-col sm:flex-row"
+          style={{ borderBottom: '0.5px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}
+        >
             <div className="relative w-full sm:max-w-md">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                  <Search size={18} style={{ color: 'var(--text-muted)' }} />
                 </div>
                 <input
                     type="text"
                     placeholder="Buscar por nome ou CPF..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    className="ds-input pl-10"
                 />
             </div>
             {clinicas.length > 0 && (
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                 <select
                   value={filterClinica}
                   onChange={(e) => setFilterClinica(e.target.value)}
-                  className="px-3 py-2 border border-slate-300 dark:border-white/10 rounded-xl leading-5 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-colors"
+                  className="ds-input"
                 >
                   <option value="">Todos os locais</option>
                   {clinicas.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             )}
-            <div className="text-sm text-slate-600 dark:text-slate-400 shrink-0">
+            <div className="text-sm shrink-0" style={{ color: 'var(--text-muted)' }}>
                 {filteredPatients.length} {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}
             </div>
         </div>
 
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 p-8">
-            <svg className="w-8 h-8 animate-spin text-indigo-500 mb-4" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span className="text-slate-600 dark:text-slate-400 font-medium">Buscando dados no Firebase...</span>
-          </div>
+          <Spinner />
         ) : patients.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-16 text-center">
-            <div className="w-20 h-20 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
-              <svg className="w-10 h-10 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+              <Users size={32} style={{ color: 'var(--text-muted)' }} />
             </div>
-            <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300">Nenhum paciente na base</h3>
-            <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-sm">Você ainda não possui pacientes cadastrados. Clique no botão acima para registrar seu primeiro atendimento.</p>
+            <h3 className="text-xl font-heading font-semibold" style={{ color: 'var(--text-primary)' }}>Nenhum paciente na base</h3>
+            <p className="mt-2 max-w-sm" style={{ color: 'var(--text-secondary)' }}>Você ainda não possui pacientes cadastrados. Clique no botão acima para registrar seu primeiro atendimento.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-zinc-800/30 border-b border-slate-200 dark:border-white/5 text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 font-semibold">
+                <tr className="text-xs uppercase tracking-wider font-semibold" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '0.5px solid var(--border)', color: 'var(--text-muted)' }}>
                   <th className="px-6 py-4 whitespace-nowrap">Paciente</th>
-                  <th className="px-6 py-4 whitespace-nowrap">CPF</th>
+                  <th className="px-6 py-4 whitespace-nowrap text-center">CPF</th>
                   <th className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">Idade / Nasc.</th>
                   <th className="px-6 py-4 whitespace-nowrap hidden md:table-cell">Contato</th>
                   <th className="px-6 py-4 whitespace-nowrap text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody style={{ borderTop: '0.5px solid var(--border)' }}>
                 {paginatedPatients.length === 0 ? (
                     <tr>
-                        <td colSpan="5" className="px-6 py-12 text-center text-slate-600 dark:text-slate-400">
+                        <td colSpan="5" className="px-6 py-12 text-center" style={{ color: 'var(--text-secondary)' }}>
                             Nenhum paciente encontrado com base na busca: "{searchTerm}"
                         </td>
                     </tr>
@@ -182,64 +183,64 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                     <tr 
                       key={patient.id} 
                       onClick={() => openPatientProfile(patient)}
-                      className="hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group cursor-pointer"
+                      className="transition-colors group cursor-pointer"
+                      style={{ borderBottom: '0.5px solid var(--border)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 mr-4">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500/10 to-cyan-500/10 border border-indigo-500/20 dark:border-indigo-500/30 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-300">
+                            <div className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '0.5px solid var(--accent)' }}>
                               {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
                             </div>
                           </div>
                           <div>
-                            <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-indigo-400 transition-colors">
+                            <div className="text-sm font-semibold transition-colors" style={{ color: 'var(--text-primary)' }}>
                               {patient.nome}
                             </div>
-                            <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{patient.clinica || 'Sem local definido'}</div>
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{patient.clinica || 'Sem local definido'}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700">
+                        <Badge variant="neutral">
                           {patient.cpf ? formatCPF(patient.cpf) : '-'}
-                        </span>
+                        </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                        <div className="text-sm text-slate-700 dark:text-slate-300">{age >= 0 ? `${age} anos` : '-'}</div>
-                        <div className="text-xs text-slate-600 dark:text-slate-400">{dob.toLocaleDateString()}</div>
+                        <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{age >= 0 ? `${age} anos` : '-'}</div>
+                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{dob.toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                         {patient.telefone ? (
-                          <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
-                            <svg className="w-4 h-4 mr-1.5 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
+                          <div className="flex items-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            <Phone size={14} className="mr-1.5" />
                             {patient.telefone}
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-600 italic">Não informado</span>
+                          <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Não informado</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
-                            <button 
+                            <Button 
+                              variant="secondary"
+                              size="sm"
                               onClick={(e) => openAnamnesisModal(patient, e)}
-                              className="inline-flex items-center px-4 py-2 border border-indigo-500/30 shadow-sm text-sm font-medium rounded-xl text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white dark:hover:text-white hover:border-transparent transition-all"
                             >
-                              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
+                              <FileText size={14} />
                               Nova Anamnese
-                            </button>
-                            <button 
+                            </Button>
+                            <Button 
+                              variant="danger"
+                              size="sm"
+                              className="px-2"
                               onClick={(e) => handleExcluirPaciente(patient, e)}
-                              className="p-2 text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500 hover:text-white dark:hover:text-white rounded-xl transition-colors border border-red-500/20 shadow-sm"
                               title="Remover Paciente"
                             >
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                              <Trash2 size={16} />
+                            </Button>
                         </div>
                       </td>
                     </tr>

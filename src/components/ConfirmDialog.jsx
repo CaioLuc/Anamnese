@@ -1,4 +1,5 @@
 import { useEscapeKey } from '../hooks/useKeyboard';
+import { Trash2, AlertTriangle } from 'lucide-react';
 
 /**
  * ConfirmDialog - Modal de confirmação estilizado no padrão do app.
@@ -21,41 +22,37 @@ export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCan
   const isDanger = variant === 'danger';
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" style={{ backgroundColor: 'var(--overlay)' }}>
+      <div className="ds-card relative w-full max-w-sm p-6" style={{ backgroundColor: 'var(--bg-card)' }}>
         
         {/* Ícone */}
-        <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${isDanger ? 'bg-red-500/10' : 'bg-amber-500/10'}`}>
+        <div 
+          className="mx-auto w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+          style={{ backgroundColor: isDanger ? 'var(--status-danger-bg)' : 'var(--status-warning-bg)' }}
+        >
           {isDanger ? (
-            <svg className="w-7 h-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
+            <Trash2 size={22} style={{ color: 'var(--status-danger)' }} />
           ) : (
-            <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <AlertTriangle size={22} style={{ color: 'var(--status-warning)' }} />
           )}
         </div>
 
         {/* Texto */}
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white text-center mb-2">{title}</h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400 text-center leading-relaxed mb-6">{message}</p>
+        <h3 className="text-base font-heading font-semibold text-center mb-2" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+        <p className="text-sm text-center leading-relaxed mb-6" style={{ color: 'var(--text-secondary)' }}>{message}</p>
 
         {/* Botões */}
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all"
+            className="ds-btn ds-btn-secondary flex-1 py-2.5"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white transition-all shadow-lg ${
-              isDanger
-                ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-                : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
-            }`}
+            className={`ds-btn flex-1 py-2.5 text-white`}
+            style={{ backgroundColor: isDanger ? 'var(--status-danger)' : 'var(--status-warning)' }}
           >
             {confirmText || (isDanger ? 'Sim, apagar' : 'Confirmar')}
           </button>

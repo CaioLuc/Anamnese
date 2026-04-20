@@ -1,21 +1,24 @@
-import { useState, useEffect } from 'react';
-import { logoutFirebaseUser, subscribeToAuthChanges } from '../services/authService';
+import { useState } from 'react';
+import { logoutFirebaseUser } from '../services/authService';
 import ConfirmDialog from './ConfirmDialog';
 import { useTheme } from '../contexts/ThemeContext';
 import HelpPanel from './HelpPanel';
 import GlobalSearch from './GlobalSearch';
 import { useKeyboard } from '../hooks/useKeyboard';
-import { exportarDadosCSV } from '../services/exportService';
 import { useToast } from '../contexts/ToastContext';
+import { 
+  LayoutDashboard, Users, FileText, Calendar, DollarSign, 
+  Building2, ClipboardList, Trash2, Search, HelpCircle, 
+  Sun, Moon, LogOut, Menu, X 
+} from 'lucide-react';
 
 export default function Layout({ children, currentPath, onNavigate, userEmail, fullHeight = false, patients = [] }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
-  const [isExporting, setIsExporting] = useState(false);
 
   // Atalhos de teclado globais (H7)
   useKeyboard([
@@ -23,81 +26,15 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
     { key: 'Escape', action: () => { setShowSearch(false); setShowHelp(false); } },
   ]);
 
-  // A visibilidade em desktop agora é garantida pelo Tailwind (lg:translate-x-0), não precisamos mais do JavaScript resize listener para isso.
-
   const navigation = [
-    { 
-      name: 'Dashboard', 
-      id: 'dashboard',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      )
-    },
-    { 
-      name: 'Pacientes', 
-      id: 'pacientes',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    {
-      name: 'Nova Sessão', 
-      id: 'nova-sessao',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      name: 'Agenda',
-      id: 'agenda',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      )
-    },
-    {
-      name: 'Financeiro',
-      id: 'financas',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      name: 'Locais',
-      id: 'clinicas',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      )
-    },
-    {
-      name: 'Questionários',
-      id: 'questionarios',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      )
-    },
-    {
-      name: 'Lixeira',
-      id: 'lixeira',
-      icon: (
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      )
-    },
+    { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard },
+    { name: 'Pacientes', id: 'pacientes', icon: Users },
+    { name: 'Nova Sessão', id: 'nova-sessao', icon: FileText },
+    { name: 'Agenda', id: 'agenda', icon: Calendar },
+    { name: 'Financeiro', id: 'financas', icon: DollarSign },
+    { name: 'Locais', id: 'clinicas', icon: Building2 },
+    { name: 'Questionários', id: 'questionarios', icon: ClipboardList },
+    { name: 'Lixeira', id: 'lixeira', icon: Trash2 },
   ];
 
   const handleLogout = async () => {
@@ -109,152 +46,149 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
   };
 
   return (
-    <div className="flex w-full h-full bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans selection:bg-indigo-500/30">
+    <div className="flex w-full h-full overflow-hidden font-sans" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       
-      {/* Sidebar Overlay (Mobile) — aparece quando o menu está ABERTO */}
+      {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-20 bg-black/40 backdrop-blur-sm lg:hidden transition-opacity"
+          className="fixed inset-0 z-20 md:hidden"
+          style={{ backgroundColor: 'var(--overlay)' }}
           onClick={() => setIsSidebarOpen(false)}
-        ></div>
+        />
       )}
 
       {/* Sidebar */}
       <aside 
-        className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} 
-          fixed lg:static inset-y-0 left-0 z-30 w-64 lg:w-72 bg-slate-50/50 dark:bg-zinc-950/50 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex flex-col transition-transform duration-300 ease-in-out`}
+        className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
+          fixed md:static inset-y-0 left-0 z-30 flex flex-col transition-transform duration-300 ease-in-out`}
+        style={{ 
+          width: '220px', 
+          minWidth: '220px',
+          backgroundColor: 'var(--bg-sidebar)',
+        }}
       >
-        <div className="h-20 flex items-center justify-between px-6 mb-4 border-b border-slate-200 dark:border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-500/20 rounded-xl shadow-inner group-hover:bg-indigo-500/30 transition-colors">
-              <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-              Caritas
-            </h1>
-          </div>
-          
-          {/* Close Sidebar (Mobile) */}
-          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between px-5 py-5" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+          <h1 className="text-lg font-heading font-semibold" style={{ color: '#FFFFFF' }}>
+            Caritas
+          </h1>
+          <button 
+            onClick={() => setIsSidebarOpen(false)} 
+            className="md:hidden p-1 rounded"
+            style={{ color: 'var(--text-sidebar)' }}
+          >
+            <X size={18} />
           </button>
         </div>
 
-        <div className="px-4 pb-4 overflow-y-auto flex-1 custom-scrollbar">
-          <div className="space-y-1 mt-2">
-            {navigation.map((item) => {
-              const isActive = currentPath === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                     onNavigate(item.id);
-                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                  }}
-                  className={`
-                    w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
-                    ${isActive 
-                      ? 'bg-indigo-500/10 text-indigo-400 shadow-inner' 
-                      : 'text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200'}
-                  `}
-                >
-                  <span className={`${isActive ? 'text-indigo-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-400'} transition-colors`}>
-                    {item.icon}
-                  </span>
-                  {item.name}
-                </button>
-              );
-            })}
-          </div>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-3 py-4 space-y-0.5">
+          {navigation.map((item) => {
+            const isActive = currentPath === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  onNavigate(item.id);
+                  if (window.innerWidth < 768) setIsSidebarOpen(false);
+                }}
+                className={`ds-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <Icon size={18} strokeWidth={isActive ? 2 : 1.5} />
+                {item.name}
+              </button>
+            );
+          })}
 
-          {/* Busca global e Ajuda */}
-          <div className="mt-4 space-y-1">
+          <div className="pt-4 space-y-0.5">
             <button
               onClick={() => setShowSearch(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition-all duration-200"
+              className="ds-nav-item"
             >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search size={18} strokeWidth={1.5} />
               <span className="flex-1 text-left">Buscar</span>
-              <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-200 dark:bg-white/10 rounded">⌘K</kbd>
+              <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono rounded" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>⌘K</kbd>
             </button>
             <button
               onClick={() => setShowHelp(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition-all duration-200"
+              className="ds-nav-item"
             >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <HelpCircle size={18} strokeWidth={1.5} />
               Central de Ajuda
             </button>
           </div>
-        </div>
-        
-        <div className="p-4 border-t border-slate-200 dark:border-white/5 flex flex-col gap-2">
-          {/* Theme Toggle Button */}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="px-3 py-4 space-y-2" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)' }}>
+          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="flex items-center justify-between w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors mb-2"
+            className="ds-nav-item justify-between"
           >
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tema Claro / Escuro</span>
-            {theme === 'dark' ? (
-              <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            )}
+            <span className="text-xs font-medium">Tema</span>
+            {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
 
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-inner flex-shrink-0">
+          {/* User */}
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0" style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
             </div>
-            <div className="flex flex-col min-w-0 pr-2">
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{userEmail || 'Usuário'}</span>
-              <span className="text-xs text-slate-600 dark:text-slate-400">Psicólogo(a)</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium truncate" style={{ color: 'var(--text-sidebar-active)' }}>{userEmail || 'Usuário'}</span>
+              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Psicólogo(a)</span>
             </div>
           </div>
+
+          {/* Logout */}
           <button 
             onClick={() => setConfirmLogout(true)}
-            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-slate-300 dark:hover:border-white/10"
+            className="ds-nav-item text-xs gap-2"
+            style={{ color: 'var(--text-muted)' }}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut size={15} />
             Sair do Sistema
           </button>
         </div>
       </aside>
 
       {/* Main Content wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 relative">
-        <header className="h-16 lg:h-0 sticky top-0 z-10 flex-shrink-0 flex items-center bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-slate-200 dark:border-white/5 lg:border-none px-4 lg:hidden">
-            <button
-               onClick={() => setIsSidebarOpen(true)}
-               className="p-2.5 mr-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <h1 className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-               Caritas
-            </h1>
+      <div className="flex-1 flex flex-col min-w-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        {/* Mobile Topbar */}
+        <header 
+          className="h-14 md:hidden sticky top-0 z-10 flex-shrink-0 flex items-center px-4 gap-3"
+          style={{ 
+            backgroundColor: 'var(--bg-secondary)', 
+            borderBottom: '0.5px solid var(--border)' 
+          }}
+        >
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-md transition-colors duration-150"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <Menu size={20} />
+          </button>
+          <h1 className="text-base font-heading font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Caritas
+          </h1>
+          <div className="flex-1" />
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-md transition-colors duration-150"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
         </header>
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col">
           {fullHeight ? (
             <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
           ) : (
-            <div className="max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 w-full">{children}</div>
+            <div className="max-w-7xl mx-auto w-full" style={{ padding: '20px 24px' }}>{children}</div>
           )}
         </main>
       </div>
@@ -279,7 +213,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
         patients={patients}
         onNavigate={(path, opts) => {
           onNavigate(path, opts);
-          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+          if (window.innerWidth < 768) setIsSidebarOpen(false);
         }}
       />
     </div>

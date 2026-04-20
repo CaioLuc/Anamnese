@@ -8,64 +8,80 @@ import {
 import { TEMPLATES_PADRAO } from '../services/templatesPadrao';
 import ConfirmDialog from './ConfirmDialog';
 import QuestionarioBuilder from './QuestionarioBuilder';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Plus, Search, FileText, Copy, Edit2, Trash2, LayoutList, GripHorizontal } from 'lucide-react';
 
-const TIPO_ICONS = { padrao: '📋', custom: '✏️' };
+const TIPO_ICONS = { padrao: FileText, custom: Edit2 };
 
 function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao }) {
   const totalCampos = (template.campos || []).filter(c => c.tipo !== 'section').length;
   const totalSecoes = (template.campos || []).filter(c => c.tipo === 'section').length;
+  const Icone = template.icone ? () => <span>{template.icone}</span> : (isPadrao ? FileText : Edit2);
 
   return (
-    <div className="group relative bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex flex-col gap-3 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all">
+    <div className="ds-card p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-500/50 group" style={{ backgroundColor: 'var(--bg-card)' }}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{template.icone || (isPadrao ? '📋' : '📝')}</span>
+          <div className="text-2xl text-slate-400 group-hover:text-indigo-400 transition-colors">
+            {template.icone ? <span>{template.icone}</span> : <Icone size={24} />}
+          </div>
           <div>
-            <h3 className="font-semibold text-slate-900 dark:text-white text-sm leading-tight">{template.nome}</h3>
+            <h3 className="font-heading font-semibold text-sm leading-tight" style={{ color: 'var(--text-primary)' }}>{template.nome}</h3>
             {isPadrao && (
-              <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md">Padrão</span>
+              <span className="inline-block mt-1">
+                  <Badge variant="info">Padrão</Badge>
+              </span>
             )}
           </div>
         </div>
       </div>
 
       {template.descricao && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{template.descricao}</p>
+        <p className="text-xs line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{template.descricao}</p>
       )}
 
-      <div className="flex gap-3 text-xs text-slate-500 dark:text-slate-400">
-        <span className="flex items-center gap-1">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
+      <div className="flex gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <span className="flex items-center gap-1.5">
+          <GripHorizontal size={12} />
           {totalCampos} campos
         </span>
-        <span className="flex items-center gap-1">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+        <span className="flex items-center gap-1.5">
+          <LayoutList size={12} />
           {totalSecoes} seções
         </span>
       </div>
 
-      <div className="flex gap-2 pt-1 border-t border-slate-100 dark:border-white/5">
+      <div className="flex gap-2 pt-3 mt-auto" style={{ borderTop: '0.5px solid var(--border)' }}>
         {!isPadrao && onEditar && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1"
             onClick={() => onEditar(template)}
-            className="flex-1 text-xs py-1.5 px-2 rounded-lg font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
           >
-            ✏️ Editar
-          </button>
+            <Edit2 size={14} />
+            Editar
+          </Button>
         )}
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
+          className="flex-1"
           onClick={() => onDuplicar(template)}
-          className="flex-1 text-xs py-1.5 px-2 rounded-lg font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
         >
-          📋 Duplicar
-        </button>
+          <Copy size={14} />
+          Duplicar
+        </Button>
         {!isPadrao && onDeletar && (
-          <button
+          <Button
+            variant="danger"
+            size="sm"
+            className="px-2"
             onClick={() => onDeletar(template)}
-            className="text-xs py-1.5 px-2 rounded-lg font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
           >
-            🗑️
-          </button>
+            <Trash2 size={16} />
+          </Button>
         )}
       </div>
     </div>
@@ -156,39 +172,41 @@ export default function Questionarios() {
     );
   }
 
+  const Spinner = () => (
+    <div className="flex items-center justify-center h-40">
+      <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      </svg>
+    </div>
+  );
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 px-6 pt-6 pb-4">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-1">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Questionários</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Crie e gerencie seus modelos de anamnese personalizados</p>
+            <h1 className="text-3xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Questionários</h1>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Crie e gerencie seus modelos de anamnese personalizados</p>
           </div>
-          <button
-            onClick={handleNovoTemplate}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+          <Button onClick={handleNovoTemplate} className="flex-shrink-0">
+            <Plus size={18} />
             Novo Questionário
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Busca */}
       <div className="flex-shrink-0 px-6 pb-4">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar questionários..."
-            className="w-full max-w-md pl-10 pr-4 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="ds-input pl-10 max-w-md"
           />
         </div>
       </div>
@@ -196,23 +214,18 @@ export default function Questionarios() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
         {isLoading ? (
-          <div className="flex items-center justify-center h-40">
-            <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-          </div>
+          <Spinner />
         ) : todosFiltrados.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-60 text-center">
-            <span className="text-4xl mb-3">📋</span>
-            <p className="text-slate-600 dark:text-slate-400 font-medium">Nenhum questionário encontrado</p>
-            <p className="text-sm text-slate-400 mt-1">Clique em "Novo Questionário" para criar seu primeiro modelo personalizado.</p>
+            <FileText size={48} className="mb-3 opacity-20" style={{ color: 'var(--text-primary)' }} />
+            <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>Nenhum questionário encontrado</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Clique em "Novo Questionário" para criar seu primeiro modelo personalizado.</p>
           </div>
         ) : (
           <>
             {/* Padrões */}
-            <div className="mb-6">
-              <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Modelos Padrão</h2>
+            <div className="mb-8">
+              <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>Modelos Padrão</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {todosFiltrados.filter(t => t.tipo === 'padrao').map(t => (
                   <TemplateCard
@@ -228,7 +241,7 @@ export default function Questionarios() {
             {/* Personalizados */}
             {todosFiltrados.filter(t => t.tipo !== 'padrao').length > 0 && (
               <div>
-                <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Personalizados</h2>
+                <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>Personalizados</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {todosFiltrados.filter(t => t.tipo !== 'padrao').map(t => (
                     <TemplateCard
@@ -249,10 +262,11 @@ export default function Questionarios() {
 
       <ConfirmDialog
         isOpen={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
+        onCancel={() => setConfirmDelete(null)}
         onConfirm={handleDeletar}
         title="Excluir Questionário"
         message={`Tem certeza que deseja excluir o questionário "${confirmDelete?.nome}"? Esta ação não pode ser desfeita.`}
+        variant="danger"
       />
     </div>
   );

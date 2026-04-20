@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { resolverSlug, lerConfigAgendaPublica, lerAgendamentosDoDia, criarAgendamentoPublico } from '../services/agendaService';
 import { formatCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
+import Button from './ui/Button';
+import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
 const DIAS_MAP = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
 
@@ -186,8 +188,8 @@ export default function AgendaPublica() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center">
-        <svg className="w-10 h-10 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <svg className="w-10 h-10 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
         </svg>
@@ -197,19 +199,16 @@ export default function AgendaPublica() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="text-center max-w-md">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--status-danger-bg)' }}>
+            <AlertTriangle size={32} style={{ color: 'var(--status-danger)' }} />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{error}</h2>
-          <p className="text-sm text-slate-500 mb-4">Verifique o link e tente novamente.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
-          >
+          <h2 className="text-xl font-heading font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{error}</h2>
+          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Verifique o link e tente novamente.</p>
+          <Button onClick={() => window.location.reload()}>
             Tentar novamente
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -217,49 +216,52 @@ export default function AgendaPublica() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center p-6">
-        <div className="text-center max-w-md bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/10 p-8 shadow-xl">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="ds-card text-center max-w-md p-8" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--status-success-bg)' }}>
+            <CheckCircle size={32} style={{ color: 'var(--status-success)' }} />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Solicitação Enviada!</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Seu pedido de agendamento para <strong>{formatDateLabel(selectedDate)}</strong> às <strong>{selectedSlot}</strong> foi enviado com sucesso.
+          <h2 className="text-xl font-heading font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Solicitação Enviada!</h2>
+          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+            Seu pedido de agendamento para <strong style={{ color: 'var(--text-primary)' }}>{formatDateLabel(selectedDate)}</strong> às <strong style={{ color: 'var(--text-primary)' }}>{selectedSlot}</strong> foi enviado com sucesso.
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {config.nome_publico} confirmará em breve. Aguarde o contato.
           </p>
-          <button
+          <Button
+            className="mt-6 w-full"
             onClick={() => { setSuccess(false); setSelectedSlot(''); setFormNome(''); setFormCPF(''); setFormTelefone(''); setFormObs(''); setSelectedDate(''); }}
-            className="mt-6 px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl transition-colors"
           >
             Agendar outro horário
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-zinc-950 dark:to-zinc-900">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5">
+      <div style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '0.5px solid var(--border)' }}>
         <div className="max-w-2xl mx-auto px-6 py-6 text-center">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-2xl text-white font-bold shadow-lg shadow-indigo-500/20">
+          <div 
+            className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center text-2xl font-bold" 
+            style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF', boxShadow: 'var(--shadow)' }}
+          >
             {config.nome_publico?.charAt(0)?.toUpperCase() || 'P'}
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{config.nome_publico}</h1>
+          <h1 className="text-2xl font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{config.nome_publico}</h1>
           {config.especialidade && (
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{config.especialidade}</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{config.especialidade}</p>
           )}
-          <p className="text-xs text-indigo-400 mt-2 font-semibold">Caritas</p>
+          <p className="text-xs mt-2 font-semibold" style={{ color: 'var(--accent)' }}>Caritas</p>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
         {/* Step 1: Select Date */}
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3">1. Escolha uma data</h2>
+        <div className="ds-card p-5" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--text-primary)' }}>1. Escolha uma data</h2>
           <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
             {dateOptions.map(dateStr => {
               const d = new Date(dateStr + 'T12:00:00');
@@ -276,12 +278,16 @@ export default function AgendaPublica() {
                   onClick={() => disponivel && setSelectedDate(dateStr)}
                   disabled={!disponivel}
                   className={`flex flex-col items-center py-2.5 px-1 rounded-xl text-xs font-semibold transition-all
-                    ${isSelected ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : ''}
-                    ${!isSelected && disponivel ? 'hover:bg-indigo-500/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10' : ''}
-                    ${!disponivel ? 'opacity-30 cursor-not-allowed text-slate-400' : ''}
+                    ${isSelected ? '' : disponivel ? 'hover:bg-slate-100 dark:hover:bg-white/5' : ''}
+                    ${!disponivel ? 'opacity-30 cursor-not-allowed' : ''}
                   `}
+                  style={{
+                    backgroundColor: isSelected ? 'var(--accent)' : 'transparent',
+                    color: isSelected ? '#FFFFFF' : 'var(--text-primary)',
+                    border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                  }}
                 >
-                  <span className="capitalize text-[10px]">{weekday}</span>
+                  <span className="capitalize text-[10px]" style={{ color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>{weekday}</span>
                   <span className="text-lg mt-0.5">{dayNum}</span>
                 </button>
               );
@@ -291,31 +297,31 @@ export default function AgendaPublica() {
 
         {/* Step 2: Select Slot */}
         {selectedDate && (
-          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm animate-in fade-in duration-300">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-1">2. Escolha um horário</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 capitalize">{formatDateLabel(selectedDate)}</p>
+          <div className="ds-card p-5 animate-in fade-in duration-300" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>2. Escolha um horário</h2>
+            <p className="text-xs mb-3 capitalize" style={{ color: 'var(--text-secondary)' }}>{formatDateLabel(selectedDate)}</p>
 
             {isLoadingSlots ? (
               <div className="flex justify-center py-6">
-                <svg className="w-6 h-6 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
               </div>
             ) : slots.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-6">Nenhum horário disponível neste dia.</p>
+              <p className="text-sm text-center py-6" style={{ color: 'var(--text-secondary)' }}>Nenhum horário disponível neste dia.</p>
             ) : (
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                 {slots.map(hora => (
                   <button
                     key={hora}
                     onClick={() => setSelectedSlot(hora)}
-                    className={`py-2.5 rounded-xl text-sm font-semibold transition-all border
-                      ${selectedSlot === hora
-                        ? 'bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
-                        : 'border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-indigo-500/40 hover:bg-indigo-500/10'
-                      }
-                    `}
+                    className={`py-2.5 rounded-xl text-sm font-semibold transition-all border`}
+                    style={{
+                      backgroundColor: selectedSlot === hora ? 'var(--accent)' : 'transparent',
+                      color: selectedSlot === hora ? '#FFFFFF' : 'var(--text-primary)',
+                      border: `1px solid ${selectedSlot === hora ? 'var(--accent)' : 'var(--border)'}`,
+                    }}
                   >
                     {hora}
                   </button>
@@ -327,49 +333,49 @@ export default function AgendaPublica() {
 
         {/* Step 3: Form */}
         {selectedSlot && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in duration-300">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-1">3. Seus dados</h2>
+          <form onSubmit={handleSubmit} className="ds-card p-5 space-y-4 animate-in fade-in duration-300" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>3. Seus dados</h2>
 
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Seu nome *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Seu nome *</label>
               <input
                 type="text" required value={formNome}
                 onChange={e => { setFormNome(e.target.value); setFormErrors(prev => ({...prev, nome: ''})); }}
                 placeholder="Nome completo"
-                className={`w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border ${formErrors.nome ? 'border-red-400' : 'border-slate-300 dark:border-white/10'} rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500`}
+                className={`ds-input ${formErrors.nome ? 'border-red-400' : ''}`}
               />
               {formErrors.nome && <p className="text-xs text-red-400 mt-1">{formErrors.nome}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">CPF *</label>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>CPF *</label>
                 <input
                   type="text" required value={formCPF}
                   onChange={e => { setFormCPF(formatCPF(e.target.value)); setFormErrors(prev => ({...prev, cpf: ''})); }}
                   placeholder="000.000.000-00"
                   maxLength={14}
-                  className={`w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border ${formErrors.cpf ? 'border-red-400' : 'border-slate-300 dark:border-white/10'} rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500`}
+                  className={`ds-input ${formErrors.cpf ? 'border-red-400' : ''}`}
                 />
                 {formErrors.cpf && <p className="text-xs text-red-400 mt-1">{formErrors.cpf}</p>}
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Telefone / WhatsApp *</label>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Telefone / WhatsApp *</label>
                 <input
                   type="tel" required value={formTelefone}
                   onChange={e => { setFormTelefone(formatTelefone(e.target.value)); setFormErrors(prev => ({...prev, telefone: ''})); }}
                   placeholder="(21) 99999-0000"
                   maxLength={15}
-                  className={`w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border ${formErrors.telefone ? 'border-red-400' : 'border-slate-300 dark:border-white/10'} rounded-xl text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-indigo-500`}
+                  className={`ds-input ${formErrors.telefone ? 'border-red-400' : ''}`}
                 />
                 {formErrors.telefone && <p className="text-xs text-red-400 mt-1">{formErrors.telefone}</p>}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Observação (opcional)</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Observação (opcional)</label>
               <textarea rows={2} value={formObs}
                 onChange={e => setFormObs(e.target.value)}
                 placeholder="Algo que gostaria de compartilhar antes da sessão..."
-                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm resize-none focus:ring-1 focus:ring-indigo-500" />
+                className="ds-input resize-none" />
             </div>
 
             {/* Honeypot anti-spam — invisible to humans */}
@@ -385,19 +391,16 @@ export default function AgendaPublica() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all"
-            >
+            <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? 'Enviando...' : 'Solicitar Agendamento'}
-            </button>
+            </Button>
+
             {submitError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-500 text-center">
+              <div className="p-3 rounded-xl text-sm text-center" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '0.5px solid var(--status-danger)' }}>
                 {submitError}
               </div>
             )}
-            <p className="text-[11px] text-center text-slate-400">
+            <p className="text-[11px] text-center" style={{ color: 'var(--text-muted)' }}>
               Ao solicitar, o profissional receberá seu pedido e confirmará em breve.
             </p>
           </form>
@@ -405,8 +408,8 @@ export default function AgendaPublica() {
       </div>
 
       {/* Footer */}
-      <div className="text-center py-6 text-xs text-slate-400">
-        Powered by <span className="font-bold text-indigo-400">Caritas</span>
+      <div className="text-center py-6 text-xs" style={{ color: 'var(--text-muted)' }}>
+        Powered by <span className="font-bold" style={{ color: 'var(--accent)' }}>Caritas</span>
       </div>
     </div>
   );
