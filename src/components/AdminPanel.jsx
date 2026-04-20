@@ -559,7 +559,15 @@ export default function AdminPanel() {
 
   const handleSalvarAviso = async () => {
     setAvisoSaving(true);
-    try { await salvarAvisoGlobal(avisoGlobal); } catch (e) { console.error(e); } finally { setAvisoSaving(false); }
+    try { 
+      await salvarAvisoGlobal(avisoGlobal); 
+      showToast('Aviso salvo!', 'O aviso global foi publicado com sucesso.', 'success');
+    } catch (e) { 
+      console.error(e); 
+      showToast('Erro ao Salvar', 'Você não tem permissão para isso ou houve falha na rede.', 'error');
+    } finally { 
+      setAvisoSaving(false); 
+    }
   };
 
   const handleExportCSV = () => {
