@@ -5,16 +5,15 @@
  */
 export const formatCPF = (value) => {
   if (!value) return '';
-  // Remove tudo que não é dígito
-  let cpf = value.replace(/\D/g, '');
+  // Remove tudo que não é dígito e limita a 11 dígitos
+  let cpf = value.replace(/\D/g, '').slice(0, 11);
   
   // Aplica a máscara
-  if (cpf.length <= 11) {
-    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
-    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
-    cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-  }
-  return cpf.slice(0, 14); // Limita o tamanho máximo com a máscara
+  cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+  cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+  cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  
+  return cpf;
 };
 
 /**

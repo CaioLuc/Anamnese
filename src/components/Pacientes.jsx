@@ -4,6 +4,7 @@ import AddPatientModal from './AddPatientModal';
 import PatientProfileModal from './PatientProfileModal';
 import ConfirmDialog from './ConfirmDialog';
 import { formatCPF } from '../utils/formatUtils';
+import Pagination from './ui/Pagination';
 
 export default function Pacientes({ patients, isLoading, onPatientAddedLocal, autoOpenPatient, autoOpenTab, onAutoOpenDone }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -15,6 +16,9 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClinica, setFilterClinica] = useState(''); // '' = todas
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, patient: null });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Auto-open patient modal when coming from Agenda 'Atender' or Dashboard 'Novo Paciente'
   useEffect(() => {
@@ -60,6 +64,10 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
 
   const clinicas = [...new Set(patients.map(p => p.clinica).filter(Boolean))].sort();
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterClinica]);
+
   const filteredPatients = patients.filter(p => {
     const matchSearch = !searchTerm || 
       (p.nome && p.nome.toLowerCase().includes(searchTerm.toLowerCase())) || 
@@ -67,6 +75,10 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
     const matchClinica = !filterClinica || p.clinica === filterClinica;
     return matchSearch && matchClinica;
   });
+
+  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPatients = filteredPatients.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="animate-in fade-in duration-500 w-full">
@@ -151,13 +163,13 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredPatients.length === 0 ? (
+                {paginatedPatients.length === 0 ? (
                     <tr>
                         <td colSpan="5" className="px-6 py-12 text-center text-slate-600 dark:text-slate-400">
                             Nenhum paciente encontrado com base na busca: "{searchTerm}"
                         </td>
                     </tr>
-                ) : filteredPatients.map((patient) => {
+                ) : paginatedPatients.map((patient) => {
                   // Simple age calculation
                   const dobStr = (patient.data_nascimento || '').includes('T') ? patient.data_nascimento : (patient.data_nascimento || '') + 'T12:00:00';
                   const dob = new Date(dobStr);
@@ -235,6 +247,17 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
                 })}
               </tbody>
             </table>
+            
+            {/* Pagination Controls */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredPatients.length}
+              startIndex={startIndex}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              itemLabel="pacientes"
+            />
           </div>
         )}
       </div>

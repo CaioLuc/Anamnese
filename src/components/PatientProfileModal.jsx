@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese, deletarAnamnese, atualizarSessao, lerQuestionario } from '../services/patientService';
-import AnamneseForm from './AnamneseForm';
-import AnamneseAdolescenteForm from './AnamneseAdolescenteForm';
+const AnamneseForm = lazy(() => import('./AnamneseForm'));
+const AnamneseAdolescenteForm = lazy(() => import('./AnamneseAdolescenteForm'));
 import { jsPDF } from 'jspdf';
 import ConfirmDialog from './ConfirmDialog';
 import MoodChart from './MoodChart';
@@ -294,6 +294,91 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
     trackAction('EXPORT_PDF_SESSION', { patientId: patient.id, patientName: patient.nome, sessionDate: sessao.data_sessao });
   };
 
+  const handleExportCompleteRecord = () => {
+    const { PdfBuilder, formatDateBR } = require('../services/pdfUtils');
+    
+    showToast({ type: 'info', message: 'Gerando prontuário completo, aguarde...' });
+    
+    try {
+      const pdf = new PdfBuilder(
+        'Prontuário Clínico Completo',
+        `Paciente: ${patient.nome}`
+      );
+
+      // Dados Básicos do Paciente
+      pdf.addSection('Dados do Paciente');
+      const birthDate = patient.data_nascimento ? new Date(patient.data_nascimento) : null;
+      let ageText = 'N/I';
+      if (birthDate) {
+        const ageDifMs = Date.now() - birthDate.getTime();
+        const ageDate = new Date(ageDifMs);
+        ageText = Math.abs(ageDate.getUTCFullYear() - 1970) + ' anos';
+      }
+
+      pdf.addInfoBlock([
+        { label: 'Nome', value: patient.nome },
+        { label: 'CPF', value: formatCPF(patient.cpf) || 'N/I' },
+        { label: 'Idade', value: ageText },
+        { label: 'Telefone', value: patient.telefone || 'N/I' },
+      ]);
+
+      // Anamnese (Se existir)
+      if (anamneses.length > 0) {
+        const ana = anamneses[0];
+        pdf.addSection('Anamnese (Resumo)');
+        
+        if (ana.tipo === 'dinamico' && ana.template_snapshot) {
+          ana.template_snapshot.campos.forEach((campo, idx) => {
+            const resposta = ana.respostas?.[campo.id] || ana.respostas?.[idx];
+            const valor = Array.isArray(resposta) ? resposta.join(', ') : (resposta || 'N/D');
+            pdf.addField(campo.label || campo.titulo || `Pergunta ${idx + 1}`, String(valor));
+          });
+        } else {
+          pdf.addTextBlock('Motivo da Consulta', ana.motivo_consulta);
+          pdf.addTextBlock('Sintomas Apresentados', ana.sintomas_apresentados);
+          pdf.addTextBlock('Parecer Profissional', ana.observacoes_gerais);
+        }
+      }
+
+      // Sessões (Ordenadas da mais antiga para mais recente)
+      if (sessoes.length > 0) {
+        pdf.addSection('Evoluções (Sessões)');
+        const sessoesOrdenadas = [...sessoes].sort((a, b) => {
+          const d1 = a.data_sessao ? new Date(a.data_sessao) : new Date(a.createdAt?.toDate?.() || 0);
+          const d2 = b.data_sessao ? new Date(b.data_sessao) : new Date(b.createdAt?.toDate?.() || 0);
+          return d1 - d2;
+        });
+
+        sessoesOrdenadas.forEach((sessao, index) => {
+          const dataS = sessao.data_sessao 
+            ? formatDateBR(sessao.data_sessao)
+            : new Date(sessao.createdAt?.toDate() || Date.now()).toLocaleDateString('pt-BR');
+            
+          pdf.addInline(`Sessão ${index + 1}`, `${dataS} - Status: ${sessao.status || 'N/D'}`);
+          if (sessao.observacoes || sessao.evolucao_notas) {
+            pdf.addField('Observações', sessao.observacoes || sessao.evolucao_notas);
+          }
+          if (sessao.comportamento) {
+            pdf.addField('Comportamento', sessao.comportamento);
+          }
+          if (sessao.sintomas) {
+            pdf.addField('Sintomas', sessao.sintomas);
+          }
+        });
+      } else {
+        pdf.addSection('Evoluções');
+        pdf.addField('Aviso', 'Nenhuma sessão registrada para este paciente.');
+      }
+
+      const dataStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      pdf.save(`Prontuario_Completo_${patient.nome.replace(/\s+/g,'_')}_${dataStr}.pdf`);
+      trackAction('EXPORT_PDF_COMPLETE_RECORD', { patientId: patient.id, patientName: patient.nome, totalSessoes: sessoes.length });
+    } catch (err) {
+      console.error(err);
+      showToast({ type: 'error', message: 'Erro ao gerar o prontuário completo.' });
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       
@@ -333,6 +418,13 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
           </div>
           
           <div className="flex items-center gap-2 self-start -mr-2">
+             <button
+               onClick={handleExportCompleteRecord}
+               className="p-2 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors"
+               title="Exportar Prontuário Completo (PDF)"
+             >
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+             </button>
              <button
                onClick={() => onEditRequest && onEditRequest(patient)}
                className="p-2 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors"
@@ -771,9 +863,13 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                             })}
                           </div>
                       ) : (selectedFormType === 'adulto' || (isEditingAnamnese && anamneses[0]?.tipo !== 'adolescente')) ? (
+                        <Suspense fallback={<div className="p-10 text-center text-slate-500">Carregando formulário...</div>}>
                           <AnamneseForm patient={patient} initialData={isEditingAnamnese ? anamneses[0] : null} onSaved={() => { setIsEditingAnamnese(false); loadHistory(); }} />
+                        </Suspense>
                       ) : (
+                        <Suspense fallback={<div className="p-10 text-center text-slate-500">Carregando formulário...</div>}>
                           <AnamneseAdolescenteForm patient={patient} initialData={isEditingAnamnese ? anamneses[0] : null} onSaved={() => { setIsEditingAnamnese(false); loadHistory(); }} />
+                        </Suspense>
                       )}
                    </div>
                 </ErrorBoundary>

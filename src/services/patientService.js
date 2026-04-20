@@ -324,6 +324,14 @@ export async function deletarAnamnese(id, id_paciente) {
 // CRUD: SESSÕES (EVOLUÇÃO)
 // ==========================================
 
+let cacheTodasSessoes = null;
+let cacheTodasSessoesTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+export function invalidarCacheSessoes() {
+  cacheTodasSessoes = null;
+}
+
 export async function criarSessao(sessaoData) {
   try {
     const { id_paciente, ...data } = sessaoData;
@@ -334,6 +342,7 @@ export async function criarSessao(sessaoData) {
       createdAt: serverTimestamp()
     });
     trackAction('CREATE_SESSION', { patientId: id_paciente, sessionId: docRef.id, status: data.status || 'Presente' });
+    invalidarCacheSessoes();
     return docRef.id;
   } catch (error) {
     console.error("Erro ao criar sessão de evolução:", error);
@@ -361,6 +370,7 @@ export async function deletarSessao(id, id_paciente) {
     const docRef = doc(getSessoesRef(id_paciente), id);
     await deleteDoc(docRef);
     trackAction('DELETE_SESSION', { patientId: id_paciente, sessionId: id });
+    invalidarCacheSessoes();
   } catch (error) {
     console.error("Erro ao deletar sessão:", error);
     throw error;
@@ -372,6 +382,7 @@ export async function atualizarSessao(id, id_paciente, dadosAtualizados) {
     const docRef = doc(getSessoesRef(id_paciente), id);
     await updateDoc(docRef, dadosAtualizados);
     trackAction('UPDATE_SESSION', { patientId: id_paciente, sessionId: id });
+    invalidarCacheSessoes();
   } catch (error) {
     console.error("Erro ao atualizar sessão:", error);
     throw error;
@@ -384,7 +395,11 @@ export async function atualizarSessao(id, id_paciente, dadosAtualizados) {
 // mas aqui o dashboard é apenas do usuário logado.
 // ==========================================
 
-export async function lerTodasSessoes() {
+export async function lerTodasSessoes(forceRefresh = false) {
+  if (!forceRefresh && cacheTodasSessoes && (Date.now() - cacheTodasSessoesTime < CACHE_TTL)) {
+    return cacheTodasSessoes;
+  }
+
   // Como as sessões estão espalhadas em pacientes, precisamos buscar todos os pacientes primeiro
   // ou usar collectionGroup (que exige index). Para simplicidade e segurança, buscamos via pacientes.
   try {
@@ -394,6 +409,10 @@ export async function lerTodasSessoes() {
       const sessoes = await lerSessoesDoPaciente(pac.id);
       todasSessoes = [...todasSessoes, ...sessoes];
     }
+    
+    cacheTodasSessoes = todasSessoes;
+    cacheTodasSessoesTime = Date.now();
+    
     return todasSessoes;
   } catch (error) {
     console.error("Erro ao ler todas as sessões:", error);

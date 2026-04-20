@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import { listarTodosPsicologos, atualizarPlanoPsicologo, toggleAtivoPsicologo, getEstatisticasGlobais, contarPacientesDoPsicologo, getMetricasPsicologo, atualizarTrialPsicologo, salvarAvisoGlobal, lerAvisoGlobal, obterLogsAuditoria, limparLogsAntigos } from '../services/adminService';
 import { logoutFirebaseUser } from '../services/authService';
+import { exportarDadosCSV } from '../services/exportService';
+import { useToast } from '../contexts/ToastContext';
 
 // ==========================================
 // HELPERS
@@ -531,6 +533,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
 // MAIN ADMIN PANEL
 // ==========================================
 export default function AdminPanel() {
+  const { showToast } = useToast();
   const [psicologos, setPsicologos] = useState([]);
   const [stats, setStats] = useState({ total: 0, ativos: 0, inativos: 0, basicos: 0, profissionais: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -541,6 +544,7 @@ export default function AdminPanel() {
   const [avisoGlobal, setAvisoGlobal] = useState('');
   const [avisoSaving, setAvisoSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('psicologos'); // 'psicologos' | 'comunicacao' | 'auditoria'
+  const [isExporting, setIsExporting] = useState(false);
 
   // Logs (Auditoria)
   const [logs, setLogs] = useState([]);
@@ -624,9 +628,29 @@ export default function AdminPanel() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleExportCSV} className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/20 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-colors" title="Exportar lista em CSV">
+          <button onClick={handleExportCSV} className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/20 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-colors" title="Exportar lista de psicólogos">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            CSV
+            Psicólogos (CSV)
+          </button>
+          <button 
+            onClick={async () => {
+              if (isExporting) return;
+              setIsExporting(true);
+              try {
+                const result = await exportarDadosCSV();
+                if (showToast) showToast({ type: 'success', message: `Exportados ${result.pacientes} pacientes, ${result.sessoes} sessões e ${result.anamneses} anamneses.` });
+              } catch (err) {
+                console.error('Erro na exportação:', err);
+                if (showToast) showToast({ type: 'error', message: 'Erro ao exportar dados.' });
+              } finally {
+                setIsExporting(false);
+              }
+            }}
+            disabled={isExporting}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-50" title="Exportar dados clínicos"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            {isExporting ? 'Exportando...' : 'Dados Clínicos (CSV)'}
           </button>
           <button onClick={() => logoutFirebaseUser()} className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors bg-slate-100 dark:bg-white/5 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/5">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>

@@ -6,9 +6,8 @@ import { jsPDF } from 'jspdf';
 function sanitizeText(str) {
   if (!str) return '';
   return String(str)
-    .normalize("NFD")                 // Desmonta acentos: 'ç' -> 'c' + '¸'
-    .replace(/[\u0300-\u036f]/g, "")  // Remove as marcas de acento
-    .replace(/[^\x20-\x7E\r\n]/g, ""); // Remove emojis, travessões e tudo fora do ASCII básico
+    // Remove emojis e caracteres complexos, mas mantém letras latinas, números, pontuação básica e acentos (Latin-1 Supplement)
+    .replace(/[^\x20-\xFF\r\n]/g, ""); 
 }
 
 // ==========================================
@@ -30,6 +29,12 @@ const COLORS = {
 const MARGIN = 20;
 const PAGE_WIDTH = 210;
 const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
+
+// ==========================================
+// LOGO BASE64 (Caritas)
+// ==========================================
+// Um círculo com uma cruz central, estilo saúde/psicologia
+const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAEISURBVFhH7ZYxDoMwEEVzjBxk5TKcgSOw9QhI7L1A2ZqRskQ3aN4bJzY2cZzCRpZ+0n/SybNnP/4451wozM1xHPu+71NKYdu2KcsyXdd1XJd83/d2R0RkrP/Xdd2VzIjjOKa0oijC4zSjKMLjdBRFAIf/UvPInp22beE4HqZpAof/BtwBdwAclmWBE9u2he/7oOqBqqqgA1RVhd/3PUiZpgmeZVmgM3AETkDXdWDgCAgL/L2yLKEDBwAHgGZJkkAH4ACoXJc8z4MOwAFQ2bZNGDxcAAdAxb9M0yRhuAGv8C/LskgYVwAOf4+iCBwABwCHv0dRBA6AA4DD36MoAofB8AXn3IvwB9TfP6J6wP2WAAAAAElFTkSuQmCC';
 
 // ==========================================
 // CLASSE: PDF BUILDER
@@ -56,11 +61,18 @@ export class PdfBuilder {
     doc.setFillColor(...COLORS.primaryLight);
     doc.rect(MARGIN, 10, CONTENT_WIDTH, subtitulo ? 28 : 20, 'F');
 
-    // Badge Caritas
+    // Badge Caritas e Logo
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.primary);
     doc.setFont('helvetica', 'bold');
     doc.text('CARITAS', MARGIN + 4, 19);
+    
+    // Inserir Logo à direita
+    try {
+      doc.addImage(LOGO_BASE64, 'PNG', PAGE_WIDTH - MARGIN - 14, 14, 10, 10);
+    } catch(e) {
+      console.warn("Could not add logo to PDF");
+    }
 
     // Título  
     doc.setFontSize(16);

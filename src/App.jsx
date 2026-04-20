@@ -1,29 +1,57 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './components/Login';
-import AdminPanel from './components/AdminPanel';
 import ContaBloqueada from './components/ContaBloqueada';
 import { subscribeToAuthChanges } from './services/authService';
 import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';
-import Agenda from './components/Agenda';
-import Financas from './components/Financas';
-import Questionarios from './components/Questionarios';
-import Clinicas from './components/Clinicas';
-import Lixeira from './components/Lixeira';
 import AgendaPublica from './components/AgendaPublica';
 import OnboardingOverlay from './components/OnboardingOverlay';
+
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const Agenda = lazy(() => import('./components/Agenda'));
+const Financas = lazy(() => import('./components/Financas'));
+const Questionarios = lazy(() => import('./components/Questionarios'));
+const Clinicas = lazy(() => import('./components/Clinicas'));
+const Lixeira = lazy(() => import('./components/Lixeira'));
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
 import { trackAction } from './services/logService';
+
+// Mapeamento de path de URL → id interno de navegação
+const PATH_MAP = {
+  '/': 'dashboard',
+  '/dashboard': 'dashboard',
+  '/pacientes': 'pacientes',
+  '/nova-sessao': 'nova-sessao',
+  '/agenda': 'agenda',
+  '/financas': 'financas',
+  '/questionarios': 'questionarios',
+  '/clinicas': 'clinicas',
+  '/lixeira': 'lixeira',
+};
+
+const ID_TO_PATH = {
+  'dashboard': '/dashboard',
+  'pacientes': '/pacientes',
+  'nova-sessao': '/nova-sessao',
+  'agenda': '/agenda',
+  'financas': '/financas',
+  'questionarios': '/questionarios',
+  'clinicas': '/clinicas',
+  'lixeira': '/lixeira',
+};
 
 // ================================
 // APP PRINCIPAL (Autenticado)
 // ================================
 function AppMain() {
-  const [currentPath, setCurrentPath] = useState('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = PATH_MAP[location.pathname] || 'dashboard';
+
   const [patients, setPatients] = useState([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   
@@ -37,14 +65,14 @@ function AppMain() {
 
   // Navegação com opções extras (para GlobalSearch)
   const handleNavigate = (path, opts) => {
-    setCurrentPath(path);
+    const urlPath = ID_TO_PATH[path] || '/dashboard';
+    navigate(urlPath);
     trackAction('NAVIGATE', { from: currentPath, to: path });
     if (opts?.openPatient) {
       setAutoOpenPatientForProfile(opts.openPatient);
       setAutoOpenTabForProfile('evolucoes');
     }
     if (opts?.addPatient) {
-      // Será tratado pelo Pacientes.jsx via auto-open
       setAutoOpenPatientForProfile('__add__');
     }
   };
@@ -136,15 +164,15 @@ function AppMain() {
       if (anamneses.length === 0) {
         setAutoOpenPatientForProfile(patient);
         setAutoOpenTabForProfile('anamnese');
-        setCurrentPath('pacientes');
+        navigate('/pacientes');
       } else {
         setPreSelectedPatientForSessao({ ...patient });
-        setCurrentPath('nova-sessao');
+        navigate('/nova-sessao');
       }
     } catch (error) {
       console.error("Erro ao verificar anamnese:", error);
       setPreSelectedPatientForSessao({ ...patient });
-      setCurrentPath('nova-sessao');
+      navigate('/nova-sessao');
     }
   };
 
@@ -211,7 +239,13 @@ function AppMain() {
   if (isAdmin) {
     return (
       <div className="h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
-        <AdminPanel />
+        <Suspense fallback={
+          <div className="flex h-screen items-center justify-center">
+            <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          </div>
+        }>
+          <AdminPanel />
+        </Suspense>
       </div>
     );
   }
@@ -229,7 +263,13 @@ function AppMain() {
   return (
     <div className="h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
       <Layout currentPath={currentPath} onNavigate={handleNavigate} userEmail={user.email} fullHeight={currentPath === 'questionarios'} patients={patients}>
-        {renderContent()}
+        <Suspense fallback={
+          <div className="flex h-full items-center justify-center">
+            <svg className="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          </div>
+        }>
+          {renderContent()}
+        </Suspense>
       </Layout>
 
       {/* Onboarding para primeiro acesso (H10) */}

@@ -79,6 +79,9 @@ export default function AgendaPublica() {
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
 
+  // Anti-spam: honeypot field (hidden from humans, filled by bots)
+  const [honeypot, setHoneypot] = useState('');
+
   // Generate next 14 days for date picker
   const dateOptions = [];
   const today = new Date();
@@ -148,6 +151,16 @@ export default function AgendaPublica() {
     if (!formTelefone.trim()) errors.telefone = 'Informe um telefone para contato.';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
+    // Anti-spam: honeypot check
+    if (honeypot) { setSuccess(true); return; }
+
+    // Rate limit: max 3 bookings per browser session
+    const bookingCount = parseInt(sessionStorage.getItem('caritas_booking_count') || '0', 10);
+    if (bookingCount >= 3) {
+      setSubmitError('Você atingiu o limite de agendamentos por sessão. Tente novamente mais tarde.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await criarAgendamentoPublico(uid, {
@@ -159,6 +172,7 @@ export default function AgendaPublica() {
         telefone_paciente: formTelefone.trim(),
         observacoes: formObs.trim(),
       });
+      sessionStorage.setItem('caritas_booking_count', String(bookingCount + 1));
       setSuccess(true);
     } catch (e) {
       console.error(e);
@@ -356,6 +370,19 @@ export default function AgendaPublica() {
                 onChange={e => setFormObs(e.target.value)}
                 placeholder="Algo que gostaria de compartilhar antes da sessão..."
                 className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm resize-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+
+            {/* Honeypot anti-spam — invisible to humans */}
+            <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}>
+              <label htmlFor="website">Website</label>
+              <input
+                id="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={honeypot}
+                onChange={e => setHoneypot(e.target.value)}
+              />
             </div>
 
             <button

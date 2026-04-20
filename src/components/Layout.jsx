@@ -5,6 +5,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import HelpPanel from './HelpPanel';
 import GlobalSearch from './GlobalSearch';
 import { useKeyboard } from '../hooks/useKeyboard';
+import { exportarDadosCSV } from '../services/exportService';
+import { useToast } from '../contexts/ToastContext';
 
 export default function Layout({ children, currentPath, onNavigate, userEmail, fullHeight = false, patients = [] }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
@@ -12,6 +14,8 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
   const [showHelp, setShowHelp] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Atalhos de teclado globais (H7)
   useKeyboard([

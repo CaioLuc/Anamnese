@@ -3,16 +3,60 @@ import { db, auth } from './firebaseConfig.js';
 
 // ==========================================
 // ADMIN: Lista de e-mails com permissão de admin
+// Bootstrap fallback — garante acesso mesmo se Firestore estiver vazio
 // ==========================================
-const ADMIN_EMAILS = [
-  '241.14.035@uniriosead.com',
-  // Adicione mais e-mails admin aqui
-];
+const BOOTSTRAP_ADMIN_EMAIL = '241.14.035@uniriosead.com';
 
+// Cache local de e-mails admin (carregado do Firestore)
+let _adminEmailsCache = null;
+
+/**
+ * Carrega a lista de admins do Firestore (coleção `admins`).
+ * Usa cache em memória para evitar queries repetidas.
+ */
+async function loadAdminEmails() {
+  if (_adminEmailsCache) return _adminEmailsCache;
+  try {
+    const adminsCol = collection(db, 'admins');
+    const snap = await getDocs(adminsCol);
+    _adminEmailsCache = snap.docs.map(d => (d.data().email || '').toLowerCase());
+    return _adminEmailsCache;
+  } catch (e) {
+    console.error('Erro ao carregar admins do Firestore:', e);
+    return [BOOTSTRAP_ADMIN_EMAIL.toLowerCase()];
+  }
+}
+
+/**
+ * Verifica se um e-mail é de admin.
+ * Primeiro verifica o fallback bootstrap, depois consulta Firestore.
+ */
 export function isAdminEmail(email) {
   if (!email) return false;
   const emailLimpo = email.trim().toLowerCase();
-  return ADMIN_EMAILS.map(e => e.toLowerCase()).includes(emailLimpo);
+  // Bootstrap fallback — sempre funciona, mesmo sem Firestore
+  if (emailLimpo === BOOTSTRAP_ADMIN_EMAIL.toLowerCase()) return true;
+  // Se cache já carregou, verifica nele também
+  if (_adminEmailsCache) return _adminEmailsCache.includes(emailLimpo);
+  return false;
+}
+
+/**
+ * Versão async de isAdminEmail — consulta Firestore se cache não existe.
+ */
+export async function isAdminEmailAsync(email) {
+  if (!email) return false;
+  const emailLimpo = email.trim().toLowerCase();
+  if (emailLimpo === BOOTSTRAP_ADMIN_EMAIL.toLowerCase()) return true;
+  const emails = await loadAdminEmails();
+  return emails.includes(emailLimpo);
+}
+
+/**
+ * Invalida o cache de admins (chamado ao adicionar/remover admin).
+ */
+export function invalidarCacheAdmins() {
+  _adminEmailsCache = null;
 }
 
 // ==========================================

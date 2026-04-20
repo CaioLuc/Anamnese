@@ -107,7 +107,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         sintomasLength,
         totalChars: obsLength + comportLength + sintomasLength,
         pago: formData.pago,
-        valor: formData.valor || '0'
+        valor: parseFloat(String(formData.valor || '0').replace(/\./g, '').replace(',', '.')) || 0
       });
 
       showToast({ type: 'success', message: 'Evolução salva com sucesso!' });

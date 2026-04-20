@@ -3,6 +3,7 @@ import { lerTodasSessoes, atualizarSessao } from '../services/patientService';
 import { gerarRelatorioFinanceiroPDF } from '../services/pdfUtils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { trackAction } from '../services/logService';
+import Pagination from './ui/Pagination';
 
 const PERIODOS = [
   { id: 'semana', label: 'Semana' },
@@ -92,6 +93,8 @@ export default function Financas({ patients, isLoadingPatients }) {
   const [filterPago, setFilterPago] = useState('todos'); // 'todos' | 'pago' | 'pendente'
   const [sortBy, setSortBy] = useState('data_desc'); // 'data_desc' | 'data_asc' | 'valor_desc' | 'nome'
   const [editingPayment, setEditingPayment] = useState(null); // sessao.id being edited
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   const getSessaoValor = useCallback((s) => {
     let valStr = s.valor;
@@ -193,6 +196,16 @@ export default function Financas({ patients, isLoadingPatients }) {
 
     return list;
   }, [sessoesPeriodo, filterPago, sortBy, patients]);
+
+  // Pagination
+  const totalPages = Math.ceil(sessoesFiltradas.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedSessoes = sessoesFiltradas.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [periodo, filterPago, sortBy]);
 
   // KPIs
   const stats = useMemo(() => {
@@ -441,7 +454,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {sessoesFiltradas.map(s => {
+                {paginatedSessoes.map(s => {
                   const p = patients.find(pt => pt.id === s.id_paciente);
                   const isUpdating = updatingId === s.id;
                   const valor = getSessaoValor(s);
@@ -535,6 +548,17 @@ export default function Financas({ patients, isLoadingPatients }) {
                 })}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={sessoesFiltradas.length}
+              startIndex={startIndex}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              itemLabel="sessões"
+            />
           </div>
         )}
       </div>
