@@ -1,5 +1,6 @@
 # Componentes, Funções e Estilos — Caritas
 
+> **Última atualização:** 28/04/2026
 ---
 
 ## Componentes Visuais (React)

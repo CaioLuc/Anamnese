@@ -1,5 +1,7 @@
 # Decisões Técnicas — Caritas
 
+> **Última atualização:** 28/04/2026
+
 Documento que registra as decisões de design e arquitetura inferidas a partir da análise do código-fonte. Serve como referência para manutenção e para novos contribuidores.
 
 ---
@@ -10,13 +12,13 @@ Documento que registra as decisões de design e arquitetura inferidas a partir d
 
 - **Decisão**: Usar React com Vite em vez de Next.js ou CRA.
 - **Racional**: A aplicação é uma SPA pura (sem SSR/SSG), hospedada como estáticos no Firebase Hosting. Vite oferece build rápido (~3s) e HMR instantâneo sem a complexidade do Next.js.
-- **Consequência**: Não há roteamento baseado em arquivos — o roteamento interno é gerenciado via `useState` (`currentPath`) em vez de usar o React Router para todas as páginas. Apenas a rota `/agendar/:slug` é tratada pelo React Router.
+- **Consequência**: Inicialmente o roteamento interno era via `useState` (`currentPath`), mas foi migrado para React Router DOM com rotas reais (`/dashboard`, `/pacientes`, `/financas`, etc.), habilitando deep-linking e botão Voltar do navegador.
 
 ### Tailwind CSS 3.4 com `darkMode: 'class'`
 
 - **Decisão**: Estilização utility-first com suporte nativo a dark mode.
 - **Racional**: Permite prototipação rápida e consistência visual. O dark mode é padrão (`default: 'dark'` no ThemeContext).
-- **Consequência**: Componentes possuem strings de classe longas. Não há componentes de design system extraídos (ex: `<Button variant="primary">`), o que causa repetição de padrões de classe.
+- **Consequência**: Componentes possuem strings de classe longas. ~~Não há componentes de design system extraídos~~ → Resolvido: foram criados componentes reutilizáveis (`<Button>`, `<Card>`, `<Badge>`, `<Pagination>`) em `src/components/ui/` e classes utilitárias do Design System (`ds-card`, `ds-btn`, `ds-input`).
 
 ### Firebase (Firestore + Auth + Hosting + Functions)
 
@@ -36,8 +38,8 @@ Documento que registra as decisões de design e arquitetura inferidas a partir d
 
 ### Migração v1 → v2
 
-- **Decisão**: Existe um script de migração (`migrationV2.js`) para mover dados da estrutura plana original para a hierárquica.
-- **Status**: O script existe mas não é chamado automaticamente. A função `vincularDadosAoUsuarioAtual()` foi marcada como obsoleta.
+- **Decisão**: Existia um script de migração (`migrationV2.js`) para mover dados da estrutura plana original para a hierárquica.
+- **Status**: ✅ Migração concluída. O script `migrationV2.js`, o arquivo legado `firebase.js` e o `anamnesisService.js` foram deletados. A função `vincularDadosAoUsuarioAtual()` em `patientService.js` permanece como stub morto e deve ser removida.
 
 ### Soft Delete (Lixeira)
 
@@ -133,3 +135,9 @@ Documento que registra as decisões de design e arquitetura inferidas a partir d
 - Valores de sessão são armazenados como strings no Firestore e parseados com `parseFloat()` no frontend. O campo `<input type="number">` pode gerar inconsistências com vírgulas em localidades brasileiras.
 - **Mitigação atual**: `getSessaoValor()` em `Financas.jsx` trata vírgulas e faz fallback para `valor_sessao` do paciente.
 - **Solução ideal**: Normalizar para `Number` no momento do save em `SessaoEvolucao.jsx`.
+
+---
+
+## 6. Avaliação de Usabilidade (UX)
+
+Uma auditoria profunda da interface, das falhas estruturais de UX listadas neste ADR e de métricas de Nielsen encontra-se no arquivo dedicado: **[`AUDITORIA_UX.md`](./AUDITORIA_UX.md)**. O arquivo documenta as falhas identificadas (como a de roteamento mencionada na seção 3) com propostas formais de resolução.

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { loginFirebaseUser } from '../services/authService';
-import { Mail, Lock, AlertCircle, Shield } from 'lucide-react';
+import { Mail, Lock, AlertCircle } from 'lucide-react';
 import Button from './ui/Button';
+import logo from '../assets/logo.svg';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -40,11 +41,9 @@ export default function Login() {
         <div className="flex justify-center flex-col items-center">
           
           {/* Logo */}
-          <div 
-            className="w-16 h-16 rounded-xl flex items-center justify-center mb-6"
-            style={{ backgroundColor: 'var(--accent)', boxShadow: 'var(--shadow)' }}
-          >
-            <Shield size={32} style={{ color: '#FFFFFF' }} />
+          <div className="w-28 h-28 mb-4 flex items-center justify-center relative login-logo">
+            <div className="login-logo-glow" />
+            <img src={logo} alt="Caritas Logo" className="w-full h-full object-contain relative z-10" />
           </div>
           
           <h2 className="text-center text-3xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Caritas</h2>

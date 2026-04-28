@@ -1,5 +1,7 @@
 # Plano de Implementação: Melhorias de Performance
 
+> **Última atualização:** 28/04/2026
+
 Este plano detalha as otimizações de performance para o projeto Caritas, focando em carregamento inicial mais rápido, navegação fluida em grandes listas e redução de latência em queries.
 
 ## 1. Code Splitting (React.lazy)

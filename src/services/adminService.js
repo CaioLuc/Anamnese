@@ -1,5 +1,6 @@
 import { collection, collectionGroup, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, limit, where, deleteDoc } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
+import logger from '../utils/logger';
 
 // ==========================================
 // ADMIN: Lista de e-mails com permissão de admin
@@ -22,7 +23,7 @@ async function loadAdminEmails() {
     _adminEmailsCache = snap.docs.map(d => (d.data().email || '').toLowerCase());
     return _adminEmailsCache;
   } catch (e) {
-    console.error('Erro ao carregar admins do Firestore:', e);
+    logger.error('Erro ao carregar admins do Firestore:', e);
     return [BOOTSTRAP_ADMIN_EMAIL.toLowerCase()];
   }
 }
@@ -87,7 +88,7 @@ export async function listarTodosPsicologos() {
       ...d.data()
     }));
   } catch (error) {
-    console.error("Erro ao listar psicólogos:", error);
+    logger.error("Erro ao listar psicólogos:", error);
     throw error;
   }
 }
@@ -120,7 +121,7 @@ export async function getMetricasPsicologo(uid) {
 
     return { totalPacientes, totalSessoes, totalAnamneses };
   } catch (error) {
-    console.error("Erro ao obter métricas:", error);
+    logger.error("Erro ao obter métricas:", error);
     return { totalPacientes: 0, totalSessoes: 0, totalAnamneses: 0 };
   }
 }
@@ -134,7 +135,7 @@ export async function contarPacientesDoPsicologo(uid) {
     const snapshot = await getDocs(pacientesCol);
     return snapshot.size;
   } catch (error) {
-    console.error("Erro ao contar pacientes:", error);
+    logger.error("Erro ao contar pacientes:", error);
     return 0;
   }
 }
@@ -155,7 +156,7 @@ export async function atualizarPlanoPsicologo(uid, plano) {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error("Erro ao atualizar plano:", error);
+    logger.error("Erro ao atualizar plano:", error);
     throw error;
   }
 }
@@ -171,7 +172,7 @@ export async function toggleAtivoPsicologo(uid, ativo) {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error("Erro ao mudar status:", error);
+    logger.error("Erro ao mudar status:", error);
     throw error;
   }
 }
@@ -187,7 +188,7 @@ export async function atualizarTrialPsicologo(uid, dataVencimento) {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error("Erro ao atualizar trial:", error);
+    logger.error("Erro ao atualizar trial:", error);
     throw error;
   }
 }
@@ -204,7 +205,7 @@ export async function salvarAvisoGlobal(mensagem) {
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error("Erro ao salvar aviso:", error);
+    logger.error("Erro ao salvar aviso:", error);
     throw error;
   }
 }
@@ -245,7 +246,7 @@ export async function obterLogsAuditoria(maxResults = 250) {
       ...doc.data()
     }));
   } catch (error) {
-    console.error("Erro ao obter logs de auditoria:", error);
+    logger.error("Erro ao obter logs de auditoria:", error);
     return [];
   }
 }
@@ -268,7 +269,7 @@ export async function limparLogsAntigos(dias = 30) {
     }
     return deletados;
   } catch (error) {
-    console.error("Erro ao limpar logs:", error);
+    logger.error("Erro ao limpar logs:", error);
     throw error;
   }
 }

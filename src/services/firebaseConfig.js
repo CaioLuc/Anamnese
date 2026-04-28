@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, initializeFirestore, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -17,17 +17,12 @@ export const app = initializeApp(firebaseConfig);
 // Initialize Firebase Authentication
 export const auth = getAuth(app);
 
-// Force WebSockets instead of Long-Polling (Bypasses AdBlockers and Antivirus traps)
+// Initialize Firestore with persistent offline cache + multi-tab support
+// Replaces the deprecated enableMultiTabIndexedDbPersistence() API
 export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
   experimentalAutoDetectLongPolling: true,
   useFetchStreams: false,
-});
-
-// Enable offline persistence (works across multiple tabs)
-enableMultiTabIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Firestore: multiple tabs open, persistence limited to one tab.');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Firestore: browser does not support offline persistence.');
-  }
 });

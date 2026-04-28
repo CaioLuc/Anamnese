@@ -1,4 +1,6 @@
-# Arquitetura do Projeto — Caritas
+# Arquitetura do Sistema — Caritas
+
+> **Última atualização:** 28/04/2026
 
 ## Visão Geral
 
@@ -181,3 +183,10 @@ npm run preview          # Preview do build localmente
 npm run deploy:hosting   # Build + deploy no Firebase Hosting
 firebase deploy          # Deploy completo (hosting + rules + functions)
 ```
+
+---
+
+## Avaliação de Usabilidade
+
+Uma auditoria detalhada de Experiência do Usuário (UX) e da interface foi realizada aplicando as 10 Heurísticas de Nielsen.
+A avaliação completa encontra-se documentada no arquivo centralizado: **[`AUDITORIA_UX.md`](./AUDITORIA_UX.md)**.

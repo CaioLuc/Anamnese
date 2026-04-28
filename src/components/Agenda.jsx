@@ -9,7 +9,7 @@ import ConfigAgenda from './ConfigAgenda';
 import { useToast } from '../contexts/ToastContext';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
-import { Settings, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, Calendar as CalendarIcon, MessageCircle } from 'lucide-react';
+import { Settings, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, Calendar as CalendarIcon, MessageCircle, Repeat } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pendente:   { label: 'Pendente',   color: 'warning' },
@@ -47,6 +47,12 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, id: null });
   const [showConfig, setShowConfig] = useState(false);
+
+  // Recurring appointment state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringWeekday, setRecurringWeekday] = useState(3); // 0=Dom, 3=Qua
+  const [recurringCount, setRecurringCount] = useState(4);
+  const [recurringStartDate, setRecurringStartDate] = useState('');
 
   const loadAgendamentos = useCallback(async () => {
     setIsLoading(true);
@@ -91,6 +97,10 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
     setForm({ ...emptyForm, data: dateStr });
     setPatientSearch('');
     setEditingId(null);
+    setIsRecurring(false);
+    setRecurringWeekday(3);
+    setRecurringCount(4);
+    setRecurringStartDate(dateStr || new Date().toISOString().split('T')[0]);
     setShowModal(true);
   };
 
@@ -125,14 +135,30 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
     try {
       if (editingId) {
         await atualizarAgendamento(editingId, form);
+      } else if (isRecurring) {
+        // Calculate all dates for recurring appointments
+        const dates = calcularDatasRecorrentes(recurringStartDate, recurringWeekday, recurringCount);
+        if (dates.length === 0) {
+          showToast({ type: 'warning', message: 'Nenhuma data encontrada. Verifique a data inicial e o dia da semana.' });
+          setIsSubmitting(false);
+          return;
+        }
+        // Create all appointments in parallel
+        await Promise.all(
+          dates.map(dateStr =>
+            criarAgendamento({ ...form, data: dateStr })
+          )
+        );
+        showToast({ type: 'success', message: `${dates.length} agendamentos criados com sucesso!` });
       } else {
         await criarAgendamento(form);
       }
       setShowModal(false);
       await loadAgendamentos();
       // Auto-select the saved day so it appears immediately in the side panel
-      if (form.data) {
-        const [year, month, day] = form.data.split('-').map(Number);
+      const targetDate = isRecurring ? recurringStartDate : form.data;
+      if (targetDate) {
+        const [year, month, day] = targetDate.split('-').map(Number);
         if (year === currentYear && month === currentMonth + 1) {
           setSelectedDay(day);
         }
@@ -161,6 +187,32 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
   );
 
   const selectedDayAgendamentos = selectedDay ? getAgendamentosForDay(selectedDay) : [];
+
+  // Recurring dates calculator
+  const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  
+  function calcularDatasRecorrentes(startDateStr, weekday, count) {
+    const dates = [];
+    if (!startDateStr) return dates;
+    let current = new Date(startDateStr + 'T12:00:00');
+    // Move to next occurrence of the weekday
+    while (current.getDay() !== weekday) {
+      current.setDate(current.getDate() + 1);
+    }
+    for (let i = 0; i < count; i++) {
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const d = String(current.getDate()).padStart(2, '0');
+      dates.push(`${y}-${m}-${d}`);
+      current.setDate(current.getDate() + 7);
+    }
+    return dates;
+  }
+
+  // Preview of recurring dates
+  const recurringPreview = isRecurring
+    ? calcularDatasRecorrentes(recurringStartDate, recurringWeekday, recurringCount)
+    : [];
 
   if (showConfig) {
     return <ConfigAgenda onClose={() => setShowConfig(false)} />;
@@ -527,12 +579,93 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                   className="ds-input resize-none" />
               </div>
 
+              {/* Recurring toggle - only for new appointments */}
+              {!editingId && (
+                <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <div
+                      onClick={() => setIsRecurring(!isRecurring)}
+                      className="relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer"
+                      style={{ backgroundColor: isRecurring ? 'var(--accent)' : 'var(--border)' }}
+                    >
+                      <div
+                        className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                        style={{ transform: isRecurring ? 'translateX(22px)' : 'translateX(2px)' }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Repeat size={16} style={{ color: isRecurring ? 'var(--accent)' : 'var(--text-secondary)' }} />
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Agendamento Recorrente</span>
+                    </div>
+                  </label>
+
+                  {isRecurring && (
+                    <div className="space-y-3 pt-1">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Dia da Semana</label>
+                          <select
+                            value={recurringWeekday}
+                            onChange={e => setRecurringWeekday(Number(e.target.value))}
+                            className="ds-input"
+                          >
+                            {WEEKDAY_NAMES.map((name, i) => (
+                              <option key={i} value={i}>{name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Repetições</label>
+                          <input
+                            type="number"
+                            min="2"
+                            max="52"
+                            value={recurringCount}
+                            onChange={e => setRecurringCount(Math.min(52, Math.max(2, Number(e.target.value))))}
+                            className="ds-input"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>A partir de</label>
+                          <input
+                            type="date"
+                            value={recurringStartDate}
+                            onChange={e => setRecurringStartDate(e.target.value)}
+                            className="ds-input"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Preview */}
+                      {recurringPreview.length > 0 && (
+                        <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-primary)', border: '0.5px solid var(--border)' }}>
+                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--accent)' }}>
+                            📅 {recurringPreview.length} agendamentos serão criados:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {recurringPreview.map((d, i) => (
+                              <span
+                                key={i}
+                                className="text-[10px] px-2 py-1 rounded-md font-medium"
+                                style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}
+                              >
+                                {d.split('-').reverse().join('/')}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4">
                 <Button variant="secondary" className="flex-1" type="button" onClick={() => setShowModal(false)}>
                   Cancelar
                 </Button>
                 <Button variant="primary" className="flex-1" type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Salvando...' : editingId ? 'Atualizar' : 'Agendar'}
+                  {isSubmitting ? 'Salvando...' : editingId ? 'Atualizar' : isRecurring ? `Agendar ${recurringPreview.length}x` : 'Agendar'}
                 </Button>
               </div>
             </form>

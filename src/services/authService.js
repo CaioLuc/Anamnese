@@ -5,6 +5,7 @@ import {
 } from 'firebase/auth';
 import { auth } from './firebaseConfig';
 import { trackAction } from './logService';
+import logger from '../utils/logger';
 
 export const loginFirebaseUser = async (email, password) => {
   try {
@@ -12,7 +13,7 @@ export const loginFirebaseUser = async (email, password) => {
     await trackAction('LOGIN', { method: 'email_password' });
     return userCredential.user;
   } catch (error) {
-    console.error("Login errorMessage:", error);
+    logger.error("Login errorMessage:", error);
     throw error;
   }
 };
@@ -22,7 +23,7 @@ export const logoutFirebaseUser = async () => {
     await trackAction('LOGOUT', { method: 'manual' });
     await signOut(auth);
   } catch (error) {
-    console.error("Logout errorMessage:", error);
+    logger.error("Logout errorMessage:", error);
     throw error;
   }
 };

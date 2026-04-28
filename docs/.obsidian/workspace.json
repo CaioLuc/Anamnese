@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "design-system.md",
+                "file": "tarefas.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "design-system"
+              "title": "tarefas"
             }
           }
         ]
@@ -185,11 +185,13 @@
   },
   "active": "0906e76defae59da",
   "lastOpenFiles": [
-    "tarefas.md",
+    "arquitetura.md",
+    "avaliacao-heuristicas.md",
+    "componentes.md",
+    "decisoes.md",
     "design-system.md",
     "plano_implementacao.md",
-    "arquitetura.md",
-    "componentes.md",
-    "decisoes.md"
+    "tarefas.md",
+    "AUDITORIA_UX.md"
   ]
 }

@@ -1,7 +1,7 @@
 # Design System — Caritas
 
 > Documento de referência para qualquer alteração visual no front-end.
-> **Última atualização:** 2026-04-19
+> **Última atualização:** 28/04/2026
 
 ---
 
@@ -191,7 +191,7 @@ Gerenciado pelo `ThemeContext.jsx`. O toggle de tema na sidebar alterna entre os
 
 ## 8. Status da Migração
 
-> **Última atualização:** 2026-04-19
+> **Última atualização:** 28/04/2026
 
 ### ✅ Completamente migrados
 - `Layout.jsx`, `App.jsx`
@@ -232,3 +232,9 @@ Gerenciado pelo `ThemeContext.jsx`. O toggle de tema na sidebar alterna entre os
 8. [ ] Overlays: `style={{ backgroundColor: 'var(--overlay)' }}`
 9. [ ] Nunca usar `dark:` diretamente — as variáveis CSS já lidam com temas
 10. [ ] Testar em light mode E dark mode
+
+---
+
+## 10. Avaliação de Usabilidade
+
+Uma auditoria profunda do design system e da experiência do usuário (UX) com base nas 10 Heurísticas de Nielsen está documentada separadamente no arquivo centralizado: **[`AUDITORIA_UX.md`](./AUDITORIA_UX.md)**. Leia-o antes de propor grandes mudanças de interação ou arquitetura de informação.

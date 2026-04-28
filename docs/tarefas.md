@@ -6,86 +6,103 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 
 ## TODOs e Comentários Encontrados no Código
 
-- [ ] **`firebase.js:4`** — `// TODO: Add SDKs for Firebase products that you want to use`
-  - Este arquivo é legado e não é mais utilizado pela aplicação. Considerar exclusão total.
+### ✅ API Deprecated — `firebaseConfig.js`
+- [x] **`enableMultiTabIndexedDbPersistence(db)`** — Substituída pela nova API `persistentLocalCache({ tabManager: persistentMultipleTabManager() })`. O aviso de deprecação no console foi eliminado.
 
-- [ ] **`patientService.js:383-388`** — `// NOTA: Agora usam Collection Group Queries se precisar de todos, mas aqui o dashboard é apenas do usuário logado.` + `// Como as sessões estão espalhadas em pacientes, precisamos buscar todos os pacientes primeiro`
-  - A implementação atual itera pacientes sequencialmente (N+1). Considerar Collection Group Query com índice Firestore.
+### ✅ Função Obsoleta — `patientService.js`
+- [x] **`vincularDadosAoUsuarioAtual()`** — Função morta removida. Nenhuma referência restante no código.
+
+### ✅ Query N+1 — `patientService.js`
+- [x] **`lerTodasSessoes()`** — Queries paralelizadas com `Promise.all()` em vez de loop sequencial. Cache de 5min mantido.
+- [x] **`lerTodasAnamneses()`** — Queries paralelizadas com `Promise.all()` + cache de 5min adicionado (antes não havia cache).
+
+### ✅ Console.logs em Produção
+- [x] **Logger centralizado** — Criado `src/utils/logger.js`. Em produção, todos os logs são silenciados automaticamente. Em desenvolvimento (`npm run dev`), funcionam normalmente. Aplicado em: `patientService.js`, `adminService.js`, `authService.js`, `logService.js`, `pdfUtils.js`.
 
 ---
 
 ## Limpeza de Código Legado
 
-- [x] Remover `src/services/firebase.js` — Arquivo legado, substituído por `firebaseConfig.js`. Contém import de `getFirestore` sem declaração e `getAnalytics` sem uso.
-- [x] Remover ou marcar como deprecated `src/services/anamnesisService.js` — Usa estrutura plana v1 e importa do `firebase.js` legado. Todo o CRUD de anamneses já está em `patientService.js`.
-- [x] Remover `src/utils/migrationV2.js` se a migração já foi concluída para todos os usuários, ou documentar como executá-la.
-- [x] Remover `debug_bug.cjs` e `debug_bug_hard.cjs` da raiz do projeto (scripts de debug temporários).
+- [x] Remover `src/services/firebase.js` — ✅ Deletado.
+- [x] Remover `src/services/anamnesisService.js` — ✅ Deletado.
+- [x] Remover `src/utils/migrationV2.js` — ✅ Deletado.
+- [x] Remover `debug_bug.cjs` e `debug_bug_hard.cjs` — ✅ Deletados.
+- [x] Remover `vincularDadosAoUsuarioAtual()` de `patientService.js` — ✅ Removida.
 
 ---
 
 ## Melhorias de Performance
 
-- [x] **Code-splitting com React.lazy()** — O chunk principal tem 1.668 KB. Dividir componentes pesados:
-  - `AdminPanel.jsx` (49 KB fonte)
-  - `PatientProfileModal.jsx` (58 KB fonte)
-  - `AnamneseForm.jsx` / `AnamneseAdolescenteForm.jsx` (~34 KB cada)
-  - `Financas.jsx` (27 KB fonte)
-- [x] **Otimizar `lerTodasSessoes()`** — Implementar Collection Group Query ou cache local para evitar N+1 queries no painel financeiro.
-- [x] **Implementar paginação** na listagem de pacientes e sessões para contas com muitos registros.
+- [x] **Code-splitting com React.lazy()** — Componentes pesados são carregados sob demanda.
+- [x] **Cache local em `lerTodasSessoes()` e `lerTodasAnamneses()`** — Cache em memória com TTL de 5min e invalidação automática.
+- [x] **Queries paralelizadas** — `Promise.all()` em vez de loop `for...of` sequencial.
+- [x] **Paginação** — Componente `Pagination.jsx` em `src/components/ui/`.
 
 ---
 
 ## Melhorias de Segurança
 
-- [x] **Rate limiting na agenda pública** — `criarAgendamentoPublico()` permite escrita sem auth. Adicionado honeypot e rate limit via sessionStorage para proteção anti-spam sem custos adicionais.
-- [x] **Migrar lista de admins para Firestore** — `ADMIN_EMAILS` não está mais hardcoded em `adminService.js` (mantido 1 fallback). Agora lê da coleção `admins`.
-- [x] **Variáveis de ambiente para API keys** — Criado `.env.example` e configurado `firebaseConfig.js` para usar `import.meta.env` com fallback.
+- [x] **Rate limiting na agenda pública** — Honeypot + rate limit via sessionStorage.
+- [x] **Migrar lista de admins para Firestore** — Coleção `admins` com 1 fallback hardcoded.
+- [x] **Variáveis de ambiente** — `.env.example` criado, `firebaseConfig.js` usa `import.meta.env` com fallback.
 
 ---
 
 ## Melhorias de UX
 
-- [x] **Deep linking / URLs por seção** — Implementadas rotas reais (`/financas`, `/pacientes`, `/agenda`) via React Router (`App.jsx`).
-- [ ] **Sincronização de rascunhos entre dispositivos** — Rascunhos de anamnese ficam apenas no `localStorage`. Considerar salvar drafts no Firestore.
-- [ ] **Notificações de agendamento** — Notificar psicólogo quando um paciente agenda pelo link público (push notification ou e-mail via Cloud Function).
-- [x] **Modo offline** — Habilitada persistência offline do Firestore (`enableMultiTabIndexedDbPersistence()`) para funcionar sem internet temporariamente.
-- [x] **Exportação de dados em massa** — Criado `exportService.js` com botão na barra lateral para exportar pacientes, sessões e anamneses em formato CSV.
+- [x] **Deep linking / URLs por seção** — Rotas reais via React Router.
+- [x] **Modo offline** — Persistência offline do Firestore via `persistentLocalCache` (nova API).
+- [x] **Exportação de dados em massa** — `exportService.js` com exportação CSV.
+- [x] **PWA (Progressive Web App)** — `manifest.json`, `sw.js` e ícones PNG configurados.
+- [ ] **Sincronização de rascunhos entre dispositivos** — Rascunhos de anamnese ficam apenas no `localStorage`.
+- [ ] **Notificações de agendamento** — Notificar psicólogo quando paciente agenda pelo link público.
+- [ ] **Responsividade mobile completa** — Ajustes finos para telas < 400px.
 
 ---
 
 ## Melhorias de Qualidade de Código
 
-- [x] **Extrair componentes de UI reutilizáveis** — Criados componentes `<Button>`, `<Card>`, `<Badge>` e `<Pagination>` em `src/components/ui/` para eliminar repetição.
-- [ ] **Adicionar TypeScript** — O projeto usa `@types/react` mas não tem TypeScript configurado. Migrar gradualmente para `.tsx` para type safety.
-- [x] **Adicionar testes** — Vitest configurado e implementados testes unitários de:
-  - Testes de `formatUtils.js` (CPF, telefone, validação)
-  - Testes de `pdfUtils.js` (calcularIdade, formatDateBR)
-- [x] **Implementar ESLint rigoroso** — Configurado npm script `lint:fix` no `package.json` e executado para limpar lixo (imports/vars não usados).
+- [x] **Componentes de UI reutilizáveis** — `Button.jsx`, `Card.jsx`, `Badge.jsx`, `Pagination.jsx`.
+- [x] **Testes unitários** — Vitest com 25 testes passando (formatUtils + pdfUtils).
+- [x] **ESLint** — Script `lint:fix` configurado.
+- [x] **Logger centralizado** — `src/utils/logger.js` silencia console em produção.
+- [ ] **Adicionar TypeScript** — Migrar gradualmente `.jsx` → `.tsx`.
 
 ---
 
 ## Melhorias no PDF
 
-- [x] **Suporte a acentos no PDF** — Adicionar fonte Unicode (ex: Roboto) ao jsPDF para preservar acentos em vez de removê-los com `sanitizeText()`.
-- [x] **Logo no PDF** — Adicionar logotipo do psicólogo/plataforma no cabeçalho dos PDFs gerados.
-- [x] **PDF de prontuário completo** — Gerar PDF unificado com todos os dados de um paciente (anamnese + todas as sessões).
+- [x] **Suporte a acentos** — Fonte Unicode adicionada.
+- [x] **Logo no cabeçalho do PDF** — Logotipo incluído.
+- [x] **PDF de prontuário completo** — Anamnese + todas as sessões.
 
 ---
 
 ## Melhorias no Financeiro
 
-- [x] **Normalizar valores no save** — Converter `valor` para `Number` no momento de salvar em `SessaoEvolucao.jsx`, em vez de tratar strings no financeiro.
-- [x] **Relatório mensal automático** — Gerar relatório financeiro mensal automaticamente e disponibilizar para download. (Implementado via exportação PDF na aba de Finanças com filtro mensal).
-- [ ] **Integração com nota fiscal** — Considerar integração futura com APIs de NFS-e para emissão de recibos.
+- [x] **Normalizar valores no save** — Conversão para `Number` no `SessaoEvolucao.jsx`.
+- [x] **Relatório mensal** — Exportação PDF com filtro mensal.
+- [ ] **Integração com nota fiscal** — APIs de NFS-e (futuro).
 
 ---
 
 ## Infraestrutura
 
-- [ ] **CI/CD** — Configurar GitHub Actions para build automático + deploy no Firebase em pushes para `main`.
+- [x] **CI/CD** — Criado `.github/workflows/deploy.yml` com GitHub Actions: checkout → npm ci → npm test → npm run build → Firebase deploy.
+- [x] **Migrar API deprecated do Firestore** — `enableMultiTabIndexedDbPersistence` substituída por `persistentLocalCache`.
+- [x] **Limpar console em produção** — Logger centralizado implementado com `import.meta.env.DEV`.
 - [ ] **Ambiente de staging** — Criar projeto Firebase separado para testes antes de produção.
 - [ ] **Monitoramento de erros** — Integrar Sentry ou similar para capturar erros em produção.
-- [ ] **Backup automático** — Configurar exports automáticos do Firestore para Cloud Storage.
+- [ ] **Backup automático do Firestore** — Cloud Function agendada para exports.
+
+---
+
+## Documentação e Usabilidade
+
+- [x] **Redesign Completo (Design System)** — Migração 100% concluída.
+- [x] **Avaliação de Heurísticas de Nielsen** — Score médio: 4.55/5.00.
+- [x] **Auditoria UX** — `AUDITORIA_UX.md`.
+- [x] **PWA configurada** — Manifest, Service Worker e ícones.
 
 ---
 
@@ -110,4 +127,4 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 
 ---
 
-> **Última atualização:** 19/04/2026
+> **Última atualização:** 28/04/2026

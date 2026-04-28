@@ -1,6 +1,7 @@
 import { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
 import { trackAction } from './logService';
+import logger from '../utils/logger';
 
 const PACIENTES_COL = 'pacientes';
 const ANAMNESES_COL = 'anamneses';
@@ -59,7 +60,7 @@ export async function lerPerfilPsicologo() {
     }
     return null;
   } catch (error) {
-    console.error("Erro ao ler perfil:", error);
+    logger.error("Erro ao ler perfil:", error);
     return null;
   }
 }
@@ -83,7 +84,7 @@ export async function salvarPerfilPsicologo(dados) {
       });
     }
   } catch (error) {
-    console.error("Erro ao salvar perfil:", error);
+    logger.error("Erro ao salvar perfil:", error);
     throw error;
   }
 }
@@ -102,7 +103,7 @@ export async function criarPaciente(pacienteData) {
     trackAction('CREATE_PATIENT', { patientId: docRef.id });
     return docRef.id;
   } catch (error) {
-    console.error("Erro ao criar paciente:", error);
+    logger.error("Erro ao criar paciente:", error);
     throw error;
   }
 }
@@ -114,7 +115,7 @@ export async function lerPacientes() {
     // Apenas pacientes que NÃO estão na lixeira
     return docs.filter(p => !p.deletedAt);
   } catch (error) {
-    console.error("Erro ao ler pacientes:", error);
+    logger.error("Erro ao ler pacientes:", error);
     throw error;
   }
 }
@@ -127,7 +128,7 @@ export async function buscarPacientePorCPF(cpf) {
     const todos = await lerPacientes();
     return todos.find(p => p.cpf && p.cpf.replace(/\D/g, '') === cpfLimpo) || null;
   } catch (error) {
-    console.error("Erro ao buscar paciente por CPF:", error);
+    logger.error("Erro ao buscar paciente por CPF:", error);
     return null;
   }
 }
@@ -140,7 +141,7 @@ export async function lerPaciente(id) {
     }
     return null;
   } catch (error) {
-    console.error("Erro ao ler paciente:", error);
+    logger.error("Erro ao ler paciente:", error);
     throw error;
   }
 }
@@ -150,7 +151,7 @@ export async function atualizarPaciente(id, dadosAtualizados) {
     await updateDoc(getPacienteDoc(id), dadosAtualizados);
     trackAction('UPDATE_PATIENT', { patientId: id });
   } catch (error) {
-    console.error("Erro ao atualizar paciente:", error);
+    logger.error("Erro ao atualizar paciente:", error);
     throw error;
   }
 }
@@ -161,7 +162,7 @@ export async function deletarPaciente(id) {
     await updateDoc(getPacienteDoc(id), { deletedAt: serverTimestamp() });
     trackAction('DELETE_PATIENT', { patientId: id });
   } catch (error) {
-    console.error("Erro ao mover paciente para lixeira:", error);
+    logger.error("Erro ao mover paciente para lixeira:", error);
     throw error;
   }
 }
@@ -202,10 +203,10 @@ export async function limparLixeiraPacientes(diasRetencao = 7) {
 
     if (itemsNoBatch > 0) {
       await batch.commit();
-      console.log(`Lixeira limpa: ${itemsNoBatch} documentos deletados definitivamente.`);
+      logger.log(`Lixeira limpa: ${itemsNoBatch} documentos deletados definitivamente.`);
     }
   } catch (error) {
-    console.error("Erro ao limpar lixeira de pacientes:", error);
+    logger.error("Erro ao limpar lixeira de pacientes:", error);
   }
 }
 
@@ -229,7 +230,7 @@ export async function lerPacientesDeletados(diasRetencao = 7) {
       })
       .sort((a, b) => a.diasRestantes - b.diasRestantes);
   } catch (error) {
-    console.error("Erro ao ler pacientes deletados:", error);
+    logger.error("Erro ao ler pacientes deletados:", error);
     return [];
   }
 }
@@ -243,7 +244,7 @@ export async function restaurarPaciente(id) {
     await updateDoc(getPacienteDoc(id), { deletedAt: deleteField() });
     trackAction('RESTORE_PATIENT', { patientId: id });
   } catch (error) {
-    console.error("Erro ao restaurar paciente:", error);
+    logger.error("Erro ao restaurar paciente:", error);
     throw error;
   }
 }
@@ -262,7 +263,7 @@ export async function criarAnamnese(anamneseData) {
     trackAction('CREATE_ANAMNESIS', { patientId: id_paciente, anamneseId: docRef.id });
     return docRef.id;
   } catch (error) {
-    console.error("Erro ao criar anamnese:", error);
+    logger.error("Erro ao criar anamnese:", error);
     throw error;
   }
 }
@@ -277,7 +278,7 @@ export async function lerAnamnesesDoPaciente(id_paciente) {
       return dateB - dateA;
     });
   } catch (error) {
-    console.error("Erro ao ler anamneses do paciente:", error);
+    logger.error("Erro ao ler anamneses do paciente:", error);
     throw error;
   }
 }
@@ -292,7 +293,7 @@ export async function lerAnamnese(id, id_paciente) {
     }
     return null;
   } catch (error) {
-    console.error("Erro ao ler anamnese:", error);
+    logger.error("Erro ao ler anamnese:", error);
     throw error;
   }
 }
@@ -303,7 +304,7 @@ export async function atualizarAnamnese(id, id_paciente, dadosAtualizados) {
     await updateDoc(docRef, dadosAtualizados);
     trackAction('UPDATE_ANAMNESIS', { patientId: id_paciente, anamneseId: id });
   } catch (error) {
-    console.error("Erro ao atualizar anamnese:", error);
+    logger.error("Erro ao atualizar anamnese:", error);
     throw error;
   }
 }
@@ -314,7 +315,7 @@ export async function deletarAnamnese(id, id_paciente) {
     await deleteDoc(docRef);
     trackAction('DELETE_ANAMNESIS', { patientId: id_paciente, anamneseId: id });
   } catch (error) {
-    console.error("Erro ao deletar anamnese:", error);
+    logger.error("Erro ao deletar anamnese:", error);
     throw error;
   }
 }
@@ -326,10 +327,16 @@ export async function deletarAnamnese(id, id_paciente) {
 
 let cacheTodasSessoes = null;
 let cacheTodasSessoesTime = 0;
+let cacheTodasAnamneses = null;
+let cacheTodasAnamnesesTime = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 export function invalidarCacheSessoes() {
   cacheTodasSessoes = null;
+}
+
+export function invalidarCacheAnamneses() {
+  cacheTodasAnamneses = null;
 }
 
 export async function criarSessao(sessaoData) {
@@ -345,7 +352,7 @@ export async function criarSessao(sessaoData) {
     invalidarCacheSessoes();
     return docRef.id;
   } catch (error) {
-    console.error("Erro ao criar sessão de evolução:", error);
+    logger.error("Erro ao criar sessão de evolução:", error);
     throw error;
   }
 }
@@ -360,7 +367,7 @@ export async function lerSessoesDoPaciente(id_paciente) {
       return dateB - dateA;
     });
   } catch (error) {
-    console.error("Erro ao ler sessões do paciente:", error);
+    logger.error("Erro ao ler sessões do paciente:", error);
     throw error;
   }
 }
@@ -372,7 +379,7 @@ export async function deletarSessao(id, id_paciente) {
     trackAction('DELETE_SESSION', { patientId: id_paciente, sessionId: id });
     invalidarCacheSessoes();
   } catch (error) {
-    console.error("Erro ao deletar sessão:", error);
+    logger.error("Erro ao deletar sessão:", error);
     throw error;
   }
 }
@@ -384,7 +391,7 @@ export async function atualizarSessao(id, id_paciente, dadosAtualizados) {
     trackAction('UPDATE_SESSION', { patientId: id_paciente, sessionId: id });
     invalidarCacheSessoes();
   } catch (error) {
-    console.error("Erro ao atualizar sessão:", error);
+    logger.error("Erro ao atualizar sessão:", error);
     throw error;
   }
 }
@@ -400,49 +407,49 @@ export async function lerTodasSessoes(forceRefresh = false) {
     return cacheTodasSessoes;
   }
 
-  // Como as sessões estão espalhadas em pacientes, precisamos buscar todos os pacientes primeiro
-  // ou usar collectionGroup (que exige index). Para simplicidade e segurança, buscamos via pacientes.
+  // Busca sessões de todos os pacientes em paralelo (Promise.all) em vez de sequencialmente.
   try {
     const pacientes = await lerPacientes();
-    let todasSessoes = [];
-    for (const pac of pacientes) {
-      const sessoes = await lerSessoesDoPaciente(pac.id);
-      todasSessoes = [...todasSessoes, ...sessoes];
-    }
+    const sessoesArrays = await Promise.all(
+      pacientes.map(pac => lerSessoesDoPaciente(pac.id))
+    );
+    const todasSessoes = sessoesArrays.flat();
     
     cacheTodasSessoes = todasSessoes;
     cacheTodasSessoesTime = Date.now();
     
     return todasSessoes;
   } catch (error) {
-    console.error("Erro ao ler todas as sessões:", error);
+    logger.error("Erro ao ler todas as sessões:", error);
     throw error;
   }
 }
 
-export async function lerTodasAnamneses() {
+export async function lerTodasAnamneses(forceRefresh = false) {
+  if (!forceRefresh && cacheTodasAnamneses && (Date.now() - cacheTodasAnamnesesTime < CACHE_TTL)) {
+    return cacheTodasAnamneses;
+  }
+
+  // Busca anamneses de todos os pacientes em paralelo (Promise.all).
   try {
     const pacientes = await lerPacientes();
-    let todasAnamneses = [];
-    for (const pac of pacientes) {
-      const anamneses = await lerAnamnesesDoPaciente(pac.id);
-      todasAnamneses = [...todasAnamneses, ...anamneses];
-    }
+    const anamnesesArrays = await Promise.all(
+      pacientes.map(pac => lerAnamnesesDoPaciente(pac.id))
+    );
+    const todasAnamneses = anamnesesArrays.flat();
+
+    cacheTodasAnamneses = todasAnamneses;
+    cacheTodasAnamnesesTime = Date.now();
+
     return todasAnamneses;
   } catch (error) {
-    console.error("Erro ao ler todas as anamneses:", error);
+    logger.error("Erro ao ler todas as anamneses:", error);
     throw error;
   }
 }
 
 
-// ==========================================
-// MIGRAÇÃO: VINCULAR DADOS ÓRFÃOS (DESATIVADO/OBSOLETO)
-// ==========================================
 
-export async function vincularDadosAoUsuarioAtual() {
-  return { success: false, message: "Esta função deve ser substituída pelo script de migração hierárquica." };
-}
 
 // ==========================================
 // CRUD: QUESTIONÁRIOS (TEMPLATES)
@@ -459,7 +466,7 @@ export async function criarQuestionario(dados) {
     trackAction('CREATE_QUESTIONNAIRE', { questionnaireId: docRef.id });
     return docRef.id;
   } catch (error) {
-    console.error("Erro ao criar questionário:", error);
+    logger.error("Erro ao criar questionário:", error);
     throw error;
   }
 }
@@ -475,7 +482,7 @@ export async function lerQuestionarios() {
       return dB - dA;
     });
   } catch (error) {
-    console.error("Erro ao ler questionários:", error);
+    logger.error("Erro ao ler questionários:", error);
     return [];
   }
 }
@@ -487,7 +494,7 @@ export async function lerQuestionario(id) {
     if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
     return null;
   } catch (error) {
-    console.error("Erro ao ler questionário:", error);
+    logger.error("Erro ao ler questionário:", error);
     throw error;
   }
 }
@@ -497,7 +504,7 @@ export async function atualizarQuestionario(id, dados) {
     const docRef = doc(getQuestionariosRef(), id);
     await updateDoc(docRef, { ...dados, updatedAt: serverTimestamp() });
   } catch (error) {
-    console.error("Erro ao atualizar questionário:", error);
+    logger.error("Erro ao atualizar questionário:", error);
     throw error;
   }
 }
@@ -507,7 +514,7 @@ export async function deletarQuestionario(id) {
     await deleteDoc(doc(getQuestionariosRef(), id));
     trackAction('DELETE_QUESTIONNAIRE', { questionnaireId: id });
   } catch (error) {
-    console.error("Erro ao deletar questionário:", error);
+    logger.error("Erro ao deletar questionário:", error);
     throw error;
   }
 }
@@ -520,7 +527,7 @@ export async function duplicarQuestionario(id) {
     const novoId = await criarQuestionario({ ...dados, nome: `${dados.nome} (cópia)` });
     return novoId;
   } catch (error) {
-    console.error("Erro ao duplicar questionário:", error);
+    logger.error("Erro ao duplicar questionário:", error);
     throw error;
   }
 }
@@ -538,7 +545,7 @@ export async function criarClinica(clinicaData) {
     trackAction('CREATE_CLINIC', { clinicId: docRef.id });
     return docRef.id;
   } catch (error) {
-    console.error("Erro ao criar clínica:", error);
+    logger.error("Erro ao criar clínica:", error);
     throw error;
   }
 }
@@ -549,7 +556,7 @@ export async function lerClinicas() {
     const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     return docs.sort((a, b) => a.nome.localeCompare(b.nome));
   } catch (error) {
-    console.error("Erro ao ler clínicas:", error);
+    logger.error("Erro ao ler clínicas:", error);
     throw error;
   }
 }
@@ -559,7 +566,7 @@ export async function deletarClinica(id) {
     await deleteDoc(getClinicaDoc(id));
     trackAction('DELETE_CLINIC', { clinicId: id });
   } catch (error) {
-    console.error("Erro ao deletar clínica:", error);
+    logger.error("Erro ao deletar clínica:", error);
     throw error;
   }
 }

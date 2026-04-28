@@ -1,5 +1,6 @@
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig';
+import logger from '../utils/logger';
 
 /**
  * Registra uma ação de auditoria / telemetria no banco de dados.
@@ -28,6 +29,6 @@ export async function trackAction(actionType, metadata = {}) {
 
   } catch (error) {
     // Silencia o erro para não quebrar a aplicação caso o Firestore falhe por permissão ou cota
-    console.warn("Telemetry log failed (ignored):", error);
+    logger.warn("Telemetry log failed (ignored):", error);
   }
 }

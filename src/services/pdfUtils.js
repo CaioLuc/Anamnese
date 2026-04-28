@@ -71,7 +71,7 @@ export class PdfBuilder {
     try {
       doc.addImage(LOGO_BASE64, 'PNG', PAGE_WIDTH - MARGIN - 14, 14, 10, 10);
     } catch(e) {
-      console.warn("Could not add logo to PDF");
+      // Logo insertion is non-critical, silently ignore failures
     }
 
     // Título  
