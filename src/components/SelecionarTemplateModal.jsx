@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { lerQuestionarios } from '../services/patientService';
 import { TEMPLATES_PADRAO } from '../services/templatesPadrao';
@@ -55,7 +56,7 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
         setCustomTemplates(Array.isArray(templates) ? templates : []);
       })
       .catch(err => {
-        console.error('Falha ao carregar questionários customizados:', err);
+        logger.error('Falha ao carregar questionários customizados:', err);
         setCustomTemplates([]);
         setIsError(true);
       })

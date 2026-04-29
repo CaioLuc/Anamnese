@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState } from 'react';
 import { criarQuestionario, atualizarQuestionario } from '../services/patientService';
 import Button from './ui/Button';
@@ -266,7 +267,7 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
       }
       onSalvar();
     } catch (e) {
-      console.error('Erro ao salvar questionário:', e);
+      logger.error('Erro ao salvar questionário:', e);
       if (e?.code === 'permission-denied') {
         setError('Sem permissão. Verifique se você está logado e tente novamente.');
       } else if (e?.code?.includes('auth')) {

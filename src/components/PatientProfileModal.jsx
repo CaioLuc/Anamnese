@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese, deletarAnamnese, atualizarSessao, lerQuestionario } from '../services/patientService';
 const AnamneseForm = lazy(() => import('./AnamneseForm'));
@@ -26,7 +27,7 @@ function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
       onSaved();
     } catch (e) {
       setError('Erro ao salvar edições. Tente novamente.');
-      console.error(e);
+      logger.error(e);
     } finally {
       setIsSaving(false);
     }
@@ -108,14 +109,14 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
              try {
                 const t = await lerQuestionario(a.questionario_id);
                 if (t) a.template_snapshot = t;
-             } catch(e) { console.error('Aviso: nao pode carregar template associado', e); }
+             } catch(e) { logger.error('Aviso: nao pode carregar template associado', e); }
          }
       }
 
       setAnamneses(anamnesesData);
       setSessoes(sessoesData);
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       showToast({ type: 'error', message: 'Erro ao carregar prontuário. Verifique sua conexão.', action: { label: 'Recarregar', onClick: loadHistory } });
     } finally {
       setIsLoading(false);
@@ -133,7 +134,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       await deletarSessao(sessao.id, patient.id);
       loadHistory();
     } catch (err) {
-      console.error('Erro ao deletar sessão:', err);
+      logger.error('Erro ao deletar sessão:', err);
       showToast({ type: 'error', message: 'Erro ao apagar a sessão. Tente novamente.' });
     }
   };
@@ -146,7 +147,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       await deletarAnamnese(ana.id, patient.id);
       loadHistory();
     } catch (err) {
-      console.error('Erro ao deletar anamnese:', err);
+      logger.error('Erro ao deletar anamnese:', err);
       showToast({ type: 'error', message: 'Erro ao excluir anamnese. Tente novamente.' });
     }
   };
@@ -165,7 +166,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       loadHistory();
       trackAction('EDIT_SESSION_INLINE', { patientId: patient.id, sessionId: editingSessao.id });
     } catch (err) {
-      console.error('Erro ao editar sessão:', err);
+      logger.error('Erro ao editar sessão:', err);
       showToast({ type: 'error', message: 'Erro ao salvar edição da sessão. Tente novamente.' });
     } finally {
       setIsSavingSessao(false);
@@ -374,7 +375,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
       pdf.save(`Prontuario_Completo_${patient.nome.replace(/\s+/g,'_')}_${dataStr}.pdf`);
       trackAction('EXPORT_PDF_COMPLETE_RECORD', { patientId: patient.id, patientName: patient.nome, totalSessoes: sessoes.length });
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       showToast({ type: 'error', message: 'Erro ao gerar o prontuário completo.' });
     }
   };
@@ -834,7 +835,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                     setTemplateRespostas({});
                                     loadHistory();
                                   } catch (e) {
-                                    console.error(e);
+                                    logger.error(e);
                                     setAnamneseSaveError('Erro ao salvar. Verifique sua conexão.');
                                   } finally {
                                     setIsSavingAnamnese(false);

@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { salvarConfigAgenda, lerConfigAgenda, verificarSlugDisponivel } from '../services/agendaService';
 import Button from './ui/Button';
@@ -42,7 +43,7 @@ export default function ConfigAgenda({ onClose }) {
           if (config.dias) setDias(prev => ({ ...prev, ...config.dias }));
         }
       } catch (e) {
-        console.error(e);
+        logger.error(e);
       } finally {
         setIsLoading(false);
       }
@@ -97,7 +98,7 @@ export default function ConfigAgenda({ onClose }) {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
       alert('Erro ao salvar: ' + (e.message || 'Tente novamente.'));
     } finally {
       setIsSaving(false);

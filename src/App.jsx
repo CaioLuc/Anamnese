@@ -8,6 +8,7 @@ import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';
 import AgendaPublica from './components/AgendaPublica';
+import logger from './utils/logger';
 import OnboardingOverlay from './components/OnboardingOverlay';
 
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
@@ -92,7 +93,7 @@ function AppMain() {
       const data = await lerPacientes();
       setPatients(data);
     } catch (error) {
-      console.error("Failed to load patients", error);
+      logger.error("Failed to load patients", error);
     } finally {
       setIsLoadingPatients(false);
     }
@@ -139,7 +140,7 @@ function AppMain() {
           await fetchPatients();
           limparLixeiraPacientes(7);
         } catch (err) {
-          console.error("Erro no fluxo de autenticação/perfil:", err);
+          logger.error("Erro no fluxo de autenticação/perfil:", err);
         } finally {
           setIsCheckingRole(false);
         }
@@ -170,7 +171,7 @@ function AppMain() {
         navigate('/nova-sessao');
       }
     } catch (error) {
-      console.error("Erro ao verificar anamnese:", error);
+      logger.error("Erro ao verificar anamnese:", error);
       setPreSelectedPatientForSessao({ ...patient });
       navigate('/nova-sessao');
     }

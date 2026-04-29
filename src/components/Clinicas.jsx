@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { lerClinicas, criarClinica, deletarClinica, lerPerfilPsicologo } from '../services/patientService';
 import ConfirmDialog from './ConfirmDialog';
@@ -27,7 +28,7 @@ export default function Clinicas() {
         setPlanoAtual(perfil.plano || 'basico');
       }
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     }
   };
 
@@ -37,7 +38,7 @@ export default function Clinicas() {
       const data = await lerClinicas();
       setClinicas(data);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setError('Erro ao carregar locais de atendimento.');
     } finally {
       setIsLoading(false);

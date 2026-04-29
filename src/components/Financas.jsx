@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { lerTodasSessoes, atualizarSessao } from '../services/patientService';
-import { gerarRelatorioFinanceiroPDF } from '../services/pdfUtils';
+import { gerarRelatorioFinanceiroPDF, gerarReciboPDF, gerarRelatorioPendenciasPDF } from '../services/pdfUtils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { trackAction } from '../services/logService';
+import logger from '../utils/logger';
 import Pagination from './ui/Pagination';
 
 const PERIODOS = [
@@ -123,7 +124,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       const activeIds = new Set(patients.map(p => p.id));
       setSessoes(data.filter(s => activeIds.has(s.id_paciente)));
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +150,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       });
       setEditingPayment(null);
     } catch (err) {
-      console.error('Erro ao atualizar pagamento:', err);
+      logger.error('Erro ao atualizar pagamento:', err);
     } finally {
       setUpdatingId(null);
     }
@@ -161,7 +162,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       await atualizarSessao(sessao.id, sessao.id_paciente, { forma_pagamento: novaForma });
       setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, forma_pagamento: novaForma } : s));
     } catch (err) {
-      console.error('Erro ao alterar forma de pagamento:', err);
+      logger.error('Erro ao alterar forma de pagamento:', err);
     } finally {
       setUpdatingId(null);
     }
@@ -186,10 +187,21 @@ export default function Financas({ patients, isLoadingPatients }) {
     else if (filterPago === 'pendente') list = list.filter(s => !s.pago);
 
     // Sort
-    if (sortBy === 'data_desc') list.sort((a, b) => (b.data_sessao || '').localeCompare(a.data_sessao || ''));
-    else if (sortBy === 'data_asc') list.sort((a, b) => (a.data_sessao || '').localeCompare(b.data_sessao || ''));
-    else if (sortBy === 'valor_desc') list.sort((a, b) => getSessaoValor(b) - getSessaoValor(a));
-    else if (sortBy === 'nome') {
+    if (sortBy === 'data_desc') {
+      list.sort((a, b) => {
+        const da = parseDate(a.data_sessao) || new Date(0);
+        const db = parseDate(b.data_sessao) || new Date(0);
+        return db.getTime() - da.getTime();
+      });
+    } else if (sortBy === 'data_asc') {
+      list.sort((a, b) => {
+        const da = parseDate(a.data_sessao) || new Date(0);
+        const db = parseDate(b.data_sessao) || new Date(0);
+        return da.getTime() - db.getTime();
+      });
+    } else if (sortBy === 'valor_desc') {
+      list.sort((a, b) => getSessaoValor(b) - getSessaoValor(a));
+    } else if (sortBy === 'nome') {
       const pMap = Object.fromEntries(patients.map(p => [p.id, p.nome || '']));
       list.sort((a, b) => (pMap[a.id_paciente] || '').localeCompare(pMap[b.id_paciente] || ''));
     }
@@ -260,6 +272,19 @@ export default function Financas({ patients, isLoadingPatients }) {
     trackAction('EXPORT_PDF_FINANCIAL', { periodo, totalSessoes: stats.totalSessoes, total: stats.total, recebido: stats.recebido });
   };
 
+  const handleExportPendencias = () => {
+    const pendentes = sessoesPeriodo.filter(s => !s.pago);
+    if (pendentes.length === 0) return;
+    gerarRelatorioPendenciasPDF(pendentes, patients);
+    trackAction('EXPORT_PDF_PENDENCIAS', { total: pendentes.length });
+  };
+
+  const handleRecibo = (sessao) => {
+    const pac = patients.find(p => p.id === sessao.id_paciente);
+    gerarReciboPDF(sessao, pac);
+    trackAction('EXPORT_PDF_RECIBO', { sessionId: sessao.id, patientId: sessao.id_paciente });
+  };
+
   return (
     <div className="animate-in fade-in duration-500 w-full max-w-6xl mx-auto pb-10 space-y-6">
       
@@ -291,8 +316,18 @@ export default function Financas({ patients, isLoadingPatients }) {
             className="ds-btn ds-btn-secondary flex items-center gap-1.5 text-xs font-bold"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            PDF
+            Relatório PDF
           </button>
+          {stats.pendentes > 0 && (
+            <button 
+              onClick={handleExportPendencias}
+              className="ds-btn flex items-center gap-1.5 text-xs font-bold"
+              style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger-text)', border: '1px solid var(--status-danger)' }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              Pendências ({stats.pendentes})
+            </button>
+          )}
         </div>
       </div>
 
@@ -389,7 +424,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       {/* Filters Row */}
       <div className="ds-card p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider ml-1" style={{ color: 'var(--text-muted)' }}>Filtrar:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider ml-1 whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Filtrar:</span>
           {[
             { id: 'todos', label: 'Todos', count: stats.totalSessoes },
             { id: 'pago', label: 'Pagos', count: stats.pagas },
@@ -409,7 +444,7 @@ export default function Financas({ patients, isLoadingPatients }) {
           ))}
         </div>
         <div className="sm:ml-auto flex items-center gap-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Ordenar:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Ordenar:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -508,14 +543,24 @@ export default function Financas({ patients, isLoadingPatients }) {
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap text-right">
                         {!s.pago && !isEditing ? (
-                          <button
-                            onClick={() => setEditingPayment(s.id)}
-                            disabled={isUpdating}
-                            className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
-                            style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success-text)', border: '1px solid var(--status-success)' }}
-                          >
-                            💰 Dar Baixa
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => setEditingPayment(s.id)}
+                              disabled={isUpdating}
+                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
+                              style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success-text)', border: '1px solid var(--status-success)' }}
+                            >
+                              💰 Dar Baixa
+                            </button>
+                            <button
+                              onClick={() => handleRecibo(s)}
+                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all"
+                              style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                              title="Gerar Recibo PDF"
+                            >
+                              📄
+                            </button>
+                          </div>
                         ) : !s.pago && isEditing ? (
                           <div className="flex items-center gap-1.5">
                             {FORMAS_PAGAMENTO.slice(0, 3).map(f => (
@@ -537,13 +582,23 @@ export default function Financas({ patients, isLoadingPatients }) {
                             </button>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => handleTogglePago(s)}
-                            disabled={isUpdating}
-                            className="ds-btn ds-btn-ghost text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
-                          >
-                            Desfazer
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleTogglePago(s)}
+                              disabled={isUpdating}
+                              className="ds-btn ds-btn-ghost text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
+                            >
+                              Desfazer
+                            </button>
+                            <button
+                              onClick={() => handleRecibo(s)}
+                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all"
+                              style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                              title="Gerar Recibo PDF"
+                            >
+                              📄
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

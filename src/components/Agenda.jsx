@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect, useCallback } from 'react';
 import {
   criarAgendamento, lerAgendamentos,
@@ -60,7 +61,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       const data = await lerAgendamentos();
       setAgendamentos(data);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +165,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
         }
       }
     } catch (err) {
-      console.error('Erro ao salvar agendamento:', err);
+      logger.error('Erro ao salvar agendamento:', err);
       const msg = err?.code === 'permission-denied'
         ? 'Sem permissão. Adicione a coleção "agendamentos" nas Regras do Firestore.'
         : (err?.message || 'Erro desconhecido ao salvar.');
@@ -445,7 +446,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                                   // 3. Redirecionar
                                   if (onAtender && patient) onAtender(patient);
                                 } catch (e) {
-                                  console.error("Erro ao iniciar atendimento:", e);
+                                  logger.error("Erro ao iniciar atendimento:", e);
                                   showToast({ type: 'error', message: 'Não foi possível iniciar o atendimento. Verifique sua conexão e tente novamente.' });
                                 }
                               }}

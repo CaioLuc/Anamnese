@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { criarPaciente, atualizarPaciente, buscarPacientePorCPF, lerClinicas } from '../services/patientService';
 import { formatCPF, cleanCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
@@ -43,7 +44,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
         if (!patientToEdit && data.length > 0) {
           setFormData(prev => ({ ...prev, clinica: data[0].nome }));
         }
-      }).catch(console.error);
+      }).catch(logger.error);
     }
   }, [patientToEdit, isOpen]);
 
@@ -95,7 +96,7 @@ export default function AddPatientModal({ isOpen, onClose, onPatientAdded, patie
       setFormData({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
       onClose();
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setError(err.message || 'Erro ao salvar o paciente. Verifique sua conexão ou chaves do Firebase.');
     } finally {
       setIsSubmitting(false);

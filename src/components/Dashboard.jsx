@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { lerTodasSessoes, lerTodasAnamneses } from '../services/patientService';
 import { lerAvisoGlobal } from '../services/adminService';
@@ -64,7 +65,7 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
         setSessoes(s.filter(sessao => activeIds.has(sessao.id_paciente)));
         setAnamneses(a.filter(ana => activeIds.has(ana.id_paciente)));
       } catch (e) {
-        console.error(e);
+        logger.error(e);
         showToast({ type: 'error', message: 'Não foi possível carregar os dados do dashboard. Verifique sua conexão.' });
       } finally {
         setIsLoadingStats(false);

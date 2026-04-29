@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState } from 'react';
 import { criarAnamnese } from '../services/patientService';
 
@@ -32,7 +33,7 @@ export default function AddAnamnesisModal({ isOpen, onClose, patient, onAnamnesi
       setFormData({ queixa_principal: '', historico_familiar: '', observacoes_iniciais: '' });
       onClose();
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setError(err.message || 'Erro ao salvar evolução. Verifique sua conexão ou chaves do Firebase.');
     } finally {
       setIsSubmitting(false);

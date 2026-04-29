@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { lerPacientesDeletados, restaurarPaciente } from '../services/patientService';
 import ConfirmDialog from './ConfirmDialog';
@@ -23,7 +24,7 @@ export default function Lixeira({ onPatientRestored }) {
       const data = await lerPacientesDeletados();
       setDeletados(data);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       showToast({ type: 'error', message: 'Erro ao carregar a lixeira.' });
     } finally {
       setIsLoading(false);
@@ -43,7 +44,7 @@ export default function Lixeira({ onPatientRestored }) {
       await loadDeletados();
       if (onPatientRestored) onPatientRestored();
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       showToast({ type: 'error', message: 'Erro ao restaurar paciente. Tente novamente.' });
     } finally {
       setRestoringId(null);

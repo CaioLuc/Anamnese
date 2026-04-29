@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { deletarPaciente } from '../services/patientService';
 import AddPatientModal from './AddPatientModal';
@@ -61,7 +62,7 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
       await deletarPaciente(patient.id);
       if (onPatientAddedLocal) onPatientAddedLocal();
     } catch (err) {
-      console.error('Erro ao deletar:', err);
+      logger.error('Erro ao deletar:', err);
     }
   };
 

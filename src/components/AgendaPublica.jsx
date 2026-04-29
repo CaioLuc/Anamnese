@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { resolverSlug, lerConfigAgendaPublica, lerAgendamentosDoDia, criarAgendamentoPublico } from '../services/agendaService';
@@ -111,7 +112,7 @@ export default function AgendaPublica() {
         }
         setConfig(cfg);
       } catch (e) {
-        console.error(e);
+        logger.error(e);
         setError('Erro ao carregar a agenda.');
       } finally {
         setIsLoading(false);
@@ -131,7 +132,7 @@ export default function AgendaPublica() {
         const available = gerarSlots(config, ocupados, selectedDate);
         setSlots(available);
       } catch (e) {
-        console.error(e);
+        logger.error(e);
         setSlots([]);
       } finally {
         setIsLoadingSlots(false);
@@ -177,7 +178,7 @@ export default function AgendaPublica() {
       sessionStorage.setItem('caritas_booking_count', String(bookingCount + 1));
       setSuccess(true);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
       setSubmitError('Erro ao enviar solicitação. Verifique sua conexão e tente novamente.');
     } finally {
       setIsSubmitting(false);

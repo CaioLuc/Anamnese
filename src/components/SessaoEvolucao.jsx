@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect, useRef } from 'react';
 import { criarSessao, lerPerfilPsicologo } from '../services/patientService';
 import { PdfBuilder } from '../services/pdfUtils';
@@ -128,7 +129,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 5000);
 
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setStatusMessage({ type: 'error', text: err.message || 'Erro ao registrar a evolução.' });
     } finally {
       setIsSubmitting(false);
@@ -173,7 +174,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
       setStatusMessage({ type: 'success', text: 'PDF exportado com sucesso!' });
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 3000);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setStatusMessage({ type: 'error', text: 'Erro ao gerar o PDF.' });
     }
   };
@@ -391,7 +392,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                     setStatusMessage({ type: 'success', text: 'Resumo gerado com I.A. com sucesso!' });
                     setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
                   } catch (err) {
-                    console.error(err);
+                    logger.error(err);
                     const msg = err?.message?.includes('permission-denied') || err?.message?.includes('PRO')
                       ? 'Recurso exclusivo do plano PRO.'
                       : 'Erro ao gerar resumo. Tente novamente.';

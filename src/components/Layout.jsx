@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState } from 'react';
 import { logoutFirebaseUser } from '../services/authService';
 import ConfirmDialog from './ConfirmDialog';
@@ -41,7 +42,7 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
     try {
       await logoutFirebaseUser();
     } catch (err) {
-      console.error('Erro ao sair:', err);
+      logger.error('Erro ao sair:', err);
     }
   };
 

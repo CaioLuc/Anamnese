@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import {
   lerQuestionarios,
@@ -102,7 +103,7 @@ export default function Questionarios() {
       const docs = await lerQuestionarios();
       setCustomTemplates(docs);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +137,7 @@ export default function Questionarios() {
       }
       carregarTemplates();
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     }
   };
 
@@ -147,7 +148,7 @@ export default function Questionarios() {
       setConfirmDelete(null);
       carregarTemplates();
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     }
   };
 

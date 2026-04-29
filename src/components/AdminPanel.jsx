@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { listarTodosPsicologos, atualizarPlanoPsicologo, toggleAtivoPsicologo, getEstatisticasGlobais, contarPacientesDoPsicologo, getMetricasPsicologo, atualizarTrialPsicologo, salvarAvisoGlobal, lerAvisoGlobal, obterLogsAuditoria, limparLogsAntigos } from '../services/adminService';
 import { logoutFirebaseUser } from '../services/authService';
@@ -305,7 +306,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
       const data = await obterLogsAuditoria(500);
       setLogs(data);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     } finally {
       setIsLoadingLogs(false);
     }
@@ -539,7 +540,7 @@ export default function AdminPanel() {
       const aviso = await lerAvisoGlobal();
       setAvisoGlobal(aviso.mensagem || '');
     } catch (err) {
-      console.error("Erro ao carregar dados:", err);
+      logger.error("Erro ao carregar dados:", err);
     } finally {
       setIsLoading(false);
     }
@@ -549,12 +550,12 @@ export default function AdminPanel() {
 
   const handlePlano = async (uid, plano) => {
     setActionLoading(uid);
-    try { await atualizarPlanoPsicologo(uid, plano); await loadData(); } catch (e) { console.error(e); } finally { setActionLoading(null); }
+    try { await atualizarPlanoPsicologo(uid, plano); await loadData(); } catch (e) { logger.error(e); } finally { setActionLoading(null); }
   };
 
   const handleToggleAtivo = async (uid, currentStatus) => {
     setActionLoading(uid);
-    try { await toggleAtivoPsicologo(uid, currentStatus === false); await loadData(); } catch (e) { console.error(e); } finally { setActionLoading(null); }
+    try { await toggleAtivoPsicologo(uid, currentStatus === false); await loadData(); } catch (e) { logger.error(e); } finally { setActionLoading(null); }
   };
 
   const handleSalvarAviso = async () => {
@@ -563,7 +564,7 @@ export default function AdminPanel() {
       await salvarAvisoGlobal(avisoGlobal); 
       showToast('Aviso salvo!', 'O aviso global foi publicado com sucesso.', 'success');
     } catch (e) { 
-      console.error(e); 
+      logger.error(e); 
       showToast('Erro ao Salvar', 'Você não tem permissão para isso ou houve falha na rede.', 'error');
     } finally { 
       setAvisoSaving(false); 
@@ -614,7 +615,7 @@ export default function AdminPanel() {
                 const result = await exportarDadosCSV();
                 if (showToast) showToast({ type: 'success', message: `Exportados ${result.pacientes} pacientes, ${result.sessoes} sessões e ${result.anamneses} anamneses.` });
               } catch (err) {
-                console.error('Erro na exportação:', err);
+                logger.error('Erro na exportação:', err);
                 if (showToast) showToast({ type: 'error', message: 'Erro ao exportar dados.' });
               } finally {
                 setIsExporting(false);

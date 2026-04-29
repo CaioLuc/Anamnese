@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { criarAnamnese, atualizarAnamnese } from '../services/patientService';
 import Tooltip from './Tooltip';
@@ -199,7 +200,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
           isEdit: !!initialData?.id
         });
       } catch (err) {
-        console.error(err);
+        logger.error(err);
         showToast({ type: 'error', message: 'Erro ao salvar a Anamnese. Verifique sua conexão.' });
       } finally {
         setIsSubmitting(false);

@@ -343,77 +343,53 @@ export function formatDateBR(dateStr) {
 }
 
 export function gerarRelatorioFinanceiroPDF(sessoesPeriodo, pacientes, periodoLabel, totais) {
-  const pdf = new PdfBuilder();
+  const pdf = new PdfBuilder('Balanco Financeiro', `Periodo: ${sanitizeText(periodoLabel)}`);
 
-  // Cabeçalho
-  pdf.addHeader('Balanco Financeiro Caritas');
-
-  // Sub-título com o período selecionado
+  // Info line
   pdf.doc.setFont('helvetica', 'normal');
-  pdf.doc.setFontSize(11);
+  pdf.doc.setFontSize(9);
   pdf.doc.setTextColor(...COLORS.textLight);
-  pdf.doc.text(`Periodo Apurado: ${sanitizeText(periodoLabel)}`, MARGIN, pdf.y);
-  pdf.y += 6;
-  pdf.doc.text(`Emissao: ${formatDateBR(new Date().toISOString().split('T')[0])}`, MARGIN, pdf.y);
-  pdf.y += 15;
+  pdf.doc.text(`Data de emissao: ${formatDateBR(new Date().toISOString().split('T')[0])}`, MARGIN + 2, pdf.y);
+  pdf.y += 10;
 
-  // Caixa de Resumo / KPIs
-  pdf.doc.setFillColor(...COLORS.primaryLight);
-  pdf.doc.setDrawColor(...COLORS.primary);
-  pdf.doc.setLineWidth(0.5);
-  pdf.doc.roundedRect(MARGIN, pdf.y, 170, 30, 3, 3, 'FD');
-  
-  pdf.doc.setFont('helvetica', 'bold');
-  pdf.doc.setTextColor(...COLORS.primary);
-  pdf.doc.setFontSize(12);
-  
-  // Três colunas na caixa
-  pdf.doc.text('Previsao Geral:', MARGIN + 5, pdf.y + 10);
-  pdf.doc.text(`R$ ${totais.previsaoTotal.toFixed(2)}`, MARGIN + 5, pdf.y + 20);
+  // KPI Box
+  pdf.addInfoBlock([
+    { label: 'Previsao Geral', value: `R$ ${totais.previsaoTotal.toFixed(2)}` },
+    { label: 'Valor Recebido (Pago)', value: `R$ ${totais.valorRecebido.toFixed(2)}` },
+    { label: 'A Receber (Pendente)', value: `R$ ${totais.valorPendente.toFixed(2)}` },
+  ]);
 
-  pdf.doc.setTextColor(...COLORS.success);
-  pdf.doc.text('Valor Recebido (Pago):', MARGIN + 60, pdf.y + 10);
-  pdf.doc.text(`R$ ${totais.valorRecebido.toFixed(2)}`, MARGIN + 60, pdf.y + 20);
+  // Sessions detail
+  pdf.addSection('Detalhamento de Sessoes');
 
-  pdf.doc.setTextColor(...COLORS.danger);
-  pdf.doc.text('A Receber (Inadimplencia):', MARGIN + 120, pdf.y + 10);
-  pdf.doc.text(`R$ ${totais.valorPendente.toFixed(2)}`, MARGIN + 120, pdf.y + 20);
-  
-  pdf.y += 45;
-
-  // Título da Tabela
-  pdf.addSectionTitle('Detalhamento de Sessoes (Historico)');
-  
-  // Iterar sessões desenhando o mini relatório (em vez de tabela, em formato de lista)
   if (sessoesPeriodo.length === 0) {
     pdf.doc.setFont('helvetica', 'normal');
     pdf.doc.setTextColor(...COLORS.textLight);
-    pdf.doc.text('Nenhuma sessao faturada no periodo selecionado.', MARGIN, pdf.y);
+    pdf.doc.text('Nenhuma sessao faturada no periodo selecionado.', MARGIN + 2, pdf.y);
   } else {
-    // Surted
-    const ordernadas = [...sessoesPeriodo].sort((a,b) => new Date(b.data_sessao) - new Date(a.data_sessao));
-    
-    ordernadas.forEach(s => {
-      pdf.checkPageBreak(15);
-      
+    const ordenadas = [...sessoesPeriodo].sort((a, b) => new Date(b.data_sessao) - new Date(a.data_sessao));
+
+    ordenadas.forEach(s => {
+      pdf._checkPage(15);
+
       const pac = pacientes.find(p => p.id === s.id_paciente);
-      const mNome = pac ? pac.nome : 'Paciente nao encontrado';
+      const nome = pac ? sanitizeText(pac.nome) : 'Paciente nao encontrado';
       const isPago = s.pago;
       const v = s.valor ? parseFloat(s.valor).toFixed(2) : '0.00';
-      
+
       pdf.doc.setFont('helvetica', 'bold');
       pdf.doc.setTextColor(...COLORS.text);
       pdf.doc.setFontSize(10);
-      pdf.doc.text(`${formatDateBR(s.data_sessao)} - ${sanitizeText(mNome)}`, MARGIN, pdf.y);
-      
+      pdf.doc.text(`${formatDateBR(s.data_sessao)} - ${nome}`, MARGIN, pdf.y);
+
       pdf.doc.setFont('helvetica', 'normal');
       pdf.doc.setFontSize(9);
       if (isPago) {
-         pdf.doc.setTextColor(...COLORS.success);
-         pdf.doc.text(`R$ ${v} (PAGO - ${sanitizeText(s.forma_pagamento || '')})`, MARGIN + 100, pdf.y);
+        pdf.doc.setTextColor(...COLORS.success);
+        pdf.doc.text(`R$ ${v} (PAGO - ${sanitizeText(s.forma_pagamento || '')})`, MARGIN + 100, pdf.y);
       } else {
-         pdf.doc.setTextColor(...COLORS.danger);
-         pdf.doc.text(`R$ ${v} (PENDENTE)`, MARGIN + 100, pdf.y);
+        pdf.doc.setTextColor(...COLORS.danger);
+        pdf.doc.text(`R$ ${v} (PENDENTE)`, MARGIN + 100, pdf.y);
       }
       pdf.y += 6;
       pdf.doc.setDrawColor(...COLORS.line);
@@ -422,10 +398,101 @@ export function gerarRelatorioFinanceiroPDF(sessoesPeriodo, pacientes, periodoLa
     });
   }
 
-  // Baixar
   const fileName = `Relatorio_Financeiro_Caritas_${periodoLabel.replace(/ /g, '_')}.pdf`;
+  pdf.save(fileName);
+}
+
+// ==========================================
+// PDF: RECIBO INDIVIDUAL DE SESSAO
+// ==========================================
+export function gerarReciboPDF(sessao, paciente) {
+  const nome = paciente?.nome || 'Paciente';
+  const pdf = new PdfBuilder('Recibo de Atendimento', sanitizeText(nome));
+
+  pdf.addInfoBlock([
+    { label: 'Paciente', value: sanitizeText(nome) },
+    { label: 'CPF', value: paciente?.cpf || 'Nao informado' },
+    { label: 'Data da Sessao', value: formatDateBR(sessao.data_sessao) },
+    { label: 'Valor', value: `R$ ${parseFloat(sessao.valor || 0).toFixed(2)}` },
+    { label: 'Forma de Pagamento', value: sessao.forma_pagamento || 'Nao informada' },
+    { label: 'Status', value: sessao.pago ? 'Pago' : 'Pendente' },
+  ]);
+
+  pdf.addSpace(10);
+
+  // Declaration text
+  const valorExtenso = parseFloat(sessao.valor || 0).toFixed(2);
+  pdf.addTextBlock('Declaracao',
+    `Declaro para os devidos fins que ${sanitizeText(nome)} ` +
+    `realizou sessao de atendimento psicologico na data de ${formatDateBR(sessao.data_sessao)}, ` +
+    `no valor de R$ ${valorExtenso}${sessao.pago ? `, pago via ${sanitizeText(sessao.forma_pagamento || 'nao informada')}` : ' (pagamento pendente)'}.`
+  );
+
+  pdf.addSpace(30);
+
+  // Signature line
+  pdf.doc.setDrawColor(...COLORS.text);
+  pdf.doc.setLineWidth(0.5);
+  pdf.doc.line(MARGIN + 25, pdf.y, PAGE_WIDTH - MARGIN - 25, pdf.y);
+  pdf.y += 5;
+  pdf.doc.setFontSize(9);
+  pdf.doc.setTextColor(...COLORS.textLight);
+  pdf.doc.setFont('helvetica', 'normal');
+  pdf.doc.text('Assinatura do(a) Psicologo(a)', PAGE_WIDTH / 2, pdf.y, { align: 'center' });
+
+  const fileName = `Recibo_${sanitizeText(nome).replace(/ /g, '_')}_${sessao.data_sessao || 'sem_data'}.pdf`;
+  pdf.save(fileName);
+}
+
+// ==========================================
+// PDF: RELATORIO DE PENDENCIAS (INADIMPLENCIA)
+// ==========================================
+export function gerarRelatorioPendenciasPDF(sessoesPendentes, pacientes) {
+  const pdf = new PdfBuilder('Relatorio de Pendencias', `${sessoesPendentes.length} sessoes com pagamento pendente`);
+
+  pdf.doc.setFont('helvetica', 'normal');
+  pdf.doc.setFontSize(9);
+  pdf.doc.setTextColor(...COLORS.textLight);
+  pdf.doc.text(`Data de emissao: ${formatDateBR(new Date().toISOString().split('T')[0])}`, MARGIN + 2, pdf.y);
+  pdf.y += 10;
+
+  // Total pendente
+  const totalPendente = sessoesPendentes.reduce((acc, s) => acc + (parseFloat(s.valor) || 0), 0);
+  pdf.addInfoBlock([
+    { label: 'Total de Sessoes Pendentes', value: String(sessoesPendentes.length) },
+    { label: 'Valor Total Pendente', value: `R$ ${totalPendente.toFixed(2)}` },
+  ]);
+
+  // Group by patient
+  const porPaciente = {};
+  sessoesPendentes.forEach(s => {
+    const pid = s.id_paciente;
+    if (!porPaciente[pid]) porPaciente[pid] = [];
+    porPaciente[pid].push(s);
+  });
+
+  Object.entries(porPaciente).forEach(([pid, sessoes]) => {
+    const pac = pacientes.find(p => p.id === pid);
+    const nome = pac ? sanitizeText(pac.nome) : 'Paciente nao encontrado';
+    const subtotal = sessoes.reduce((acc, s) => acc + (parseFloat(s.valor) || 0), 0);
+
+    pdf.addSection(`${nome} (${sessoes.length} sessoes - R$ ${subtotal.toFixed(2)})`);
+
+    sessoes
+      .sort((a, b) => (a.data_sessao || '').localeCompare(b.data_sessao || ''))
+      .forEach(s => {
+        pdf._checkPage(8);
+        const v = parseFloat(s.valor || 0).toFixed(2);
+        pdf.addInline(formatDateBR(s.data_sessao), `R$ ${v}`);
+      });
+
+    pdf.addSpace(4);
+  });
+
+  const fileName = `Pendencias_Caritas_${new Date().toISOString().split('T')[0]}.pdf`;
   pdf.save(fileName);
 }
 
 // Exportar sanitizeText para uso externo se necessário
 export { sanitizeText };
+
