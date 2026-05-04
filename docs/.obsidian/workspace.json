@@ -20,8 +20,19 @@
               "icon": "lucide-file",
               "title": "tarefas"
             }
+          },
+          {
+            "id": "e114785f7da19029",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Visualização em gráfico"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -183,15 +194,15 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "0906e76defae59da",
+  "active": "e114785f7da19029",
   "lastOpenFiles": [
+    "componentes.md",
+    "tarefas.md",
     "arquitetura.md",
     "avaliacao-heuristicas.md",
-    "componentes.md",
     "decisoes.md",
     "design-system.md",
     "plano_implementacao.md",
-    "tarefas.md",
     "AUDITORIA_UX.md"
   ]
 }
