@@ -107,10 +107,18 @@ export default function Financas({ patients, isLoadingPatients }) {
         valStr = '0';
       }
     }
-    if (typeof valStr === 'string' && valStr.includes(',')) {
-      valStr = valStr.replace(/\./g, '').replace(',', '.');
+    
+    if (typeof valStr === 'number') return valStr;
+
+    if (typeof valStr === 'string') {
+      let cleaned = valStr.replace(/[^\d.,-]/g, '');
+      if (cleaned.includes(',')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      }
+      return parseFloat(cleaned) || 0;
     }
-    return parseFloat(valStr) || 0;
+    
+    return 0;
   }, [patients]);
 
   useEffect(() => {
