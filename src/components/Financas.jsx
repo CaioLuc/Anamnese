@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { lerTodasSessoes, atualizarSessao } from '../services/patientService';
+import { lerConfigAgenda } from '../services/agendaService';
 import { gerarRelatorioFinanceiroPDF, gerarReciboPDF, gerarRelatorioPendenciasPDF } from '../services/pdfUtils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { trackAction } from '../services/logService';
 import logger from '../utils/logger';
 import Pagination from './ui/Pagination';
+import ModalCobrancaPix from './ModalCobrancaPix';
 
 const PERIODOS = [
   { id: 'semana', label: 'Semana' },
@@ -96,6 +98,8 @@ export default function Financas({ patients, isLoadingPatients }) {
   const [editingPayment, setEditingPayment] = useState(null); // sessao.id being edited
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+  const [pixConfig, setPixConfig] = useState(null);
+  const [pixSessao, setPixSessao] = useState(null); // sessao object to bill via PIX
 
   const getSessaoValor = useCallback((s) => {
     let valStr = s.valor;
@@ -137,6 +141,25 @@ export default function Financas({ patients, isLoadingPatients }) {
       setIsLoading(false);
     }
   };
+
+  // Load PIX config
+  useEffect(() => {
+    async function loadPixConfig() {
+      try {
+        const config = await lerConfigAgenda();
+        if (config) {
+          setPixConfig({
+            pix_chave: config.pix_chave || '',
+            pix_titular: config.pix_titular || '',
+            pix_cidade: config.pix_cidade || '',
+          });
+        }
+      } catch (e) {
+        logger.error('Erro ao carregar config PIX:', e);
+      }
+    }
+    loadPixConfig();
+  }, []);
 
   const handleTogglePago = async (sessao, formaOverride) => {
     setUpdatingId(sessao.id);
@@ -561,6 +584,14 @@ export default function Financas({ patients, isLoadingPatients }) {
                               💰 Dar Baixa
                             </button>
                             <button
+                              onClick={() => setPixSessao(s)}
+                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all"
+                              style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
+                              title="Cobrar via PIX"
+                            >
+                              💠 PIX
+                            </button>
+                            <button
                               onClick={() => handleRecibo(s)}
                               className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all"
                               style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
@@ -628,6 +659,16 @@ export default function Financas({ patients, isLoadingPatients }) {
           </div>
         )}
       </div>
+
+      {/* Modal PIX */}
+      <ModalCobrancaPix
+        isOpen={!!pixSessao}
+        onClose={() => setPixSessao(null)}
+        sessao={pixSessao}
+        paciente={pixSessao ? patients.find(p => p.id === pixSessao.id_paciente) : null}
+        valor={pixSessao ? getSessaoValor(pixSessao) : 0}
+        pixConfig={pixConfig}
+      />
 
     </div>
   );
