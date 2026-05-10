@@ -21,9 +21,6 @@ export default function ConfigAgenda({ onClose }) {
   const [especialidade, setEspecialidade] = useState('');
   const [duracaoPadrao, setDuracaoPadrao] = useState(50);
   const [valorConsulta, setValorConsulta] = useState('');
-  const [pixChave, setPixChave] = useState('');
-  const [pixTitular, setPixTitular] = useState('');
-  const [pixCidade, setPixCidade] = useState('');
   const [dias, setDias] = useState(
     Object.fromEntries(DIAS.map(d => [d.id, { ...defaultDia, ativo: d.id !== 'sab' }]))
   );
@@ -43,9 +40,6 @@ export default function ConfigAgenda({ onClose }) {
           setEspecialidade(config.especialidade || '');
           setDuracaoPadrao(config.duracao_padrao || 50);
           setValorConsulta(config.valor_consulta || '');
-          setPixChave(config.pix_chave || '');
-          setPixTitular(config.pix_titular || '');
-          setPixCidade(config.pix_cidade || '');
           if (config.dias) setDias(prev => ({ ...prev, ...config.dias }));
         }
       } catch (e) {
@@ -99,9 +93,6 @@ export default function ConfigAgenda({ onClose }) {
         especialidade,
         duracao_padrao: duracaoPadrao,
         valor_consulta: valorConsulta,
-        pix_chave: pixChave.trim(),
-        pix_titular: pixTitular.trim(),
-        pix_cidade: pixCidade.trim(),
         dias,
       });
       setSaved(true);
@@ -220,48 +211,6 @@ export default function ConfigAgenda({ onClose }) {
               value={valorConsulta}
               onChange={e => setValorConsulta(e.target.value)}
               placeholder="150,00"
-              className="ds-input"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Dados PIX para Cobrança */}
-      <div className="ds-card p-5 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
-        <div>
-          <h3 className="text-sm font-heading font-bold" style={{ color: 'var(--text-primary)' }}>💠 Dados PIX para Cobrança</h3>
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Configure para cobrar pacientes via PIX direto pelo Financeiro.</p>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Chave PIX</label>
-          <input
-            type="text"
-            value={pixChave}
-            onChange={e => setPixChave(e.target.value)}
-            placeholder="CPF, e-mail, telefone ou chave aleatória"
-            className="ds-input"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nome do Titular</label>
-            <input
-              type="text"
-              value={pixTitular}
-              onChange={e => setPixTitular(e.target.value)}
-              placeholder="Nome que aparece no comprovante"
-              className="ds-input"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Cidade</label>
-            <input
-              type="text"
-              value={pixCidade}
-              onChange={e => setPixCidade(e.target.value)}
-              placeholder="Sua cidade"
               className="ds-input"
             />
           </div>

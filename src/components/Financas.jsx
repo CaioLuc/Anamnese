@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { lerTodasSessoes, atualizarSessao } from '../services/patientService';
-import { lerConfigAgenda } from '../services/agendaService';
+import { lerConfigAgenda, salvarConfigAgenda } from '../services/agendaService';
 import { gerarRelatorioFinanceiroPDF, gerarReciboPDF, gerarRelatorioPendenciasPDF } from '../services/pdfUtils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { trackAction } from '../services/logService';
@@ -100,6 +100,10 @@ export default function Financas({ patients, isLoadingPatients }) {
   const itemsPerPage = 15;
   const [pixConfig, setPixConfig] = useState(null);
   const [pixSessao, setPixSessao] = useState(null); // sessao object to bill via PIX
+  const [showPixConfig, setShowPixConfig] = useState(false);
+  const [pixForm, setPixForm] = useState({ pix_chave: '', pix_titular: '', pix_cidade: '' });
+  const [savingPix, setSavingPix] = useState(false);
+  const [pixSaved, setPixSaved] = useState(false);
 
   const getSessaoValor = useCallback((s) => {
     let valStr = s.valor;
@@ -148,11 +152,13 @@ export default function Financas({ patients, isLoadingPatients }) {
       try {
         const config = await lerConfigAgenda();
         if (config) {
-          setPixConfig({
+          const pc = {
             pix_chave: config.pix_chave || '',
             pix_titular: config.pix_titular || '',
             pix_cidade: config.pix_cidade || '',
-          });
+          };
+          setPixConfig(pc);
+          setPixForm(pc);
         }
       } catch (e) {
         logger.error('Erro ao carregar config PIX:', e);
@@ -160,6 +166,25 @@ export default function Financas({ patients, isLoadingPatients }) {
     }
     loadPixConfig();
   }, []);
+
+  const handleSavePixConfig = async () => {
+    setSavingPix(true);
+    try {
+      await salvarConfigAgenda({
+        pix_chave: pixForm.pix_chave.trim(),
+        pix_titular: pixForm.pix_titular.trim(),
+        pix_cidade: pixForm.pix_cidade.trim(),
+      });
+      setPixConfig({ ...pixForm });
+      setPixSaved(true);
+      setTimeout(() => setPixSaved(false), 3000);
+    } catch (e) {
+      logger.error('Erro ao salvar config PIX:', e);
+      alert('Erro ao salvar. Tente novamente.');
+    } finally {
+      setSavingPix(false);
+    }
+  };
 
   const handleTogglePago = async (sessao, formaOverride) => {
     setUpdatingId(sessao.id);
@@ -360,6 +385,79 @@ export default function Financas({ patients, isLoadingPatients }) {
             </button>
           )}
         </div>
+      </div>
+
+      {/* PIX Config Section */}
+      <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <button
+          onClick={() => setShowPixConfig(!showPixConfig)}
+          className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>💠 Configurações do PIX</p>
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                {pixConfig?.pix_chave ? `Chave: ${pixConfig.pix_chave}` : 'Configure sua chave para cobrar pacientes'}
+              </p>
+            </div>
+          </div>
+          <svg className={`w-5 h-5 transition-transform duration-200 ${showPixConfig ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showPixConfig && (
+          <div className="px-4 pb-4 space-y-3 animate-in slide-in-from-top-2 duration-200" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="pt-3">
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Chave PIX</label>
+              <input
+                type="text"
+                value={pixForm.pix_chave}
+                onChange={e => setPixForm(prev => ({ ...prev, pix_chave: e.target.value }))}
+                placeholder="CPF, e-mail, telefone ou chave aleatória"
+                className="ds-input"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nome do Titular</label>
+                <input
+                  type="text"
+                  value={pixForm.pix_titular}
+                  onChange={e => setPixForm(prev => ({ ...prev, pix_titular: e.target.value }))}
+                  placeholder="Nome que aparece no comprovante"
+                  className="ds-input"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Cidade</label>
+                <input
+                  type="text"
+                  value={pixForm.pix_cidade}
+                  onChange={e => setPixForm(prev => ({ ...prev, pix_cidade: e.target.value }))}
+                  placeholder="Sua cidade"
+                  className="ds-input"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={handleSavePixConfig}
+                disabled={savingPix}
+                className="ds-btn text-xs font-bold px-4 py-2 transition-all disabled:opacity-50"
+                style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}
+              >
+                {savingPix ? 'Salvando...' : 'Salvar PIX'}
+              </button>
+              {pixSaved && (
+                <span className="text-xs font-semibold animate-in fade-in" style={{ color: 'var(--status-success)' }}>✓ Salvo!</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Warning: sessions without value */}
