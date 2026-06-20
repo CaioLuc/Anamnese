@@ -7,6 +7,7 @@ import { trackAction } from '../services/logService';
 import logger from '../utils/logger';
 import Pagination from './ui/Pagination';
 import ModalCobrancaPix from './ModalCobrancaPix';
+import Select from './ui/Select';
 
 const PERIODOS = [
   { id: 'semana', label: 'Semana' },
@@ -14,6 +15,7 @@ const PERIODOS = [
   { id: 'semestre', label: '6 Meses' },
   { id: 'ano', label: 'Este Ano' },
   { id: 'todos', label: 'Tudo' },
+  { id: 'custom', label: 'Personalizado' },
 ];
 
 function parseDate(d) {
@@ -28,7 +30,7 @@ function parseDate(d) {
   return null;
 }
 
-function getRange(periodo) {
+function getRange(periodo, customStart, customEnd) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let start;
@@ -43,6 +45,12 @@ function getRange(periodo) {
     start = new Date(today); start.setMonth(today.getMonth() - 5); start.setDate(1);
   } else if (periodo === 'ano') {
     start = new Date(today.getFullYear(), 0, 1);
+  } else if (periodo === 'custom') {
+    start = customStart ? new Date(customStart + 'T00:00:00') : new Date(today);
+    if (customEnd) {
+      const e = new Date(customEnd + 'T23:59:59');
+      end.setTime(e.getTime());
+    }
   } else {
     // 'todos'
     start = new Date(2000, 0, 1);
@@ -72,15 +80,19 @@ function FinCard({ label, value, subtext, type, icon }) {
   const c = colorMap[type] || colorMap.total;
 
   return (
-    <div className="ds-card relative overflow-hidden p-5 flex flex-col gap-3 group hover:scale-[1.02] transition-transform duration-200">
+    <div className="ds-card relative overflow-hidden p-4 sm:p-5 flex flex-col gap-2 sm:gap-3 group hover:scale-[1.02] transition-transform duration-200">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-        <div className="p-2 rounded-xl" style={{ backgroundColor: c.bg, color: c.main }}>{icon}</div>
+        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+        <div className="p-1.5 sm:p-2 rounded-xl" style={{ backgroundColor: c.bg, color: c.main }}>{icon}</div>
       </div>
-      <div className="text-3xl font-black tracking-tight" style={{ color: c.main }}>
-        {typeof value === 'number' ? <><span className="text-xl mr-0.5">R$</span>{formatCurrency(value)}</> : value}
+      <div 
+        className="text-2xl xl:text-3xl font-black tracking-tight truncate" 
+        style={{ color: c.main }}
+        title={typeof value === 'number' ? `R$ ${formatCurrency(value)}` : value}
+      >
+        {typeof value === 'number' ? <><span className="text-base xl:text-xl mr-0.5">R$</span>{formatCurrency(value)}</> : value}
       </div>
-      {subtext && <p className="text-[11px] -mt-1" style={{ color: 'var(--text-muted)' }}>{subtext}</p>}
+      {subtext && <p className="text-[10px] sm:text-[11px] -mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{subtext}</p>}
     </div>
   );
 }
@@ -98,6 +110,8 @@ export default function Financas({ patients, isLoadingPatients }) {
   const [editingPayment, setEditingPayment] = useState(null); // sessao.id being edited
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [pixConfig, setPixConfig] = useState(null);
   const [pixSessao, setPixSessao] = useState(null); // sessao object to bill via PIX
   const [showPixConfig, setShowPixConfig] = useState(false);
@@ -224,15 +238,14 @@ export default function Financas({ patients, isLoadingPatients }) {
     }
   };
 
-  const { start, end } = getRange(periodo);
-  
   const sessoesPeriodo = useMemo(() => {
+    const { start, end } = getRange(periodo, customStart, customEnd);
     return sessoes.filter(s => {
       const d = parseDate(s.data_sessao);
       if (!d) return false;
       return d >= start && d <= end;
     });
-  }, [sessoes, periodo]);
+  }, [sessoes, periodo, customStart, customEnd]);
 
   // Filtered + sorted
   const sessoesFiltradas = useMemo(() => {
@@ -350,13 +363,13 @@ export default function Financas({ patients, isLoadingPatients }) {
           <h2 className="text-3xl font-heading font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Financeiro</h2>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Controle de faturamento, receitas e inadimplências.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="ds-card p-1 flex items-center">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <div className="ds-card p-1 flex items-center overflow-x-auto custom-scrollbar w-full sm:w-auto max-w-[100vw]">
             {PERIODOS.map(p => (
               <button
                 key={p.id}
                 onClick={() => setPeriodo(p.id)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex-shrink-0"
                 style={{
                   backgroundColor: periodo === p.id ? 'var(--accent)' : 'transparent',
                   color: periodo === p.id ? '#FFFFFF' : 'var(--text-secondary)',
@@ -367,6 +380,24 @@ export default function Financas({ patients, isLoadingPatients }) {
               </button>
             ))}
           </div>
+
+          {periodo === 'custom' && (
+            <div className="flex items-center gap-1.5 w-full sm:w-auto mt-2 sm:mt-0 animate-in fade-in">
+              <input 
+                type="date" 
+                value={customStart} 
+                onChange={e => setCustomStart(e.target.value)}
+                className="ds-input text-xs py-1.5 px-2 bg-[var(--bg-card)] flex-1 min-w-[110px]"
+              />
+              <span className="text-xs text-slate-500 whitespace-nowrap shrink-0">até</span>
+              <input 
+                type="date" 
+                value={customEnd} 
+                onChange={e => setCustomEnd(e.target.value)}
+                className="ds-input text-xs py-1.5 px-2 bg-[var(--bg-card)] flex-1 min-w-[110px]"
+              />
+            </div>
+          )}
           <button 
             onClick={handleExportPDF}
             className="ds-btn ds-btn-secondary flex items-center gap-1.5 text-xs font-bold"
@@ -572,18 +603,20 @@ export default function Financas({ patients, isLoadingPatients }) {
             </button>
           ))}
         </div>
-        <div className="sm:ml-auto flex items-center gap-1.5">
+        <div className="sm:ml-auto flex items-center gap-2">
           <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Ordenar:</span>
-          <select
+          <Select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="ds-input px-2 py-1.5 text-xs"
-          >
-            <option value="data_desc">Data (recente)</option>
-            <option value="data_asc">Data (antigo)</option>
-            <option value="valor_desc">Maior valor</option>
-            <option value="nome">Nome do paciente</option>
-          </select>
+            onChange={(val) => setSortBy(val)}
+            options={[
+              { value: 'data_desc', label: 'Data (recente)' },
+              { value: 'data_asc', label: 'Data (antigo)' },
+              { value: 'valor_desc', label: 'Maior valor' },
+              { value: 'nome', label: 'Nome do paciente' }
+            ]}
+            size="sm"
+            className="w-40"
+          />
         </div>
       </div>
 
@@ -655,17 +688,17 @@ export default function Financas({ patients, isLoadingPatients }) {
                           {s.pago ? 'Pago' : 'Pendente'}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-5 py-3.5 whitespace-nowrap overflow-visible">
                         {s.pago ? (
-                          <select
+                          <Select
                             value={s.forma_pagamento || ''}
-                            onChange={(e) => handleChangeForma(s, e.target.value)}
+                            onChange={(val) => handleChangeForma(s, val)}
                             disabled={isUpdating}
-                            className="ds-input px-2 py-1 text-[11px] disabled:opacity-50"
-                          >
-                            <option value="">—</option>
-                            {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
-                          </select>
+                            options={FORMAS_PAGAMENTO}
+                            placeholder="—"
+                            size="sm"
+                            className="w-32"
+                          />
                         ) : (
                           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>—</span>
                         )}

@@ -28,3 +28,29 @@ dist-ssr
 *.sln
 *.sw?
 release/win-unpacked/
+
+# ================================
+# Arquivos Sigilosos / Confidenciais
+# ================================
+# Chaves e Credenciais
+serviceAccountKey.json
+*firebase-adminsdk*.json
+*-key.json
+credentials.json
+client_secret.json
+*.pem
+*.key
+*.cert
+*.p12
+
+# Diretório de segredos genérico
+secrets/
+.secrets/
+
+# Ignorar banco local SQLite/etc se houver
+*.sqlite
+*.sqlite3
+*.db
+
+# Configurações do Firebase locais / cache
+.firebase/

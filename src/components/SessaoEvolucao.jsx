@@ -9,6 +9,8 @@ import { useKeyboard } from '../hooks/useKeyboard';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useToast } from '../contexts/ToastContext';
 import { trackAction } from '../services/logService';
+import Button from './ui/Button';
+import Select from './ui/Select';
 
 export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
@@ -269,21 +271,15 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
             {/* Status */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Status do Comparecimento *</label>
-              <div className="relative">
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="ds-input appearance-none pr-10"
-                >
-                  <option value="Presente">Presente</option>
-                  <option value="Faltou">Faltou</option>
-                  <option value="Remarcado">Remarcado</option>
-                  <option value="Cancelado">Cancelado</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4" style={{ color: 'var(--text-secondary)' }}>
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              <div className="flex-1 w-full sm:w-auto animate-in slide-in-from-top-2 duration-200">
+                  <Select
+                    value={formData.status}
+                    onChange={(val) => setFormData({ ...formData, status: val })}
+                    options={['Presente', 'Faltou', 'Remarcado', 'Cancelado']}
+                    placeholder="Selecione o status"
+                    size="md"
+                  />
                 </div>
-              </div>
             </div>
 
             {/* Valor da Sessão */}
@@ -315,22 +311,20 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
               {formData.pago && (
                 <div className="mt-3 relative animate-in slide-in-from-top-2 duration-200">
-                  <select
+                  <Select
                     value={formData.forma_pagamento}
-                    onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
-                    className="ds-input appearance-none pr-10"
-                    required={formData.pago}
-                  >
-                    <option value="" disabled>Selecione a forma de pagamento...</option>
-                    <option value="Pix">Pix</option>
-                    <option value="Cartão de Crédito">Cartão de Crédito</option>
-                    <option value="Cartão de Débito">Cartão de Débito</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="Transferência">Transferência Bancária</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4" style={{ color: 'var(--text-secondary)' }}>
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+                    onChange={(val) => setFormData({ ...formData, forma_pagamento: val })}
+                    options={[
+                      'Pix', 
+                      'Cartão de Crédito', 
+                      'Cartão de Débito', 
+                      'Dinheiro', 
+                      'Transferência Bancária',
+                      'Convênio'
+                    ]}
+                    placeholder="Selecione a forma de pagamento..."
+                    size="md"
+                  />
                 </div>
               )}
             </div>

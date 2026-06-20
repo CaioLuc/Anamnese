@@ -1,9 +1,9 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import ContaBloqueada from './components/ContaBloqueada';
-import { subscribeToAuthChanges } from './services/authService';
+import { subscribeToAuthChanges, logoutFirebaseUser } from './services/authService';
 import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';
@@ -154,6 +154,46 @@ function AppMain() {
 
     return () => unsubscribeAuth();
   }, []);
+
+  // ===== SEMPRE ABRIR NO DASHBOARD AO LOGAR =====
+  const hasRedirectedRef = useRef(false);
+  useEffect(() => {
+    if (user && !isAuthChecking && !isCheckingRole && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      navigate('/dashboard', { replace: true });
+    }
+    if (!user) {
+      hasRedirectedRef.current = false;
+    }
+  }, [user, isAuthChecking, isCheckingRole]);
+
+  // ===== AUTO-LOGOUT APÓS 10 MIN DE INATIVIDADE =====
+  const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
+  const idleTimerRef = useRef(null);
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(async () => {
+      if (user) {
+        logger.info('Auto-logout: 10 minutos de inatividade.');
+        trackAction('AUTO_LOGOUT', { reason: 'inactivity', timeoutMs: IDLE_TIMEOUT_MS });
+        await logoutFirebaseUser();
+      }
+    }, IDLE_TIMEOUT_MS);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'click'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    resetIdleTimer(); // iniciar timer
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [user, resetIdleTimer]);
 
   const handlePatientAddedLocal = () => {
     fetchPatients();

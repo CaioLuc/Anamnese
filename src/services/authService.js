@@ -22,6 +22,8 @@ export const logoutFirebaseUser = async () => {
   try {
     await trackAction('LOGOUT', { method: 'manual' });
     await signOut(auth);
+    // Forçar reload para capturar novos deploys
+    window.location.href = '/';
   } catch (error) {
     logger.error("Logout errorMessage:", error);
     throw error;

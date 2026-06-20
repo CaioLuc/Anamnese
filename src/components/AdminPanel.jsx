@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useContext } from 'react';
 import { listarTodosPsicologos, atualizarPlanoPsicologo, toggleAtivoPsicologo, getEstatisticasGlobais, contarPacientesDoPsicologo, getMetricasPsicologo, atualizarTrialPsicologo, salvarAvisoGlobal, lerAvisoGlobal, obterLogsAuditoria, limparLogsAntigos } from '../services/adminService';
 import { logoutFirebaseUser } from '../services/authService';
 import { exportarDadosCSV } from '../services/exportService';
+import { processarRelatorioUsabilidade } from '../utils/usabilityAnalyzer';
 import { useToast } from '../contexts/ToastContext';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
@@ -303,7 +304,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
   const loadLogs = async () => {
     setIsLoadingLogs(true);
     try {
-      const data = await obterLogsAuditoria(500);
+      const data = await obterLogsAuditoria(2000);
       setLogs(data);
     } catch (e) {
       logger.error(e);
@@ -355,6 +356,9 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
 
   return (
     <div className="space-y-6">
+      {/* DECIDE Report Card */}
+      <DecideReportCard logs={logs} />
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Total de Logs" value={stats.total} colorType="info" icon={Database} />
@@ -490,6 +494,162 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// DECIDE REPORT COMPONENT
+// ==========================================
+function DecideReportCard({ logs }) {
+  const [emailPattern, setEmailPattern] = useState('@teste.com');
+  const [preview, setPreview] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handlePreview = () => {
+    if (!logs || logs.length === 0) return;
+    const result = processarRelatorioUsabilidade(logs, emailPattern);
+    setPreview(result);
+  };
+
+  const handleDownloadZip = async () => {
+    if (!preview || preview.csvs.length === 0) return;
+    setIsDownloading(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const folder = zip.folder('relatorio_usabilidade_decide');
+      preview.csvs.forEach(csv => {
+        folder.file(csv.name, csv.content);
+      });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio_decide_${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      logger.error('Erro ao gerar ZIP:', e);
+      alert('Erro ao gerar arquivo ZIP.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadSingleCSV = (csv) => {
+    const blob = new Blob([csv.content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = csv.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)', border: '2px solid var(--accent)' }}>
+      {/* Header */}
+      <div className="p-5 flex items-start gap-4" style={{ background: 'linear-gradient(135deg, var(--accent-light), var(--bg-card))' }}>
+        <div className="p-3 rounded-2xl" style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}>
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-heading font-extrabold" style={{ color: 'var(--text-primary)' }}>📊 Relatório de Usabilidade — Framework DECIDE</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Gera 6 planilhas CSV completas para análise acadêmica dos testes de usabilidade com os participantes.</p>
+        </div>
+      </div>
+
+      {/* Config */}
+      <div className="p-5 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Filtro de e-mail dos participantes</label>
+            <input
+              type="text"
+              value={emailPattern}
+              onChange={e => setEmailPattern(e.target.value)}
+              placeholder="@teste.com"
+              className="ds-input"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button onClick={handlePreview} variant="secondary">
+              🔍 Pré-visualizar
+            </Button>
+          </div>
+        </div>
+
+        {/* Preview Stats */}
+        {preview && preview.stats.total > 0 && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                { label: 'Participantes', value: preview.stats.total, color: 'info' },
+                { label: 'Total de Logs', value: preview.stats.totalLogs, color: 'neutral' },
+                { label: '100% Sucesso', value: preview.stats.completaramTodas, color: 'success' },
+                { label: 'Taxa Média', value: `${preview.stats.taxaMediaSucesso}%`, color: 'warning' },
+                { label: 'Tempo Médio', value: `${preview.stats.tempoMedioMin} min`, color: 'danger' },
+                { label: 'Erros/Retrabalho', value: preview.stats.totalErros, color: 'danger' },
+              ].map((s, i) => (
+                <div key={i} className="rounded-xl p-3 text-center" style={{ backgroundColor: `var(--status-${s.color}-bg)`, border: `1px solid var(--status-${s.color})` }}>
+                  <p className="text-xl font-extrabold" style={{ color: `var(--status-${s.color})` }}>{s.value}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: 'var(--text-secondary)' }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* CSV List */}
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+              <div className="px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Planilhas incluídas no relatório:</p>
+              </div>
+              {preview.csvs.map((csv, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderTop: '0.5px solid var(--border)' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">📄</span>
+                    <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{csv.name}</span>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadSingleCSV(csv)}
+                    className="text-[10px] font-bold px-2 py-1 rounded-lg transition-colors"
+                    style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-light)' }}
+                  >
+                    ⬇ Baixar
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Download All */}
+            <button
+              onClick={handleDownloadZip}
+              disabled={isDownloading}
+              className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+              style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}
+            >
+              {isDownloading ? (
+                <><RefreshCw size={16} className="animate-spin" /> Gerando ZIP...</>
+              ) : (
+                <>📦 Baixar Relatório Completo (ZIP com {preview.csvs.length} planilhas)</>
+              )}
+            </button>
+          </div>
+        )}
+
+        {preview && preview.stats.total === 0 && (
+          <div className="p-4 rounded-xl text-center" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--status-warning-text)' }}>
+              ⚠️ Nenhum participante encontrado com o padrão "{emailPattern}". Verifique o filtro.
+            </p>
           </div>
         )}
       </div>
