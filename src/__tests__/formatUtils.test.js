@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatCPF, cleanCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
+import { formatCPF, cleanCPF, validarCPF, formatTelefone, parseDate, formatCurrency, formatDuration } from '../utils/formatUtils';
 
 describe('formatCPF', () => {
   it('should format a raw CPF string with dots and dash', () => {
@@ -92,5 +92,58 @@ describe('formatTelefone', () => {
 
   it('should truncate to 11 digits max', () => {
     expect(formatTelefone('219999900001234')).toBe('(21) 99999-0000');
+  });
+});
+
+describe('parseDate', () => {
+  it('should parse YYYY-MM-DD string correctly', () => {
+    const d = parseDate('2026-05-15');
+    expect(d).toBeInstanceOf(Date);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(4); // 0-indexed maio
+    expect(d.getDate()).toBe(15);
+  });
+
+  it('should support Firestore Timestamp-like objects with toDate()', () => {
+    const fakeTimestamp = { toDate: () => new Date(2026, 3, 20) };
+    const d = parseDate(fakeTimestamp);
+    expect(d).toBeInstanceOf(Date);
+    expect(d.getMonth()).toBe(3);
+  });
+
+  it('should return null for invalid or null inputs', () => {
+    expect(parseDate(null)).toBeNull();
+    expect(parseDate(undefined)).toBeNull();
+    expect(parseDate('invalid-date-xyz')).toBeNull();
+  });
+});
+
+describe('formatCurrency', () => {
+  it('should format numbers to BRL currency string', () => {
+    expect(formatCurrency(150)).toBe('150,00');
+    expect(formatCurrency(1250.5)).toBe('1.250,50');
+    expect(formatCurrency(0)).toBe('0,00');
+  });
+
+  it('should handle string values gracefully', () => {
+    expect(formatCurrency('200')).toBe('200,00');
+    expect(formatCurrency('200,50')).toBe('200,50');
+  });
+});
+
+describe('formatDuration', () => {
+  it('should format minutes under an hour', () => {
+    expect(formatDuration(50)).toBe('50 min');
+  });
+
+  it('should format full hours and mixed hour/minutes', () => {
+    expect(formatDuration(60)).toBe('1h');
+    expect(formatDuration(90)).toBe('1h 30min');
+    expect(formatDuration(120)).toBe('2h');
+  });
+
+  it('should return 0 min for zero or negative values', () => {
+    expect(formatDuration(0)).toBe('0 min');
+    expect(formatDuration(-10)).toBe('0 min');
   });
 });

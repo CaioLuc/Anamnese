@@ -3,7 +3,8 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese, deletarAnamnese, atualizarSessao, lerQuestionario } from '../services/patientService';
 const AnamneseForm = lazy(() => import('./AnamneseForm'));
 const AnamneseAdolescenteForm = lazy(() => import('./AnamneseAdolescenteForm'));
-import { jsPDF } from 'jspdf';
+import { PdfBuilder, calcularIdade, formatDateBR } from '../services/pdfUtils';
+import DocumentosTab from './prontuario/DocumentosTab';
 import ConfirmDialog from './ConfirmDialog';
 import MoodChart from './MoodChart';
 import SelecionarTemplateModal from './SelecionarTemplateModal';
@@ -183,8 +184,6 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   const gerarPdfAnamnese = () => {
      if (anamneses.length === 0) return;
      const ana = anamneses[0];
-     const { PdfBuilder, calcularIdade, formatDateBR } = require('../services/pdfUtils');
-
      let viewMode = ana.tipo === 'adolescente' ? 'Infanto-Juvenil' : (ana.tipo === 'dinamico' ? ana.questionario_nome || 'Personalizada' : 'Adulto');
      const pdf = new PdfBuilder(
        `Anamnese Psicologica - ${viewMode}`,
@@ -263,8 +262,6 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   };
 
   const gerarPdfSessao = (sessao) => {
-    const { PdfBuilder, formatDateBR } = require('../services/pdfUtils');
-    
     const dataFormatada = sessao.data_sessao 
       ? formatDateBR(sessao.data_sessao)
       : new Date(sessao.createdAt?.toDate() || Date.now()).toLocaleDateString('pt-BR');
@@ -296,8 +293,6 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   };
 
   const handleExportCompleteRecord = () => {
-    const { PdfBuilder, formatDateBR } = require('../services/pdfUtils');
-    
     showToast({ type: 'info', message: 'Gerando prontuário completo, aguarde...' });
     
     try {
@@ -469,6 +464,16 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
             }}
           >
             Ficha de Anamnese
+          </button>
+          <button
+            onClick={() => setActiveTab('documentos')}
+            className="px-4 py-3 text-sm font-medium border-b-2 transition-all"
+            style={{
+              borderColor: activeTab === 'documentos' ? 'var(--accent)' : 'transparent',
+              color: activeTab === 'documentos' ? 'var(--accent)' : 'var(--text-muted)'
+            }}
+          >
+            Documentos (CFP)
           </button>
         </div>
 
@@ -877,6 +882,9 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                       )}
                    </div>
                 </ErrorBoundary>
+              )}
+              {activeTab === 'documentos' && (
+                <DocumentosTab patient={patient} sessoes={sessoes} />
               )}
             </>
           )}

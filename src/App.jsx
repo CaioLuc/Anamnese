@@ -17,6 +17,7 @@ const Financas = lazy(() => import('./components/Financas'));
 const Questionarios = lazy(() => import('./components/Questionarios'));
 const Clinicas = lazy(() => import('./components/Clinicas'));
 const Lixeira = lazy(() => import('./components/Lixeira'));
+const LiderClinicoDashboard = lazy(() => import('./components/lider/LiderClinicoDashboard'));
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
 import { trackAction } from './services/logService';
@@ -29,6 +30,7 @@ const PATH_MAP = {
   '/nova-sessao': 'nova-sessao',
   '/agenda': 'agenda',
   '/financas': 'financas',
+  '/lider': 'lider',
   '/questionarios': 'questionarios',
   '/clinicas': 'clinicas',
   '/lixeira': 'lixeira',
@@ -40,6 +42,7 @@ const ID_TO_PATH = {
   'nova-sessao': '/nova-sessao',
   'agenda': '/agenda',
   'financas': '/financas',
+  'lider': '/lider',
   'questionarios': '/questionarios',
   'clinicas': '/clinicas',
   'lixeira': '/lixeira',
@@ -243,6 +246,8 @@ function AppMain() {
         return <Agenda patients={patients} onAtender={handleAtenderPaciente} onRefreshPatients={fetchPatients} />;
       case 'financas':
         return <Financas patients={patients} isLoadingPatients={isLoadingPatients} />;
+      case 'lider':
+        return <LiderClinicoDashboard />;
       case 'questionarios':
         return <Questionarios />;
       case 'clinicas':

@@ -84,7 +84,8 @@ O workspace conta com skills especializadas instaladas em `.agents/skills/`. O a
 6. **`vercel-composition-patterns`**: Padrões de composição e arquitetura limpa de componentes React 19.
 7. **`web-design-guidelines`**: Acessibilidade (a11y), contrastes e diretrizes de design de interface web.
 8. **`caveman`**: Comunicação concisa e objetiva de alta densidade técnica com redução de tokens.
-9. **`obsidian-best-practices`** e **`obsidian-cli`**: Manutenção da base de conhecimento na pasta `docs/`.
+9. **`ponytail`**: Princípio YAGNI e desenvolvimento minimalista (evitar complexidade desnecessária, dependências extras e código redundante).
+10. **`obsidian-best-practices`** e **`obsidian-cli`**: Manutenção da base de conhecimento na pasta `docs/`.
 
 ---
 

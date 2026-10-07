@@ -3,20 +3,9 @@ import { useState, useEffect } from 'react';
 import { lerTodasSessoes, lerTodasAnamneses } from '../services/patientService';
 import { lerAvisoGlobal } from '../services/adminService';
 import { useToast } from '../contexts/ToastContext';
+import { parseDate } from '../utils/formatUtils';
+import Skeleton from './ui/Skeleton';
 import { UserPlus, FileText, Calendar, ClipboardList, Users, BarChart3, CheckCircle, X, Info } from 'lucide-react';
-
-// ── Helpers ─────────────────────────────────────────────────────────────
-function parseDate(d) {
-  if (!d) return null;
-  if (d.toDate) return d.toDate();
-  if (d instanceof Date) return d;
-  if (typeof d === 'string') {
-    const [y, m, day] = d.split('-');
-    if (y && m && day) return new Date(+y, +m - 1, +day);
-    return new Date(d);
-  }
-  return null;
-}
 
 // ── Sub-components ───────────────────────────────────────────────────────
 
@@ -121,15 +110,6 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   const dayLabel = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  const Spinner = () => (
-    <div className="flex items-center justify-center py-8">
-      <svg className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-      </svg>
-    </div>
-  );
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 pb-10">
@@ -236,7 +216,9 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
             </button>
           </div>
           {isLoading ? (
-            <Spinner />
+            <div className="p-5 space-y-3">
+              <Skeleton variant="text" count={3} />
+            </div>
           ) : recentPatients.length === 0 ? (
             <div className="py-10 text-center">
               <Users size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
@@ -283,7 +265,9 @@ export default function DashboardSummary({ patients, isLoading, onNavigate }) {
             </span>
           </div>
           {isLoadingStats ? (
-            <Spinner />
+            <div className="p-5 space-y-3">
+              <Skeleton variant="text" count={3} />
+            </div>
           ) : sessoesHoje.length === 0 ? (
             <div className="py-10 text-center">
               <Calendar size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />

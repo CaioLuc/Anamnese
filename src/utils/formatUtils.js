@@ -77,3 +77,55 @@ export const formatTelefone = (value) => {
   return tel;
 };
 
+/**
+ * Converte com segurança diversos formatos de data (Firestore Timestamp, string 'YYYY-MM-DD', Date) em objeto Date válido.
+ * Unificado para evitar duplicação em Dashboard.jsx e Financas.jsx.
+ * @param {any} d 
+ * @returns {Date|null}
+ */
+export const parseDate = (d) => {
+  if (!d) return null;
+  if (typeof d.toDate === 'function') {
+    const res = d.toDate();
+    return res instanceof Date && !isNaN(res.getTime()) ? res : null;
+  }
+  if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
+  if (typeof d === 'string') {
+    const parts = d.split('-');
+    if (parts.length === 3) {
+      const [y, m, day] = parts;
+      if (!isNaN(+y) && !isNaN(+m) && !isNaN(+day)) {
+        const dateObj = new Date(+y, +m - 1, +day);
+        return isNaN(dateObj.getTime()) ? null : dateObj;
+      }
+    }
+    const parsed = new Date(d);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
+/**
+ * Formata valor monetário em padrão Real brasileiro (R$ 0,00).
+ * @param {number|string} val 
+ * @returns {string}
+ */
+export const formatCurrency = (val) => {
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(',', '.')) || 0;
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+/**
+ * Formata duração em minutos para formato amigável (ex: '50 min', '1h 30min').
+ * @param {number} minutes 
+ * @returns {string}
+ */
+export const formatDuration = (minutes) => {
+  if (!minutes || minutes <= 0) return '0 min';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}min`;
+  if (h > 0) return `${h}h`;
+  return `${m} min`;
+};
+

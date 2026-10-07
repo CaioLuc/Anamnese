@@ -70,7 +70,7 @@ export class PdfBuilder {
     // Inserir Logo à direita
     try {
       doc.addImage(LOGO_BASE64, 'PNG', PAGE_WIDTH - MARGIN - 14, 14, 10, 10);
-    } catch(e) {
+    } catch {
       // Logo insertion is non-critical, silently ignore failures
     }
 
@@ -314,6 +314,30 @@ export class PdfBuilder {
     this.y += h + 5;
   }
 
+  // Assinatura do Profissional (Resolução CFP nº 06/2019)
+  addAssinatura(psicologo = {}) {
+    this._checkPage(35);
+    const doc = this.doc;
+    const nome = sanitizeText(psicologo.nome || psicologo.displayName || 'Psicologo(a) Responsavel');
+    const crp = sanitizeText(psicologo.crp ? `CRP: ${psicologo.crp}` : 'CRP: Nao informado');
+
+    this.addSpace(15);
+    doc.setDrawColor(...COLORS.textLight);
+    doc.setLineWidth(0.4);
+    doc.line(MARGIN + 25, this.y, PAGE_WIDTH - MARGIN - 25, this.y);
+    this.y += 5;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...COLORS.dark);
+    doc.text(nome, PAGE_WIDTH / 2, this.y, { align: 'center' });
+    this.y += 4.5;
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...COLORS.textLight);
+    doc.text(crp, PAGE_WIDTH / 2, this.y, { align: 'center' });
+    this.y += 6;
+  }
+
   // Salvar
   save(filename) {
     this._addFooter();
@@ -493,6 +517,199 @@ export function gerarRelatorioPendenciasPDF(sessoesPendentes, pacientes) {
   pdf.save(fileName);
 }
 
+// ==========================================
+// DOCUMENTOS CFP (RESOLUÇÃO CFP Nº 06/2019)
+// ==========================================
+
+/**
+ * Declaração Psicológica (Art. 9º da Resolução CFP nº 06/2019)
+ * Afirma ocorrência de fatos ou situações objetivas (comparecimento, acompanhamento).
+ */
+export function gerarDeclaracaoPDF(paciente = {}, psicologo = {}, dados = {}) {
+  const nomePaciente = sanitizeText(paciente.nome || 'Paciente');
+  const pdf = new PdfBuilder('Declaracao Psicologica', nomePaciente);
+  const dataHoje = dados.data || new Date().toISOString().split('T')[0];
+  const dataFormatada = formatDateBR(dataHoje);
+
+  pdf.addSection('Identificacao do Documento');
+  pdf.addInfoBlock([
+    { label: 'Paciente', value: nomePaciente },
+    { label: 'CPF', value: paciente.cpf || 'Nao informado' },
+    { label: 'Finalidade', value: sanitizeText(dados.finalidade || 'Comprovacao de comparecimento') },
+    { label: 'Data do Atendimento', value: dataFormatada },
+    { label: 'Horario', value: dados.horario || 'Horario agendado' },
+  ]);
+
+  pdf.addSpace(8);
+
+  const compareceuTexto = dados.compareceu !== false
+    ? `compareceu a atendimento psicologico individual na data de ${dataFormatada}`
+    : `encontra-se em processo de acompanhamento psicologico regular`;
+
+  const horarioTexto = dados.horario ? ` no horario das ${dados.horario}` : '';
+  const finalidadeTexto = dados.finalidade || 'comprovacao de comparecimento';
+
+  pdf.addTextBlock(
+    'Declaracao',
+    `Declaro para os devidos fins que ${nomePaciente}, inscrito(a) no CPF ${paciente.cpf || 'nao informado'}, ${compareceuTexto}${horarioTexto}, sob meus cuidados profissionais, com a finalidade de ${finalidadeTexto}.\n\nRegistra-se que este documento nao contem diagnostico, sintomas ou prognostico, conforme expressamente determinado pelo Art. 9º da Resolucao CFP nº 06/2019.`
+  );
+
+  pdf.addAssinatura(psicologo);
+
+  const fileName = `Declaracao_${nomePaciente.replace(/\s+/g, '_')}_${dataHoje}.pdf`;
+  if (!dados.skipSave) {
+    pdf.save(fileName);
+  }
+  return pdf;
+}
+
+/**
+ * Atestado Psicológico (Art. 10º da Resolução CFP nº 06/2019)
+ * Certifica situação de saúde para justificar falta, repouso ou afastamento.
+ */
+export function gerarAtestadoPDF(paciente = {}, psicologo = {}, dados = {}) {
+  const nomePaciente = sanitizeText(paciente.nome || 'Paciente');
+  const pdf = new PdfBuilder('Atestado Psicologico', nomePaciente);
+  const dataHoje = dados.data || new Date().toISOString().split('T')[0];
+  const dataFormatada = formatDateBR(dataHoje);
+  const dias = dados.diasRepouso || 1;
+
+  pdf.addSection('Identificacao');
+  pdf.addInfoBlock([
+    { label: 'Paciente', value: nomePaciente },
+    { label: 'CPF', value: paciente.cpf || 'Nao informado' },
+    { label: 'Data de Emissao', value: dataFormatada },
+    { label: 'Periodo de Repouso', value: `${dias} dia(s)` },
+  ]);
+
+  pdf.addSpace(8);
+
+  pdf.addTextBlock(
+    'Atestado',
+    `Atesto, para os devidos fins a pedido de ${nomePaciente}, inscrito(a) no CPF ${paciente.cpf || 'nao informado'}, que o(a) mesmo(a) encontra-se sob acompanhamento psicologico clinico e necessita de ${dias} dia(s) de repouso/afastamento de suas atividades habituais a partir desta data (${dataFormatada}), por motivos de saude psicologica.\n\n${dados.justificativa ? 'Observacao: ' + sanitizeText(dados.justificativa) + '\n\n' : ''}Este atestado tem validade restrita a finalidade descrita (${sanitizeText(dados.finalidade || 'dispensa de atividades')}). Emitido em estrita conformidade com o Art. 10 da Resolucao CFP nº 06/2019.`
+  );
+
+  pdf.addAssinatura(psicologo);
+
+  const fileName = `Atestado_${nomePaciente.replace(/\s+/g, '_')}_${dataHoje}.pdf`;
+  if (!dados.skipSave) {
+    pdf.save(fileName);
+  }
+  return pdf;
+}
+
+/**
+ * Relatório Psicológico de Encaminhamento (Art. 11º e 12º da Resolução CFP nº 06/2019)
+ * Comunica demanda, procedimentos realizados, análise e direcionamento multiprofissional.
+ */
+export function gerarRelatorioEncaminhamentoPDF(paciente = {}, psicologo = {}, dados = {}) {
+  const nomePaciente = sanitizeText(paciente.nome || 'Paciente');
+  const pdf = new PdfBuilder('Relatorio de Encaminhamento', nomePaciente);
+  const dataHoje = dados.data || new Date().toISOString().split('T')[0];
+
+  pdf.addSection('1. Identificacao');
+  pdf.addInfoBlock([
+    { label: 'Paciente', value: nomePaciente },
+    { label: 'CPF', value: paciente.cpf || 'Nao informado' },
+    { label: 'Idade', value: calcularIdade(paciente.data_nascimento) },
+    { label: 'Destinatario', value: sanitizeText(dados.destinatario || 'Profissional / Servico de Saude') },
+    { label: 'Finalidade', value: sanitizeText(dados.finalidade || 'Avaliacao e conduta multiprofissional') },
+  ]);
+
+  pdf.addSection('2. Descricao da Demanda');
+  pdf.addTextBlock(
+    'Historico e Queixa Principal',
+    dados.queixa || dados.motivo || 'Paciente em acompanhamento psicoterapico regular com necessidade de suporte complementar.'
+  );
+
+  pdf.addSection('3. Procedimentos');
+  pdf.addTextBlock(
+    'Metodologia e Tecnicas Empregadas',
+    dados.procedimentos || 'Atendimento clinico individual, anamnese estruturada, escuta psicoterapica qualificada e avaliacao sintomatologica fundamentada no CFP.'
+  );
+
+  pdf.addSection('4. Analise Clinica');
+  pdf.addTextBlock(
+    'Sintese Clinica',
+    dados.analise || 'Quadro clinico em intervencao necessitando de articulacao com outras especialidades de saude para integracao do cuidado.'
+  );
+
+  pdf.addSection('5. Encaminhamento e Conclusao');
+  pdf.addTextBlock(
+    'Direcionamento Proposto',
+    dados.encaminhamento || dados.conclusao || 'Encaminha-se o(a) paciente ao profissional/servico destinatario para analise complementar e definicao de conduta compartilhada.'
+  );
+
+  pdf.addSpace(4);
+  pdf.doc.setFontSize(7.5);
+  pdf.doc.setTextColor(...COLORS.textLight);
+  pdf.doc.setFont('helvetica', 'italic');
+  pdf.doc.text(
+    'Documento de carater estritamente sigiloso e confidencial (Art. 13 da Resolucao CFP nº 06/2019). Vedada a reproducao nao autorizada.',
+    MARGIN,
+    pdf.y
+  );
+  pdf.y += 8;
+
+  pdf.addAssinatura(psicologo);
+
+  const fileName = `Encaminhamento_${nomePaciente.replace(/\s+/g, '_')}_${dataHoje}.pdf`;
+  if (!dados.skipSave) {
+    pdf.save(fileName);
+  }
+  return pdf;
+}
+
+/**
+ * Recibo para Reembolso de Plano de Saúde (Convênios / Seguro Saúde)
+ * Discrimina atendimento psicológico com dados completos para fins de reembolso.
+ */
+export function gerarReciboReembolsoPDF(sessao = {}, paciente = {}, psicologo = {}, dados = {}) {
+  const nomePaciente = sanitizeText(paciente.nome || 'Paciente');
+  const pdf = new PdfBuilder('Recibo para Reembolso', nomePaciente);
+  const dataSessao = sessao.data_sessao || dados.data || new Date().toISOString().split('T')[0];
+  const dataFormatada = formatDateBR(dataSessao);
+  const valor = parseFloat(sessao.valor || dados.valor || 0).toFixed(2);
+
+  pdf.addSection('Dados do Profissional Emissor');
+  pdf.addInfoBlock([
+    { label: 'Psicologo(a)', value: sanitizeText(psicologo.nome || psicologo.displayName || 'Psicologo(a) Responsavel') },
+    { label: 'Registro CFP/CRP', value: psicologo.crp ? `CRP ${psicologo.crp}` : 'Nao informado' },
+    { label: 'CPF / CNPJ', value: psicologo.cpf || psicologo.cnpj || 'Nao informado' },
+    { label: 'Clinica / Local', value: sanitizeText(psicologo.clinica || paciente.clinica || 'Consultorio Particular') },
+  ]);
+
+  pdf.addSection('Dados do Beneficiario / Paciente');
+  pdf.addInfoBlock([
+    { label: 'Paciente', value: nomePaciente },
+    { label: 'CPF', value: paciente.cpf || 'Nao informado' },
+    { label: 'Data do Atendimento', value: dataFormatada },
+    { label: 'Procedimento', value: 'Sessao de Psicoterapia Individual (TUSS 50000140)' },
+  ]);
+
+  pdf.addSection('Discriminacao Financeira');
+  pdf.addInfoBlock([
+    { label: 'Valor da Sessao', value: `R$ ${valor}` },
+    { label: 'Forma de Pagamento', value: sessao.forma_pagamento || dados.forma_pagamento || 'PIX / Transferencia' },
+    { label: 'Status da Quitacao', value: 'Totalmente Quitado' },
+  ]);
+
+  pdf.addSpace(8);
+  pdf.addTextBlock(
+    'Declaracao de Quitacao',
+    `Declaro que recebi do(a) paciente ${nomePaciente}, inscrito(a) no CPF ${paciente.cpf || 'nao informado'}, a quantia de R$ ${valor} referente a prestacao de servicos profissionais de psicoterapia individual realizada em ${dataFormatada}, dando-lhe plena e irrevogavel quitacao para fins de reembolso perante operadora de plano ou seguro saude.`
+  );
+
+  pdf.addAssinatura(psicologo);
+
+  const fileName = `Recibo_Reembolso_${nomePaciente.replace(/\s+/g, '_')}_${dataSessao}.pdf`;
+  if (!dados.skipSave) {
+    pdf.save(fileName);
+  }
+  return pdf;
+}
+
 // Exportar sanitizeText para uso externo se necessário
 export { sanitizeText };
+
 

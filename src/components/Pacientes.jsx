@@ -8,6 +8,8 @@ import { formatCPF } from '../utils/formatUtils';
 import Pagination from './ui/Pagination';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
+import Skeleton from './ui/Skeleton';
+import EmptyState from './ui/EmptyState';
 import { Plus, Search, Users, Phone, FileText, Trash2 } from 'lucide-react';
 
 export default function Pacientes({ patients, isLoading, onPatientAddedLocal, autoOpenPatient, autoOpenTab, onAutoOpenDone }) {
@@ -84,16 +86,6 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedPatients = filteredPatients.slice(startIndex, startIndex + itemsPerPage);
 
-  const Spinner = () => (
-    <div className="flex flex-col items-center justify-center h-64 p-8">
-      <svg className="w-8 h-8 animate-spin mb-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Buscando dados no Firebase...</span>
-    </div>
-  );
-
   return (
     <div className="w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
@@ -143,15 +135,17 @@ export default function Pacientes({ patients, isLoading, onPatientAddedLocal, au
         </div>
 
         {isLoading ? (
-          <Spinner />
-        ) : patients.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-16 text-center">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
-              <Users size={32} style={{ color: 'var(--text-muted)' }} />
-            </div>
-            <h3 className="text-xl font-heading font-semibold" style={{ color: 'var(--text-primary)' }}>Nenhum paciente na base</h3>
-            <p className="mt-2 max-w-sm" style={{ color: 'var(--text-secondary)' }}>Você ainda não possui pacientes cadastrados. Clique no botão acima para registrar seu primeiro atendimento.</p>
+          <div className="p-6 space-y-4">
+            <Skeleton variant="card" count={3} />
           </div>
+        ) : patients.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="Nenhum paciente na base"
+            description="Você ainda não possui pacientes cadastrados. Clique no botão acima para registrar seu primeiro atendimento."
+            actionLabel="Novo Paciente"
+            onAction={() => setIsPatientModalOpen(true)}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">

@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { calcularIdade, formatDateBR } from '../services/pdfUtils';
+import {
+  calcularIdade,
+  formatDateBR,
+  gerarDeclaracaoPDF,
+  gerarAtestadoPDF,
+  gerarRelatorioEncaminhamentoPDF,
+  gerarReciboReembolsoPDF,
+  sanitizeText,
+} from '../services/pdfUtils';
 
 describe('calcularIdade', () => {
   it('should return "Nao informada" for null/undefined', () => {
@@ -49,5 +57,78 @@ describe('formatDateBR', () => {
 
   it('should return as-is for unrecognized formats', () => {
     expect(formatDateBR('some string')).toBe('some string');
+  });
+});
+
+describe('CFP Documents (Resolucao CFP 06/2019)', () => {
+  const paciente = {
+    nome: 'Maria da Silva',
+    cpf: '123.456.789-00',
+    data_nascimento: '1995-05-10',
+    telefone: '(11) 98765-4321',
+  };
+
+  const psicologo = {
+    nome: 'Dr. Roberto Mendes',
+    crp: '06/998877',
+    cpf: '111.222.333-44',
+    clinica: 'Clinica Espaco Saude',
+  };
+
+  it('should generate Declaracao PDF with skipSave', () => {
+    const pdf = gerarDeclaracaoPDF(paciente, psicologo, {
+      data: '2026-03-10',
+      horario: '14:00',
+      finalidade: 'Comprovacao no trabalho',
+      skipSave: true,
+    });
+    expect(pdf).toBeDefined();
+    expect(pdf.titulo).toBe('Declaracao Psicologica');
+    expect(pdf.subtitulo).toBe('Maria da Silva');
+  });
+
+  it('should generate Atestado PDF with skipSave', () => {
+    const pdf = gerarAtestadoPDF(paciente, psicologo, {
+      diasRepouso: 2,
+      finalidade: 'Tratamento de saude',
+      justificativa: 'Necessidade de repouso psicologico',
+      skipSave: true,
+    });
+    expect(pdf).toBeDefined();
+    expect(pdf.titulo).toBe('Atestado Psicologico');
+    expect(pdf.subtitulo).toBe('Maria da Silva');
+  });
+
+  it('should generate Relatorio de Encaminhamento PDF with skipSave', () => {
+    const pdf = gerarRelatorioEncaminhamentoPDF(paciente, psicologo, {
+      destinatario: 'Dr. Neurologista',
+      queixa: 'Cefaleia tensional e ansiedade',
+      procedimentos: 'Avaliacao clinica psicoterapica',
+      analise: 'Sintomas compativeis com estresse agudo',
+      encaminhamento: 'Encaminhamento para investigacao neurologica',
+      skipSave: true,
+    });
+    expect(pdf).toBeDefined();
+    expect(pdf.titulo).toBe('Relatorio de Encaminhamento');
+    expect(pdf.subtitulo).toBe('Maria da Silva');
+  });
+
+  it('should generate Recibo Reembolso PDF with skipSave', () => {
+    const sessao = {
+      data_sessao: '2026-03-05',
+      valor: '200.00',
+      forma_pagamento: 'PIX',
+    };
+    const pdf = gerarReciboReembolsoPDF(sessao, paciente, psicologo, {
+      skipSave: true,
+    });
+    expect(pdf).toBeDefined();
+    expect(pdf.titulo).toBe('Recibo para Reembolso');
+    expect(pdf.subtitulo).toBe('Maria da Silva');
+  });
+
+  it('should sanitize text by removing unprintable / emojis', () => {
+    expect(sanitizeText('Consulta 🩺 Psicológica')).toBe('Consulta  Psicológica');
+    expect(sanitizeText(null)).toBe('');
   });
 });
