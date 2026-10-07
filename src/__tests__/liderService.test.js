@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   MAX_PSICOLOGOS_EQUIPE,
+  MAX_PACIENTES_POR_PSICOLOGO,
   obterEquipeLider,
   salvarEquipeLider,
   adicionarMembroEquipe,
@@ -17,8 +18,9 @@ describe('liderService', () => {
     limparStorageLider();
   });
 
-  it('should have MAX_PSICOLOGOS_EQUIPE equal to 8', () => {
+  it('should have MAX_PSICOLOGOS_EQUIPE equal to 8 and MAX_PACIENTES_POR_PSICOLOGO equal to 20', () => {
     expect(MAX_PSICOLOGOS_EQUIPE).toBe(8);
+    expect(MAX_PACIENTES_POR_PSICOLOGO).toBe(20);
   });
 
   it('should load initial team when storage is empty', () => {

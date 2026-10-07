@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-ro
 import Layout from './components/Layout';
 import Login from './components/Login';
 import ContaBloqueada from './components/ContaBloqueada';
-import { subscribeToAuthChanges, logoutFirebaseUser } from './services/authService';
+import { subscribeToAuthChanges, logoutFirebaseUser, isDispositivoConfiavel, isSessao2FAVerificada } from './services/authService';
 import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';
@@ -81,14 +81,36 @@ function AppMain() {
     }
   };
 
-  // Auth state
+  // Auth state & 2FA
   const [user, setUser] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [is2FAVerified, setIs2FAVerified] = useState(false);
   
   // Admin/Plano state
   const [isAdmin, setIsAdmin] = useState(false);
   const [perfilPsicologo, setPerfilPsicologo] = useState(null);
   const [isCheckingRole, setIsCheckingRole] = useState(false);
+  const [isLider, setIsLider] = useState(() => {
+    try {
+      const saved = localStorage.getItem('caritas_modo_lider');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleModoLider = () => {
+    setIsLider((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('caritas_modo_lider', String(next));
+      } catch {}
+      if (!next && currentPath === 'lider') {
+        navigate('/dashboard');
+      }
+      return next;
+    });
+  };
 
   const fetchPatients = async () => {
     setIsLoadingPatients(true);
@@ -102,73 +124,93 @@ function AppMain() {
     }
   };
 
+  const carregarDadosUsuario = useCallback(async (currentUser) => {
+    if (!currentUser) return;
+    setIsCheckingRole(true);
+    try {
+      // Verificar se é admin
+      const isAdm = isAdminEmail(currentUser.email);
+      
+      if (isAdm) {
+        await verificarOuCriarAdmin();
+        setIsAdmin(true);
+        setIsCheckingRole(false);
+        return; 
+      }
+
+      // Não é admin: verificar/criar perfil do psicólogo
+      setIsAdmin(false);
+      let perfil = await lerPerfilPsicologo();
+      if (!perfil) {
+        // Primeiro login: criar perfil com plano básico
+        await salvarPerfilPsicologo({
+          email: currentUser.email,
+          nome: currentUser.displayName || '',
+          plano: 'basico',
+          ativo: true,
+          max_locais: 1,
+        });
+        perfil = await lerPerfilPsicologo();
+      } else {
+        // Atualizar lastLogin
+        await salvarPerfilPsicologo({ lastLogin: new Date() });
+      }
+      setPerfilPsicologo(perfil);
+
+      // Carregar dados do psicólogo
+      await fetchPatients();
+      limparLixeiraPacientes(7);
+    } catch (err) {
+      logger.error("Erro no fluxo de autenticação/perfil:", err);
+    } finally {
+      setIsCheckingRole(false);
+    }
+  }, []);
+
+  const handle2FASuccess = async () => {
+    setIs2FAVerified(true);
+    if (user) {
+      await carregarDadosUsuario(user);
+    }
+  };
+
   useEffect(() => {
     const unsubscribeAuth = subscribeToAuthChanges(async (currentUser) => {
       setUser(currentUser);
       setIsAuthChecking(false);
 
       if (currentUser) {
-        setIsCheckingRole(true);
-        try {
-          // Verificar se é admin
-          const isAdm = isAdminEmail(currentUser.email);
-          
-          if (isAdm) {
-            await verificarOuCriarAdmin();
-            setIsAdmin(true);
-            setIsCheckingRole(false);
-            return; 
-          }
-
-          // Não é admin: verificar/criar perfil do psicólogo
-          setIsAdmin(false);
-          let perfil = await lerPerfilPsicologo();
-          if (!perfil) {
-            // Primeiro login: criar perfil com plano básico
-            await salvarPerfilPsicologo({
-              email: currentUser.email,
-              nome: currentUser.displayName || '',
-              plano: 'basico',
-              ativo: true,
-              max_locais: 1,
-            });
-            perfil = await lerPerfilPsicologo();
-          } else {
-            // Atualizar lastLogin
-            await salvarPerfilPsicologo({ lastLogin: new Date() });
-          }
-          setPerfilPsicologo(perfil);
-
-          // Carregar dados do psicólogo
-          await fetchPatients();
-          limparLixeiraPacientes(7);
-        } catch (err) {
-          logger.error("Erro no fluxo de autenticação/perfil:", err);
-        } finally {
-          setIsCheckingRole(false);
+        const trusted = isDispositivoConfiavel(currentUser.email);
+        const sessionOk = isSessao2FAVerificada(currentUser.email);
+        if (trusted || sessionOk) {
+          setIs2FAVerified(true);
+          await carregarDadosUsuario(currentUser);
+        } else {
+          setIs2FAVerified(false);
         }
       } else {
         // Logout: limpar tudo
         setIsAdmin(false);
         setPerfilPsicologo(null);
         setPatients([]);
+        setIs2FAVerified(false);
       }
     });
 
     return () => unsubscribeAuth();
-  }, []);
+  }, [carregarDadosUsuario]);
 
   // ===== SEMPRE ABRIR NO DASHBOARD AO LOGAR =====
   const hasRedirectedRef = useRef(false);
   useEffect(() => {
-    if (user && !isAuthChecking && !isCheckingRole && !hasRedirectedRef.current) {
+    if (user && is2FAVerified && !isAuthChecking && !isCheckingRole && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
       navigate('/dashboard', { replace: true });
     }
     if (!user) {
       hasRedirectedRef.current = false;
     }
-  }, [user, isAuthChecking, isCheckingRole]);
+  }, [user, is2FAVerified, isAuthChecking, isCheckingRole]);
 
   // ===== AUTO-LOGOUT APÓS 10 MIN DE INATIVIDADE =====
   const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
@@ -231,6 +273,8 @@ function AppMain() {
                  onPatientAddedLocal={handlePatientAddedLocal} 
                  autoOpenPatient={autoOpenPatientForProfile}
                  autoOpenTab={autoOpenTabForProfile}
+                 isLider={isLider}
+                 userEmail={user?.email}
                  onAutoOpenDone={() => {
                    setAutoOpenPatientForProfile(null);
                    setAutoOpenTabForProfile('');
@@ -247,6 +291,9 @@ function AppMain() {
       case 'financas':
         return <Financas patients={patients} isLoadingPatients={isLoadingPatients} />;
       case 'lider':
+        if (!isLider) {
+          return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} />;
+        }
         return <LiderClinicoDashboard />;
       case 'questionarios':
         return <Questionarios />;
@@ -272,11 +319,11 @@ function AppMain() {
     );
   }
 
-  // 2. Not logged in
-  if (!user) {
+  // 2. Não autenticado ou Verificação em 2 Etapas (2FA) pendente
+  if (!user || !is2FAVerified) {
     return (
       <div className="h-screen overflow-auto" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <Login />
+        <Login pending2FAUser={user} on2FASuccess={handle2FASuccess} />
       </div>
     );
   }
@@ -305,10 +352,18 @@ function AppMain() {
     );
   }
 
-  // 5. Psicólogo normal
+  // 5. Psicólogo normal / Líder Clínico
   return (
     <div className="h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <Layout currentPath={currentPath} onNavigate={handleNavigate} userEmail={user.email} fullHeight={currentPath === 'questionarios'} patients={patients}>
+      <Layout 
+        currentPath={currentPath} 
+        onNavigate={handleNavigate} 
+        userEmail={user.email} 
+        fullHeight={currentPath === 'questionarios'} 
+        patients={patients}
+        isLider={isLider}
+        onToggleModoLider={handleToggleModoLider}
+      >
         <Suspense fallback={
           <div className="flex h-full items-center justify-center">
             <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>

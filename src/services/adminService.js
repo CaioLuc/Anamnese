@@ -1,5 +1,6 @@
-import { collection, collectionGroup, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, limit, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, limit, where, deleteDoc } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
+import { trackAction, obterLogsLocais } from './logService';
 import logger from '../utils/logger';
 
 // ==========================================
@@ -155,6 +156,7 @@ export async function atualizarPlanoPsicologo(uid, plano) {
       ...dados,
       updatedAt: serverTimestamp()
     });
+    await trackAction('UPDATE_PLAN_PSYCHOLOGIST', { targetUid: uid, plano });
   } catch (error) {
     logger.error("Erro ao atualizar plano:", error);
     throw error;
@@ -171,8 +173,24 @@ export async function toggleAtivoPsicologo(uid, ativo) {
       ativo: ativo,
       updatedAt: serverTimestamp()
     });
+    await trackAction('TOGGLE_ACTIVE_PSYCHOLOGIST', { targetUid: uid, ativo });
   } catch (error) {
     logger.error("Erro ao mudar status:", error);
+    throw error;
+  }
+}
+
+// ==========================================
+// ADMIN: Excluir perfil de psicólogo (CFP / LGPD)
+// ==========================================
+export async function excluirPerfilPsicologo(uid, email = '') {
+  try {
+    const psicRef = doc(db, 'psicologos', uid);
+    await deleteDoc(psicRef);
+    await trackAction('DELETE_PSYCHOLOGIST_PROFILE', { targetUid: uid, email });
+    return true;
+  } catch (error) {
+    logger.error("Erro ao excluir perfil de psicólogo:", error);
     throw error;
   }
 }
@@ -187,6 +205,7 @@ export async function atualizarTrialPsicologo(uid, dataVencimento) {
       trialAte: dataVencimento,
       updatedAt: serverTimestamp()
     });
+    await trackAction('UPDATE_TRIAL_PSYCHOLOGIST', { targetUid: uid, dataVencimento });
   } catch (error) {
     logger.error("Erro ao atualizar trial:", error);
     throw error;
@@ -204,6 +223,7 @@ export async function salvarAvisoGlobal(mensagem) {
       ativo: !!mensagem,
       updatedAt: serverTimestamp()
     });
+    await trackAction('SAVE_GLOBAL_NOTICE', { ativo: !!mensagem, mensagemLength: mensagem?.length || 0 });
   } catch (error) {
     logger.error("Erro ao salvar aviso:", error);
     throw error;
@@ -241,13 +261,16 @@ export async function obterLogsAuditoria(maxResults = 250) {
     const logsCol = collection(db, 'action_logs');
     const q = query(logsCol, orderBy('createdAt', 'desc'), limit(maxResults));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    if (!snapshot.empty) {
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    }
+    return obterLogsLocais();
   } catch (error) {
-    logger.error("Erro ao obter logs de auditoria:", error);
-    return [];
+    logger.error("Erro ao obter logs de auditoria do Firestore, utilizando fallback local:", error);
+    return obterLogsLocais();
   }
 }
 
@@ -272,4 +295,175 @@ export async function limparLogsAntigos(dias = 30) {
     logger.error("Erro ao limpar logs:", error);
     throw error;
   }
+}
+
+// ==========================================
+// ADMIN: GESTÃO DE CLIENTES / CLÍNICAS & LIMITES DO LÍDER
+// ==========================================
+const STORAGE_KEY_CLIENTES = 'caritas_admin_clientes_clinicas';
+
+const CLIENTES_PADRAO = [
+  {
+    id: 'cli-padrao-1',
+    nomeClinica: 'Clínica Saúde & Harmonia',
+    emailLider: 'lider.clinica@caritas.com.br',
+    maxPsicologos: 8,
+    maxPacientesPorPsicologo: 20,
+    status: 'ativo',
+    observacoes: 'Contrato Padrão Equipe — 8 Psicólogos / 20 Pacientes cada',
+    psicologos: [
+      'camila.alencar@clinica.com.br',
+      'lucas.ferreira@clinica.com.br',
+      'juliana.prado@clinica.com.br',
+      'thiago.moraes@clinica.com.br'
+    ],
+    createdAt: new Date().toISOString(),
+  }
+];
+
+function getClientesStorageLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CLIENTES);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_CLIENTES, JSON.stringify(CLIENTES_PADRAO));
+      return [...CLIENTES_PADRAO];
+    }
+    return JSON.parse(raw);
+  } catch {
+    return [...CLIENTES_PADRAO];
+  }
+}
+
+function setClientesStorageLocal(lista) {
+  try {
+    localStorage.setItem(STORAGE_KEY_CLIENTES, JSON.stringify(lista));
+  } catch (err) {
+    logger.warn('Erro ao salvar clientes localmente:', err);
+  }
+}
+
+export async function listarClientesClinicas() {
+  try {
+    const colRef = collection(db, 'clinicas_clientes');
+    const snapshot = await getDocs(colRef);
+    if (!snapshot.empty) {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setClientesStorageLocal(docs);
+      return docs;
+    }
+    return getClientesStorageLocal();
+  } catch (error) {
+    logger.error("Erro ao listar clientes clínicas do Firestore (usando fallback local):", error);
+    return getClientesStorageLocal();
+  }
+}
+
+export async function salvarClienteClinica(cliente) {
+  const localList = getClientesStorageLocal();
+  const id = cliente.id || `cli-${Date.now()}`;
+  const payload = {
+    ...cliente,
+    id,
+    maxPsicologos: Number(cliente.maxPsicologos) || 8,
+    maxPacientesPorPsicologo: Number(cliente.maxPacientesPorPsicologo) || 20,
+    emailLider: (cliente.emailLider || '').trim().toLowerCase(),
+    psicologos: Array.isArray(cliente.psicologos) ? cliente.psicologos : [],
+    status: cliente.status || 'ativo',
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Atualiza cache local
+  const index = localList.findIndex(c => c.id === id);
+  if (index >= 0) {
+    localList[index] = payload;
+  } else {
+    localList.unshift(payload);
+  }
+  setClientesStorageLocal(localList);
+
+  // Persiste no Firestore
+  try {
+    const docRef = doc(db, 'clinicas_clientes', id);
+    await setDoc(docRef, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    logger.error("Erro ao persistir cliente clínica no Firestore:", err);
+  }
+
+  return payload;
+}
+
+export async function atualizarLimitesCliente(id, novosLimites) {
+  const localList = getClientesStorageLocal();
+  const index = localList.findIndex(c => c.id === id);
+  if (index >= 0) {
+    localList[index] = {
+      ...localList[index],
+      ...novosLimites,
+      updatedAt: new Date().toISOString()
+    };
+    setClientesStorageLocal(localList);
+  }
+
+  try {
+    const docRef = doc(db, 'clinicas_clientes', id);
+    await updateDoc(docRef, {
+      ...novosLimites,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    logger.error("Erro ao atualizar limites no Firestore:", err);
+  }
+
+  return localList[index];
+}
+
+export async function deletarClienteClinica(id) {
+  const localList = getClientesStorageLocal();
+  const novaLista = localList.filter(c => c.id !== id);
+  setClientesStorageLocal(novaLista);
+
+  try {
+    const docRef = doc(db, 'clinicas_clientes', id);
+    await deleteDoc(docRef);
+  } catch (err) {
+    logger.error("Erro ao remover cliente clínica do Firestore:", err);
+  }
+
+  return true;
+}
+
+export function obterConfigClientePorEmail(email) {
+  if (!email) return null;
+  const cleanEmail = email.toLowerCase().trim();
+  const clientes = getClientesStorageLocal();
+
+  // Verifica se o email é líder
+  const comoLider = clientes.find(c => (c.emailLider || '').toLowerCase() === cleanEmail);
+  if (comoLider) {
+    return {
+      clienteId: comoLider.id,
+      nomeClinica: comoLider.nomeClinica,
+      isLider: true,
+      maxPsicologos: comoLider.maxPsicologos || 8,
+      maxPacientesPorPsicologo: comoLider.maxPacientesPorPsicologo || 20,
+      status: comoLider.status,
+    };
+  }
+
+  // Verifica se o email é membro da equipe de psicólogos de alguma clínica
+  const comoMembro = clientes.find(c => 
+    (c.psicologos || []).some(p => (typeof p === 'string' ? p : p.email || '').toLowerCase() === cleanEmail)
+  );
+  if (comoMembro) {
+    return {
+      clienteId: comoMembro.id,
+      nomeClinica: comoMembro.nomeClinica,
+      isLider: false,
+      maxPsicologos: comoMembro.maxPsicologos || 8,
+      maxPacientesPorPsicologo: comoMembro.maxPacientesPorPsicologo || 20,
+      status: comoMembro.status,
+    };
+  }
+
+  return null;
 }

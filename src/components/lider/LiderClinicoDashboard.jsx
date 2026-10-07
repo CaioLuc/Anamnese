@@ -6,6 +6,7 @@ import Modal from '../ui/Modal';
 import EmptyState from '../ui/EmptyState';
 import {
   MAX_PSICOLOGOS_EQUIPE,
+  MAX_PACIENTES_POR_PSICOLOGO,
   obterEquipeLider,
   adicionarMembroEquipe,
   removerMembroEquipe,
@@ -24,6 +25,8 @@ import {
   Bell,
   Activity,
   CheckCircle,
+  Zap,
+  Check,
 } from 'lucide-react';
 
 export default function LiderClinicoDashboard() {
@@ -31,6 +34,7 @@ export default function LiderClinicoDashboard() {
   const [equipe, setEquipe] = useState(() => obterEquipeLider());
   const [triagem, setTriagem] = useState(() => obterFilaTriagem());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [selectedPsicologoParaTriagem, setSelectedPsicologoParaTriagem] = useState({});
 
   // Form de novo membro
@@ -38,7 +42,7 @@ export default function LiderClinicoDashboard() {
   const [novoCrp, setNovoCrp] = useState('');
   const [novoEmail, setNovoEmail] = useState('');
   const [novaEspecialidade, setNovaEspecialidade] = useState('');
-  const [novoMaxPacientes, setNovoMaxPacientes] = useState(25);
+  const [novoMaxPacientes, setNovoMaxPacientes] = useState(MAX_PACIENTES_POR_PSICOLOGO);
 
   const carregarDados = () => {
     const eq = obterEquipeLider();
@@ -124,14 +128,26 @@ export default function LiderClinicoDashboard() {
           </p>
         </div>
 
-        <Button
-          onClick={() => setIsAddModalOpen(true)}
-          disabled={equipe.length >= MAX_PSICOLOGOS_EQUIPE}
-          className="shrink-0"
-        >
-          <UserPlus size={18} />
-          Adicionar Psicólogo
-        </Button>
+        <div className="flex items-center gap-2">
+          {equipe.length >= MAX_PSICOLOGOS_EQUIPE ? (
+            <Button
+              variant="secondary"
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className="shrink-0"
+            >
+              <Zap size={18} className="text-amber-500" />
+              Expandir Equipe (Upgrade)
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="shrink-0"
+            >
+              <UserPlus size={18} />
+              Adicionar Psicólogo
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Compliance / Ethical Banner */}
@@ -249,8 +265,10 @@ export default function LiderClinicoDashboard() {
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {equipe.map((psi) => {
-                    const ocupacao = Math.round(((psi.pacientesAtivos || 0) / (psi.maxPacientes || 25)) * 100);
+                    const cap = psi.maxPacientes || MAX_PACIENTES_POR_PSICOLOGO;
+                    const ocupacao = Math.round(((psi.pacientesAtivos || 0) / cap) * 100);
                     const temPendencia = (psi.evolucoesPendentes || 0) > 0;
+                    const isLotado = (psi.pacientesAtivos || 0) >= cap;
 
                     return (
                       <tr key={psi.id} className="hover:bg-[var(--bg-secondary)]/50 transition-colors">
@@ -264,13 +282,17 @@ export default function LiderClinicoDashboard() {
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-between text-xs mb-1">
                             <span className="font-medium text-[var(--text-primary)]">
-                              {psi.pacientesAtivos} / {psi.maxPacientes}
+                              {psi.pacientesAtivos} / {cap}
                             </span>
-                            <span className="text-[var(--text-muted)]">{ocupacao}%</span>
+                            {isLotado ? (
+                              <Badge variant="danger" size="sm">Lotado</Badge>
+                            ) : (
+                              <span className="text-[var(--text-muted)]">{ocupacao}%</span>
+                            )}
                           </div>
                           <div className="w-32 bg-[var(--bg-secondary)] rounded-full h-1.5 overflow-hidden">
                             <div
-                              className={`h-1.5 rounded-full ${ocupacao >= 90 ? 'bg-[var(--status-danger)]' : ocupacao >= 75 ? 'bg-[var(--status-warning)]' : 'bg-[var(--accent)]'}`}
+                              className={`h-1.5 rounded-full ${ocupacao >= 100 ? 'bg-[var(--status-danger)]' : ocupacao >= 75 ? 'bg-[var(--status-warning)]' : 'bg-[var(--accent)]'}`}
                               style={{ width: `${Math.min(ocupacao, 100)}%` }}
                             />
                           </div>
@@ -474,6 +496,75 @@ export default function LiderClinicoDashboard() {
             </div>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal: Upgrade de Plano (Mais Psicólogos e Mais Pacientes) */}
+      <Modal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        title="Expansão de Equipe & Planos de Clínica"
+        subtitle="Adicione mais psicólogos e aumente o teto de pacientes por profissional"
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="ghost" onClick={() => setIsUpgradeModalOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={() => {
+              showToast({ type: 'success', message: 'Solicitação de upgrade enviada! Entraremos em contato com a fatura Asaas.' });
+              setIsUpgradeModalOpen(false);
+            }}>
+              <Zap size={16} />
+              Contratar Upgrade (Asaas)
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            Seu pacote atual é o <strong className="text-[var(--text-primary)]">Plano Clínica Standard</strong> com 1 Líder Clínico, 8 psicólogos credenciados e limite de 20 pacientes por psicólogo (total de 160 pacientes).
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+            {/* Standard (Atual) */}
+            <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] space-y-3 relative">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Plano Atual</span>
+              <h4 className="font-heading font-bold text-base text-[var(--text-primary)]">Clínica Standard</h4>
+              <p className="text-xl font-bold text-[var(--text-primary)]">Incluso</p>
+              <ul className="text-xs text-[var(--text-secondary)] space-y-2 pt-2 border-t border-[var(--border)]">
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Até 8 Psicólogos</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> 20 Pacientes/psi (160 tot.)</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Painel de Liderança</li>
+              </ul>
+            </div>
+
+            {/* Pro */}
+            <div className="p-4 rounded-xl border-2 border-[var(--accent)] bg-[var(--bg-card)] space-y-3 relative shadow-md">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)]">Recomendado</span>
+              <h4 className="font-heading font-bold text-base text-[var(--text-primary)]">Clínica Pro</h4>
+              <p className="text-xl font-bold text-[var(--text-primary)]">R$ 490<span className="text-xs font-normal text-[var(--text-muted)]">/mês</span></p>
+              <ul className="text-xs text-[var(--text-secondary)] space-y-2 pt-2 border-t border-[var(--border)]">
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Até 15 Psicólogos</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> 35 Pacientes/psi (525 tot.)</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Triagem Automatizada</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Cobrança Asaas Integrada</li>
+              </ul>
+            </div>
+
+            {/* Enterprise */}
+            <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] space-y-3 relative">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Redes & Hospitais</span>
+              <h4 className="font-heading font-bold text-base text-[var(--text-primary)]">Enterprise</h4>
+              <p className="text-xl font-bold text-[var(--text-primary)]">Sob Medida</p>
+              <ul className="text-xs text-[var(--text-secondary)] space-y-2 pt-2 border-t border-[var(--border)]">
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Psicólogos Ilimitados</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Pacientes Ilimitados</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Múltiplos Líderes Clínicos</li>
+                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> SLA e Auditoria CFP</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </Modal>
     </div>
   );

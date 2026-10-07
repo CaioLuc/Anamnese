@@ -13,7 +13,16 @@ import {
   Sun, Moon, LogOut, Menu, X, ShieldCheck 
 } from 'lucide-react';
 
-export default function Layout({ children, currentPath, onNavigate, userEmail, fullHeight = false, patients = [] }) {
+export default function Layout({ 
+  children, 
+  currentPath, 
+  onNavigate, 
+  userEmail, 
+  fullHeight = false, 
+  patients = [],
+  isLider = false,
+  onToggleModoLider,
+}) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -33,11 +42,11 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
     { name: 'Nova Sessão', id: 'nova-sessao', icon: FileText },
     { name: 'Agenda', id: 'agenda', icon: Calendar },
     { name: 'Financeiro', id: 'financas', icon: DollarSign },
-    { name: 'Líder Clínico', id: 'lider', icon: ShieldCheck },
+    { name: 'Líder Clínico', id: 'lider', icon: ShieldCheck, onlyLider: true },
     { name: 'Locais', id: 'clinicas', icon: Building2 },
     { name: 'Questionários', id: 'questionarios', icon: ClipboardList },
     { name: 'Lixeira', id: 'lixeira', icon: Trash2 },
-  ];
+  ].filter(item => !item.onlyLider || isLider);
 
   const handleLogout = async () => {
     try {
@@ -135,12 +144,26 @@ export default function Layout({ children, currentPath, onNavigate, userEmail, f
 
           {/* User */}
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0" style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0" style={{ backgroundColor: isLider ? 'var(--status-info)' : 'var(--accent)', color: '#FFFFFF' }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-medium truncate" style={{ color: 'var(--text-sidebar-active)' }}>{userEmail || 'Usuário'}</span>
-              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Psicólogo(a)</span>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px]" style={{ color: isLider ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {isLider ? 'Líder Clínico' : 'Psicólogo(a)'}
+                </span>
+                {onToggleModoLider && (
+                  <button
+                    onClick={onToggleModoLider}
+                    className="text-[9px] underline transition-opacity opacity-70 hover:opacity-100"
+                    style={{ color: 'var(--text-secondary)' }}
+                    title="Alternar entre perfil de Líder Clínico e Psicólogo para teste"
+                  >
+                    Mudar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

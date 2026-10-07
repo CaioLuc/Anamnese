@@ -1,4 +1,5 @@
 import { lerPacientes, lerSessoesDoPaciente, lerAnamnesesDoPaciente } from './patientService';
+import { trackAction } from './logService';
 
 /**
  * Gera um CSV a partir de um array de objetos.
@@ -60,12 +61,12 @@ export async function exportarDadosCSV(onProgress = () => {}) {
     try {
       const sessoes = await lerSessoesDoPaciente(pac.id);
       sessoes.forEach(s => todasSessoes.push({ ...s, nome_paciente: pac.nome || '' }));
-    } catch (e) { /* skip */ }
+    } catch (_e) { /* skip */ }
 
     try {
       const anamneses = await lerAnamnesesDoPaciente(pac.id);
       anamneses.forEach(a => todasAnamneses.push({ ...a, nome_paciente: pac.nome || '' }));
-    } catch (e) { /* skip */ }
+    } catch (_e) { /* skip */ }
   }
 
   // CSV de Pacientes
@@ -91,6 +92,12 @@ export async function exportarDadosCSV(onProgress = () => {}) {
   downloadFile(csvPacientes, `caritas_pacientes_${dataStr}.csv`);
   downloadFile(csvSessoes, `caritas_sessoes_${dataStr}.csv`);
   downloadFile(csvAnamneses, `caritas_anamneses_${dataStr}.csv`);
+
+  await trackAction('EXPORT_CSV_BULK', {
+    pacientes: pacientes.length,
+    sessoes: todasSessoes.length,
+    anamneses: todasAnamneses.length,
+  });
 
   return {
     pacientes: pacientes.length,

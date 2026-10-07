@@ -45,6 +45,10 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 - [x] **Rate limiting na agenda pública** — Honeypot + rate limit via sessionStorage.
 - [x] **Migrar lista de admins para Firestore** — Coleção `admins` com 1 fallback hardcoded.
 - [x] **Variáveis de ambiente** — `.env.example` criado, `firebaseConfig.js` usa `import.meta.env` com fallback.
+- [x] **Verificação em Duas Etapas (2FA / MFA)** — PIN de segurança de 6 dígitos gerado e validado no fluxo de autenticação.
+- [x] **Dispositivo Confiável ("Lembrar desta máquina")** — Checkbox e armazenamento seguro via `localStorage` com verificação automática no login.
+- [x] **Redefinidor de Senha ("Esqueci minha senha")** — Fluxo integrado com `sendPasswordResetEmail` no Firebase Auth em tela dedicada.
+- [x] **Gestão de Clientes & Líder Clínico no Super Admin** — Aba "Clientes & Líderes" para provisionamento de contratos, designação do e-mail do Líder Clínico e configuração de limites de psicólogos (padrão 8) e pacientes (padrão 20).
 
 ---
 
@@ -75,6 +79,15 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 - [x] **Suporte a acentos** — Fonte Unicode adicionada.
 - [x] **Logo no cabeçalho do PDF** — Logotipo incluído.
 - [x] **PDF de prontuário completo** — Anamnese + todas as sessões.
+- [x] **Redesign Executivo do Layout de PDFs** — `PdfBuilder` com cabeçalho institucional dois tons, hash de verificação de autenticidade digital (CFP Res. 06/2019), cartões informativos em duas colunas e carimbo/assinatura clínica profissional.
+
+---
+
+## Melhorias de Auditoria & Conformidade (CFP / LGPD)
+
+- [x] **Logs de Auditoria Resilientes & Telemetria** — Fallback offline local (`caritas_offline_action_logs`), captura de eventos pre-auth (reset de senha, 2FA) e cobertura de 16 novos tipos de ação no painel de auditoria.
+- [x] **Exclusão de Perfis de Psicólogos** — Fluxo seguro no Super Admin com modal de confirmação contendo avisos das diretrizes do CFP (guarda de 5 anos) e LGPD.
+
 
 ---
 

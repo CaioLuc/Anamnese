@@ -1,6 +1,22 @@
 import logger from '../utils/logger';
 import { useState, useEffect, useMemo, useContext } from 'react';
-import { listarTodosPsicologos, atualizarPlanoPsicologo, toggleAtivoPsicologo, getEstatisticasGlobais, contarPacientesDoPsicologo, getMetricasPsicologo, atualizarTrialPsicologo, salvarAvisoGlobal, lerAvisoGlobal, obterLogsAuditoria, limparLogsAntigos } from '../services/adminService';
+import { 
+  listarTodosPsicologos, 
+  atualizarPlanoPsicologo, 
+  toggleAtivoPsicologo, 
+  getEstatisticasGlobais, 
+  contarPacientesDoPsicologo, 
+  getMetricasPsicologo, 
+  atualizarTrialPsicologo, 
+  salvarAvisoGlobal, 
+  lerAvisoGlobal, 
+  obterLogsAuditoria, 
+  limparLogsAntigos,
+  listarClientesClinicas,
+  salvarClienteClinica,
+  deletarClienteClinica,
+  excluirPerfilPsicologo
+} from '../services/adminService';
 import { logoutFirebaseUser } from '../services/authService';
 import { exportarDadosCSV } from '../services/exportService';
 import { processarRelatorioUsabilidade } from '../utils/usabilityAnalyzer';
@@ -10,7 +26,8 @@ import Badge from './ui/Badge';
 import { 
   Users, Activity, Bell, Download, LogOut, ShieldAlert, X,
   Search, ShieldCheck, Shield, Users as UsersIcon, FileText, Database,
-  Settings, Clock, CheckCircle2, XCircle, AlertTriangle, AlertCircle, RefreshCw, Trash2, ChevronDown
+  Settings, Clock, CheckCircle2, XCircle, AlertTriangle, AlertCircle, RefreshCw, Trash2, ChevronDown,
+  Building2, Crown, Plus, Edit3, Sliders
 } from 'lucide-react';
 
 // ==========================================
@@ -225,6 +242,9 @@ const ACTION_CONFIG = {
   // Auth
   LOGIN:                      { label: 'Login',                   icon: '🔑', color: 'success' },
   LOGOUT:                     { label: 'Logout',                  icon: '🚪', color: 'neutral' },
+  AUTO_LOGOUT:                { label: 'Auto-Logout (Inativo)',   icon: '⏱️', color: 'neutral' },
+  PASSWORD_RESET_REQUEST:     { label: 'Redefinição de Senha',    icon: '🔐', color: 'warning' },
+  '2FA_VERIFIED':             { label: '2FA Validado',            icon: '🛡️', color: 'success' },
   // Pacientes
   CREATE_PATIENT:             { label: 'Paciente Criado',         icon: '👤', color: 'info' },
   UPDATE_PATIENT:             { label: 'Paciente Editado',        icon: '✏️', color: 'info' },
@@ -257,10 +277,29 @@ const ACTION_CONFIG = {
   SAVE_AGENDA_CONFIG:         { label: 'Config. Agenda Salva',    icon: '⚙️', color: 'neutral' },
   // Finanças
   TOGGLE_PAYMENT:             { label: 'Pagamento Alternado',     icon: '💰', color: 'success' },
+  // Documentos Oficiais CFP (Resolução 06/2019)
+  EMITIR_DECLARACAO_CFP:      { label: 'Declaração CFP',          icon: '📜', color: 'info' },
+  EMITIR_ATESTADO_CFP:        { label: 'Atestado CFP',            icon: '🩺', color: 'warning' },
+  EMITIR_RELATORIO_CFP:       { label: 'Relatório Encaminham.',   icon: '📋', color: 'info' },
+  EMITIR_RECIBO_REEMBOLSO:    { label: 'Recibo Reembolso',        icon: '💳', color: 'success' },
   // PDF Exports
   EXPORT_PDF_EVOLUTION:       { label: 'PDF Evolução',            icon: '📄', color: 'danger' },
   EXPORT_PDF_ANAMNESIS:       { label: 'PDF Anamnese',            icon: '📄', color: 'danger' },
   EXPORT_PDF_SESSION:         { label: 'PDF Sessão',              icon: '📄', color: 'danger' },
+  EXPORT_PDF_COMPLETE_RECORD: { label: 'PDF Prontuário Total',    icon: '📚', color: 'danger' },
+  EXPORT_PDF_FINANCIAL:       { label: 'PDF Balanço Financ.',     icon: '📊', color: 'success' },
+  EXPORT_PDF_PENDENCIAS:      { label: 'PDF Pendências',          icon: '⚠️', color: 'warning' },
+  EXPORT_PDF_RECIBO:          { label: 'PDF Recibo',              icon: '🧾', color: 'info' },
+  EXPORT_CSV_BULK:            { label: 'Exportação CSV Massa',    icon: '📦', color: 'neutral' },
+  // Admin & Super Admin
+  UPDATE_PLAN_PSYCHOLOGIST:   { label: 'Plano Alterado (Admin)',  icon: '⭐', color: 'warning' },
+  TOGGLE_ACTIVE_PSYCHOLOGIST: { label: 'Status Psi (Admin)',      icon: '🔄', color: 'neutral' },
+  UPDATE_TRIAL_PSYCHOLOGIST:  { label: 'Trial Alterado (Admin)',  icon: '⏳', color: 'neutral' },
+  DELETE_PSYCHOLOGIST_PROFILE:{ label: 'Perfil Excluído (Admin)', icon: '🚫', color: 'danger' },
+  SAVE_GLOBAL_NOTICE:         { label: 'Aviso Global Salvo',      icon: '📢', color: 'info' },
+  SAVE_CLIENT_CLINIC:         { label: 'Contrato Cliente Salvo',  icon: '🏢', color: 'success' },
+  UPDATE_CLIENT_LIMITS:       { label: 'Limites Líder Alterados', icon: '🎛️', color: 'info' },
+  DELETE_CLIENT_CLINIC:       { label: 'Contrato Cliente Deletado',icon: '🗑️', color: 'danger' },
   // Navegação & Busca
   NAVIGATE:                   { label: 'Navegação',               icon: '🧭', color: 'neutral' },
   SEARCH_SELECT:              { label: 'Busca Global',            icon: '🔍', color: 'neutral' },
@@ -658,6 +697,449 @@ function DecideReportCard({ logs }) {
 }
 
 // ==========================================
+// CLIENTES & LÍDERES TAB COMPONENT
+// ==========================================
+function ClientesTab({ showToast }) {
+  const [clientes, setClientes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCliente, setEditingCliente] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    nomeClinica: '',
+    emailLider: '',
+    maxPsicologos: 8,
+    maxPacientesPorPsicologo: 20,
+    status: 'ativo',
+    observacoes: '',
+    psicologosRaw: '',
+  });
+
+  const carregarClientes = async () => {
+    setIsLoading(true);
+    try {
+      const data = await listarClientesClinicas();
+      setClientes(data);
+    } catch (e) {
+      logger.error('Erro ao listar clientes:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    carregarClientes();
+  }, []);
+
+  const handleOpenModal = (cliente = null) => {
+    if (cliente) {
+      setEditingCliente(cliente);
+      const psiList = Array.isArray(cliente.psicologos) 
+        ? cliente.psicologos.map(p => (typeof p === 'string' ? p : p.email || '')).join('\n')
+        : '';
+      setFormData({
+        nomeClinica: cliente.nomeClinica || '',
+        emailLider: cliente.emailLider || '',
+        maxPsicologos: cliente.maxPsicologos || 8,
+        maxPacientesPorPsicologo: cliente.maxPacientesPorPsicologo || 20,
+        status: cliente.status || 'ativo',
+        observacoes: cliente.observacoes || '',
+        psicologosRaw: psiList,
+      });
+    } else {
+      setEditingCliente(null);
+      setFormData({
+        nomeClinica: '',
+        emailLider: '',
+        maxPsicologos: 8,
+        maxPacientesPorPsicologo: 20,
+        status: 'ativo',
+        observacoes: '',
+        psicologosRaw: '',
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSaveCliente = async (e) => {
+    e.preventDefault();
+    if (!formData.nomeClinica || !formData.emailLider) {
+      if (showToast) showToast('Preencha os campos obrigatórios', 'Nome da clínica e e-mail do líder são obrigatórios.', 'error');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const psicologos = formData.psicologosRaw
+        .split(/[\n,;]/)
+        .map(s => s.trim().toLowerCase())
+        .filter(Boolean);
+
+      const payload = {
+        id: editingCliente ? editingCliente.id : undefined,
+        nomeClinica: formData.nomeClinica.trim(),
+        emailLider: formData.emailLider.trim().toLowerCase(),
+        maxPsicologos: Number(formData.maxPsicologos) || 8,
+        maxPacientesPorPsicologo: Number(formData.maxPacientesPorPsicologo) || 20,
+        status: formData.status,
+        observacoes: formData.observacoes.trim(),
+        psicologos,
+      };
+
+      await salvarClienteClinica(payload);
+      await carregarClientes();
+      setIsModalOpen(false);
+      if (showToast) showToast('Cliente salvo com sucesso!', `Configurações da clínica ${payload.nomeClinica} atualizadas.`, 'success');
+    } catch (err) {
+      logger.error('Erro ao salvar cliente:', err);
+      if (showToast) showToast('Erro ao salvar', 'Não foi possível salvar o cliente.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteCliente = async (id, nome) => {
+    if (!window.confirm(`Tem certeza que deseja remover o cliente "${nome}"?`)) return;
+    try {
+      await deletarClienteClinica(id);
+      await carregarClientes();
+      if (showToast) showToast('Cliente removido', `O contrato da clínica ${nome} foi removido.`, 'success');
+    } catch (e) {
+      logger.error('Erro ao deletar cliente:', e);
+    }
+  };
+
+  const filteredClientes = clientes.filter(c => {
+    const q = searchTerm.toLowerCase();
+    return (c.nomeClinica || '').toLowerCase().includes(q) ||
+      (c.emailLider || '').toLowerCase().includes(q);
+  });
+
+  const totalVagasPsi = clientes.reduce((acc, c) => acc + (Number(c.maxPsicologos) || 8), 0);
+  const mediaPacientes = clientes.length > 0 
+    ? Math.round(clientes.reduce((acc, c) => acc + (Number(c.maxPacientesPorPsicologo) || 20), 0) / clientes.length)
+    : 20;
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Top Banner & Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Clínicas Contratadas" value={clientes.length} colorType="info" icon={Building2} />
+        <StatCard label="Vagas de Psicólogos" value={totalVagasPsi} colorType="success" icon={Users} />
+        <StatCard label="Média Pacientes / Psi" value={mediaPacientes} colorType="warning" icon={Sliders} />
+      </div>
+
+      {/* Action Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ds-card p-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <div className="relative flex-1 w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nome da clínica ou e-mail do líder..."
+            className="ds-input pl-10 w-full"
+          />
+        </div>
+        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto flex items-center gap-2">
+          <Plus size={16} /> Novo Contrato de Cliente / Líder
+        </Button>
+      </div>
+
+      {/* Clientes List */}
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center p-12">
+            <RefreshCw className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
+          </div>
+        ) : filteredClientes.length === 0 ? (
+          <div className="ds-card p-12 text-center" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+            <Building2 size={36} className="mx-auto mb-2 opacity-40" />
+            <p className="font-medium text-sm">Nenhum cliente ou clínica encontrado.</p>
+            <p className="text-xs mt-1">Clique em "Novo Contrato" para configurar o líder clínico e seus limites.</p>
+          </div>
+        ) : (
+          filteredClientes.map((c) => {
+            const psicologosCount = Array.isArray(c.psicologos) ? c.psicologos.length : 0;
+            const maxPsi = c.maxPsicologos || 8;
+            const maxPac = c.maxPacientesPorPsicologo || 20;
+
+            return (
+              <div 
+                key={c.id} 
+                className="ds-card p-5 transition-all hover:shadow-md"
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Info Clínica e Líder */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm" style={{ backgroundColor: 'var(--accent)' }}>
+                        <Building2 size={20} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-heading font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+                            {c.nomeClinica}
+                          </h4>
+                          <Badge variant={c.status === 'ativo' ? 'success' : c.status === 'trial' ? 'warning' : 'danger'}>
+                            {c.status === 'ativo' ? 'Ativo' : c.status === 'trial' ? 'Em Avaliação' : 'Suspenso'}
+                          </Badge>
+                        </div>
+                        {c.observacoes && (
+                          <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                            {c.observacoes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Email do Líder Clínico destacado */}
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg w-fit" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                      <Crown size={15} className="text-amber-500 shrink-0" />
+                      <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Líder Clínico:</span>
+                      <span className="text-xs font-bold font-mono" style={{ color: 'var(--accent)' }}>{c.emailLider}</span>
+                    </div>
+                  </div>
+
+                  {/* Limites Contratados */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="rounded-xl p-3 text-center min-w-[120px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                      <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Limite Psicólogos</p>
+                      <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                        {psicologosCount} / <span style={{ color: 'var(--accent)' }}>{maxPsi}</span>
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl p-3 text-center min-w-[130px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                      <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Pacientes / Psi</p>
+                      <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                        <span style={{ color: 'var(--status-success)' }}>{maxPac}</span> max
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl p-3 text-center min-w-[110px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                      <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Capacidade Total</p>
+                      <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                        {maxPsi * maxPac}
+                      </p>
+                    </div>
+
+                    {/* Botões de Ação */}
+                    <div className="flex items-center gap-2 ml-auto lg:ml-2">
+                      <Button 
+                        size="sm" 
+                        variant="secondary"
+                        onClick={() => handleOpenModal(c)}
+                        className="flex items-center gap-1.5"
+                      >
+                        <Edit3 size={14} /> Editar Limites
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => handleDeleteCliente(c.id, c.nomeClinica)}
+                        style={{ color: 'var(--status-danger)' }}
+                        title="Remover Contrato"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lista rápida de psicólogos vinculados */}
+                {Array.isArray(c.psicologos) && c.psicologos.length > 0 && (
+                  <div className="mt-4 pt-3 flex flex-wrap items-center gap-1.5" style={{ borderTop: '0.5px solid var(--border)' }}>
+                    <span className="text-[11px] font-semibold mr-1" style={{ color: 'var(--text-muted)' }}>Psicólogos ({c.psicologos.length}):</span>
+                    {c.psicologos.map((p, idx) => (
+                      <span 
+                        key={idx} 
+                        className="text-[11px] px-2 py-0.5 rounded-md font-mono"
+                        style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                      >
+                        {typeof p === 'string' ? p : p.email}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Modal Criar / Editar Contrato */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="ds-card w-full max-w-xl p-6 shadow-2xl space-y-5" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                    {editingCliente ? 'Ajustar Limites do Cliente' : 'Novo Contrato de Clínica & Líder'}
+                  </h3>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Defina o e-mail do Líder Clínico e as cotas contratadas de psicólogos e pacientes.
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCliente} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Nome da Clínica / Cliente *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.nomeClinica}
+                  onChange={(e) => setFormData({ ...formData, nomeClinica: e.target.value })}
+                  placeholder="Ex: Clínica Integrada Vida & Saúde"
+                  className="ds-input w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1 flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  <Crown size={14} className="text-amber-500" /> E-mail do Líder Clínico (Responsável Técnico) *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.emailLider}
+                  onChange={(e) => setFormData({ ...formData, emailLider: e.target.value })}
+                  placeholder="lider@clinica.com.br"
+                  className="ds-input w-full font-mono"
+                />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Este usuário terá a aba exclusiva de supervisão de equipe e gestão da clínica.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Limite de Psicólogos na Equipe
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    required
+                    value={formData.maxPsicologos}
+                    onChange={(e) => setFormData({ ...formData, maxPsicologos: Number(e.target.value) })}
+                    className="ds-input w-full"
+                  />
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Padrão: 8 psicólogos.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Limite de Pacientes por Psicólogo
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    required
+                    value={formData.maxPacientesPorPsicologo}
+                    onChange={(e) => setFormData({ ...formData, maxPacientesPorPsicologo: Number(e.target.value) })}
+                    className="ds-input w-full"
+                  />
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Padrão: 20 pacientes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Status da Licença
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="ds-input w-full"
+                  >
+                    <option value="ativo">Ativo (Plano Regular)</option>
+                    <option value="trial">Em Avaliação (Trial)</option>
+                    <option value="suspenso">Suspenso / Inadimplente</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Observações Comerciais
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.observacoes}
+                    onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                    placeholder="Ex: Contrato Anual corporativo"
+                    className="ds-input w-full"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Psicólogos Vinculados (E-mails separados por quebra de linha ou vírgula)
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.psicologosRaw}
+                  onChange={(e) => setFormData({ ...formData, psicologosRaw: e.target.value })}
+                  placeholder="psi1@clinica.com&#10;psi2@clinica.com"
+                  className="ds-input w-full font-mono text-xs"
+                />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Os psicólogos listados herdarão a quota configurada acima ({formData.maxPacientesPorPsicologo} pacientes).
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSaving}
+                  className="px-6 font-bold"
+                >
+                  {isSaving ? 'Salvando...' : 'Salvar Contrato e Limites'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
 // MAIN ADMIN PANEL
 // ==========================================
 export default function AdminPanel() {
@@ -673,6 +1155,8 @@ export default function AdminPanel() {
   const [avisoSaving, setAvisoSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('psicologos'); // 'psicologos' | 'comunicacao' | 'auditoria'
   const [isExporting, setIsExporting] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState(null);
+  const [isDeletingProfile, setIsDeletingProfile] = useState(false);
 
   // Logs (Auditoria)
   const [logs, setLogs] = useState([]);
@@ -716,6 +1200,26 @@ export default function AdminPanel() {
   const handleToggleAtivo = async (uid, currentStatus) => {
     setActionLoading(uid);
     try { await toggleAtivoPsicologo(uid, currentStatus === false); await loadData(); } catch (e) { logger.error(e); } finally { setActionLoading(null); }
+  };
+
+  const handleExcluirPerfil = (psi) => {
+    setProfileToDelete(psi);
+  };
+
+  const confirmExcluirPerfil = async () => {
+    if (!profileToDelete) return;
+    setIsDeletingProfile(true);
+    try {
+      await excluirPerfilPsicologo(profileToDelete.id, profileToDelete.email);
+      showToast('Perfil Excluído', `O perfil de ${profileToDelete.nome || profileToDelete.email} foi removido com sucesso.`, 'success');
+      setProfileToDelete(null);
+      await loadData();
+    } catch (err) {
+      logger.error('Erro ao excluir perfil:', err);
+      showToast('Erro ao Excluir', 'Não foi possível excluir o perfil.', 'error');
+    } finally {
+      setIsDeletingProfile(false);
+    }
   };
 
   const handleSalvarAviso = async () => {
@@ -798,6 +1302,7 @@ export default function AdminPanel() {
       <div className="px-6 flex gap-1 shrink-0" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
         {[
           { id: 'psicologos', label: 'Psicólogos', icon: Users },
+          { id: 'clientes', label: 'Clientes & Líderes', icon: Building2 },
           { id: 'auditoria', label: 'Auditoria / Logs', icon: Database },
           { id: 'comunicacao', label: 'Comunicação', icon: Bell },
         ].map(tab => (
@@ -895,6 +1400,9 @@ export default function AdminPanel() {
                                 <Button size="sm" variant={psi.ativo !== false ? 'secondary' : 'primary'} onClick={() => handleToggleAtivo(psi.id, psi.ativo)} title={psi.ativo !== false ? 'Desativar' : 'Ativar'}>
                                   {psi.ativo !== false ? '🔒 Desativar' : '🔓 Ativar'}
                                 </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleExcluirPerfil(psi)} style={{ color: 'var(--status-danger)' }} title="Excluir Perfil do Psicólogo">
+                                  <Trash2 size={16} />
+                                </Button>
                               </>
                             )}
                           </div>
@@ -948,6 +1456,8 @@ export default function AdminPanel() {
           </div>
         )}
 
+        {activeTab === 'clientes' && <ClientesTab showToast={showToast} />}
+
         {activeTab === 'auditoria' && <AuditoriaTab
           logs={logs}
           setLogs={setLogs}
@@ -966,6 +1476,58 @@ export default function AdminPanel() {
 
       {/* Modal Raio-X */}
       {selectedPsi && <RaioXModal psi={selectedPsi} onClose={() => setSelectedPsi(null)} />}
+
+      {/* Modal Confirmar Exclusão de Perfil (CFP / LGPD) */}
+      {profileToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="ds-card w-full max-w-md p-6 shadow-2xl space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)' }}>
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <h3 className="font-heading font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                  Excluir Perfil de Psicólogo
+                </h3>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                  Tem certeza que deseja excluir o cadastro do profissional:
+                </p>
+                <div className="mt-2 p-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                  <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{profileToDelete.nome || 'Sem nome'}</p>
+                  <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--accent)' }}>{profileToDelete.email}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl text-xs space-y-1" style={{ backgroundColor: 'var(--status-warning-bg)', border: '0.5px solid var(--status-warning)' }}>
+              <p className="font-bold flex items-center gap-1.5" style={{ color: 'var(--status-warning-text)' }}>
+                <span>⚖️</span> Conformidade CFP & LGPD
+              </p>
+              <p style={{ color: 'var(--status-warning-text)' }}>
+                A exclusão cadastral é irreversível. Conforme a Resolução CFP nº 01/2009 e LGPD, a trilha de auditoria e guarda documental de 5 anos permanecerão protegidas.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2" style={{ borderTop: '0.5px solid var(--border)' }}>
+              <Button 
+                variant="ghost" 
+                onClick={() => setProfileToDelete(null)}
+                disabled={isDeletingProfile}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                variant="primary"
+                onClick={confirmExcluirPerfil}
+                disabled={isDeletingProfile}
+                style={{ backgroundColor: 'var(--status-danger)', borderColor: 'var(--status-danger)', color: '#FFFFFF' }}
+              >
+                {isDeletingProfile ? 'Excluindo...' : 'Confirmar Exclusão'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

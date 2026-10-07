@@ -2,9 +2,62 @@ import logger from '../utils/logger';
 
 // Limite regulamentar do plano CARITAS para Líder Clínico
 export const MAX_PSICOLOGOS_EQUIPE = 8;
+export const MAX_PACIENTES_POR_PSICOLOGO = 20;
 
 export const STORAGE_KEY_EQUIPE = 'caritas_lider_equipe';
 export const STORAGE_KEY_TRIAGEM = 'caritas_lider_triagem';
+export const STORAGE_KEY_MODO_LIDER = 'caritas_modo_lider';
+
+/**
+ * Retorna o limite de pacientes contratado para o psicólogo (padrão 20 ou customizado pela clínica)
+ */
+export function obterLimitePacientesPsicologo(email) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem('caritas_admin_clientes_clinicas');
+      if (raw) {
+        const clientes = JSON.parse(raw);
+        if (email) {
+          const clean = email.toLowerCase().trim();
+          const match = clientes.find(c => 
+            (c.emailLider || '').toLowerCase() === clean ||
+            (c.psicologos || []).some(p => (typeof p === 'string' ? p : p.email || '').toLowerCase() === clean)
+          );
+          if (match && match.maxPacientesPorPsicologo) {
+            return Number(match.maxPacientesPorPsicologo);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('Erro ao ler limites de pacientes:', err);
+  }
+  return MAX_PACIENTES_POR_PSICOLOGO;
+}
+
+/**
+ * Retorna o limite de psicólogos contratado para o líder clínico (padrão 8 ou customizado pela clínica)
+ */
+export function obterLimitePsicologosEquipe(email) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem('caritas_admin_clientes_clinicas');
+      if (raw) {
+        const clientes = JSON.parse(raw);
+        if (email) {
+          const clean = email.toLowerCase().trim();
+          const match = clientes.find(c => (c.emailLider || '').toLowerCase() === clean);
+          if (match && match.maxPsicologos) {
+            return Number(match.maxPsicologos);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('Erro ao ler limites de equipe:', err);
+  }
+  return MAX_PSICOLOGOS_EQUIPE;
+}
 
 const memoryStore = {};
 
@@ -36,12 +89,27 @@ export function limparStorageLider() {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY_EQUIPE);
       localStorage.removeItem(STORAGE_KEY_TRIAGEM);
+      localStorage.removeItem(STORAGE_KEY_MODO_LIDER);
     }
   } catch {
     // storage cleanup fallback
   }
   delete memoryStore[STORAGE_KEY_EQUIPE];
   delete memoryStore[STORAGE_KEY_TRIAGEM];
+  delete memoryStore[STORAGE_KEY_MODO_LIDER];
+}
+
+/**
+ * Verifica se o modo Líder Clínico está ativo (para teste/auditoria e permissão)
+ */
+export function isModoLiderAtivo() {
+  const stored = getStorageItem(STORAGE_KEY_MODO_LIDER);
+  if (stored === null) return true; // Ativo por padrão no ambiente de teste/auditoria
+  return stored === 'true';
+}
+
+export function setModoLiderAtivo(ativo) {
+  setStorageItem(STORAGE_KEY_MODO_LIDER, String(ativo));
 }
 
 // Equipe inicial demonstrativa para teste/desenvolvimento
@@ -52,8 +120,8 @@ const EQUIPE_INICIAL = [
     crp: '06/142981',
     email: 'camila.alencar@clinica.com.br',
     especialidade: 'TCC - Transtornos de Ansiedade',
-    maxPacientes: 25,
-    pacientesAtivos: 21,
+    maxPacientes: MAX_PACIENTES_POR_PSICOLOGO,
+    pacientesAtivos: 18,
     sessoesMes: 64,
     evolucoesPendentes: 0,
     taxaPresenca: 94,
@@ -65,8 +133,8 @@ const EQUIPE_INICIAL = [
     crp: '06/158302',
     email: 'lucas.ferreira@clinica.com.br',
     especialidade: 'Psicanálise Adulto',
-    maxPacientes: 25,
-    pacientesAtivos: 24,
+    maxPacientes: MAX_PACIENTES_POR_PSICOLOGO,
+    pacientesAtivos: 20, // Limite atingido (20/20)
     sessoesMes: 72,
     evolucoesPendentes: 2, // Alerta > 48h
     taxaPresenca: 91,
@@ -78,7 +146,7 @@ const EQUIPE_INICIAL = [
     crp: '06/160441',
     email: 'juliana.prado@clinica.com.br',
     especialidade: 'Infanto-Juvenil e Parentalidade',
-    maxPacientes: 20,
+    maxPacientes: MAX_PACIENTES_POR_PSICOLOGO,
     pacientesAtivos: 14,
     sessoesMes: 48,
     evolucoesPendentes: 0,
@@ -91,8 +159,8 @@ const EQUIPE_INICIAL = [
     crp: '06/171203',
     email: 'thiago.moraes@clinica.com.br',
     especialidade: 'Fenomenologia Existencial',
-    maxPacientes: 20,
-    pacientesAtivos: 18,
+    maxPacientes: MAX_PACIENTES_POR_PSICOLOGO,
+    pacientesAtivos: 12,
     sessoesMes: 52,
     evolucoesPendentes: 1, // Alerta
     taxaPresenca: 88,
@@ -164,7 +232,7 @@ export function adicionarMembroEquipe(membro) {
     crp: membro.crp || '00/000000',
     email: membro.email || '',
     especialidade: membro.especialidade || 'Psicologia Clínica Geral',
-    maxPacientes: Number(membro.maxPacientes) || 25,
+    maxPacientes: Number(membro.maxPacientes) || MAX_PACIENTES_POR_PSICOLOGO,
     pacientesAtivos: 0,
     sessoesMes: 0,
     evolucoesPendentes: 0,
@@ -194,7 +262,7 @@ export function removerMembroEquipe(psicologoId) {
 export function calcularMetricasEquipe(equipe) {
   const totalProfissionais = equipe.length;
   const totalPacientesAtivos = equipe.reduce((acc, p) => acc + (p.pacientesAtivos || 0), 0);
-  const capacidadeTotal = equipe.reduce((acc, p) => acc + (p.maxPacientes || 25), 0);
+  const capacidadeTotal = equipe.reduce((acc, p) => acc + (p.maxPacientes || MAX_PACIENTES_POR_PSICOLOGO), 0);
   const totalSessoesMes = equipe.reduce((acc, p) => acc + (p.sessoesMes || 0), 0);
   const totalPendencias48h = equipe.reduce((acc, p) => acc + (p.evolucoesPendentes || 0), 0);
 

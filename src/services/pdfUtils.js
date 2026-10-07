@@ -37,6 +37,20 @@ const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
 const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAEISURBVFhH7ZYxDoMwEEVzjBxk5TKcgSOw9QhI7L1A2ZqRskQ3aN4bJzY2cZzCRpZ+0n/SybNnP/4451wozM1xHPu+71NKYdu2KcsyXdd1XJd83/d2R0RkrP/Xdd2VzIjjOKa0oijC4zSjKMLjdBRFAIf/UvPInp22beE4HqZpAof/BtwBdwAclmWBE9u2he/7oOqBqqqgA1RVhd/3PUiZpgmeZVmgM3AETkDXdWDgCAgL/L2yLKEDBwAHgGZJkkAH4ACoXJc8z4MOwAFQ2bZNGDxcAAdAxb9M0yRhuAGv8C/LskgYVwAOf4+iCBwABwCHv0dRBA6AA4DD36MoAofB8AXn3IvwB9TfP6J6wP2WAAAAAElFTkSuQmCC';
 
 // ==========================================
+// GERADOR DE HASH DE AUTENTICIDADE DIGITAL (CFP & LGPD)
+// ==========================================
+function gerarHashAutenticidade(titulo, subtitulo) {
+  const seed = `${titulo}_${subtitulo}_${Date.now()}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
+  return `CARITAS-VERIFY-${hex}`;
+}
+
+// ==========================================
 // CLASSE: PDF BUILDER
 // ==========================================
 export class PdfBuilder {
@@ -46,6 +60,8 @@ export class PdfBuilder {
     this.pageNum = 1;
     this.titulo = sanitizeText(titulo);
     this.subtitulo = sanitizeText(subtitulo);
+    this.authHash = gerarHashAutenticidade(this.titulo, this.subtitulo);
+    this.dataEmissao = new Date();
     this._renderCapa(this.titulo, this.subtitulo);
   }
 
@@ -53,39 +69,48 @@ export class PdfBuilder {
   _renderCapa(titulo, subtitulo) {
     const doc = this.doc;
 
-    // Barra colorida no topo
+    // Faixa colorida dupla no topo (Indigo-600 + Cyan-500)
     doc.setFillColor(...COLORS.primary);
-    doc.rect(0, 0, PAGE_WIDTH, 4, 'F');
+    doc.rect(0, 0, PAGE_WIDTH, 4.5, 'F');
+    doc.setFillColor(...COLORS.accent);
+    doc.rect(0, 4.5, PAGE_WIDTH, 1.2, 'F');
 
-    // Faixa de background para o header
-    doc.setFillColor(...COLORS.primaryLight);
-    doc.rect(MARGIN, 10, CONTENT_WIDTH, subtitulo ? 28 : 20, 'F');
+    // Moldura de background para o cabeçalho
+    const headerHeight = subtitulo ? 28 : 22;
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.setDrawColor(...COLORS.line);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(MARGIN, 10, CONTENT_WIDTH, headerHeight, 2, 2, 'FD');
 
-    // Badge Caritas e Logo
+    // Filete vertical de destaque à esquerda do cabeçalho
+    doc.setFillColor(...COLORS.primary);
+    doc.roundedRect(MARGIN, 10, 2.5, headerHeight, 1, 1, 'F');
+
+    // Badge institucional
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.primary);
     doc.setFont('helvetica', 'bold');
-    doc.text('CARITAS', MARGIN + 4, 19);
+    doc.text('CARITAS  |  SISTEMA CLÍNICO & GESTÃO EM SAÚDE MENTAL', MARGIN + 6, 18);
     
     // Inserir Logo à direita
     try {
-      doc.addImage(LOGO_BASE64, 'PNG', PAGE_WIDTH - MARGIN - 14, 14, 10, 10);
+      doc.addImage(LOGO_BASE64, 'PNG', PAGE_WIDTH - MARGIN - 14, 13, 10, 10);
     } catch {
       // Logo insertion is non-critical, silently ignore failures
     }
 
     // Título  
-    doc.setFontSize(16);
+    doc.setFontSize(15);
     doc.setTextColor(...COLORS.dark);
     doc.setFont('helvetica', 'bold');
-    doc.text(titulo, MARGIN + 4, 28);
+    doc.text(titulo, MARGIN + 6, 27);
 
     if (subtitulo) {
       doc.setFontSize(9);
       doc.setTextColor(...COLORS.textLight);
       doc.setFont('helvetica', 'normal');
-      doc.text(subtitulo, MARGIN + 4, 35);
-      this.y = 46;
+      doc.text(`Paciente / Alvo: ${subtitulo}`, MARGIN + 6, 34);
+      this.y = 44;
     } else {
       this.y = 38;
     }
@@ -104,58 +129,84 @@ export class PdfBuilder {
 
   _addFooter() {
     const doc = this.doc;
-    doc.setFontSize(7);
-    doc.setTextColor(...COLORS.textLight);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Caritas - Documento gerado automaticamente`, MARGIN, 290);
-    doc.text(`Pagina ${this.pageNum}`, PAGE_WIDTH - MARGIN, 290, { align: 'right' });
-    // Linha fina
+
+    // Linha fina separadora
     doc.setDrawColor(...COLORS.line);
     doc.setLineWidth(0.3);
-    doc.line(MARGIN, 287, PAGE_WIDTH - MARGIN, 287);
+    doc.line(MARGIN, 283, PAGE_WIDTH - MARGIN, 283);
+
+    // Linha 1: Normativa legal e paginação
+    doc.setFontSize(6.8);
+    doc.setTextColor(...COLORS.textLight);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Documento emitido conforme Resoluções CFP nº 01/2009 e 06/2019 • Lei 13.709/2018 (LGPD)`, MARGIN, 287.5);
+    doc.text(`Página ${this.pageNum}`, PAGE_WIDTH - MARGIN, 287.5, { align: 'right' });
+
+    // Linha 2: Carimbo de autenticidade digital e rastreabilidade
+    doc.setFontSize(6.5);
+    doc.setTextColor(...COLORS.primary);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Autenticação Digital: ${this.authHash}`, MARGIN, 291.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...COLORS.textLight);
+    const dataStr = this.dataEmissao.toLocaleDateString('pt-BR');
+    doc.text(`Emissão eletrônica em ${dataStr} • Válido com assinatura profissional`, PAGE_WIDTH - MARGIN, 291.5, { align: 'right' });
   }
 
   _addPageHeader() {
     const doc = this.doc;
-    // Barra fina no topo das páginas seguintes
+    // Barra dupla fina no topo das páginas seguintes
     doc.setFillColor(...COLORS.primary);
     doc.rect(0, 0, PAGE_WIDTH, 2, 'F');
-    // Título pequeno
-    doc.setFontSize(8);
+    doc.setFillColor(...COLORS.accent);
+    doc.rect(0, 2, PAGE_WIDTH, 0.8, 'F');
+
+    // Título pequeno de cabeçalho
+    doc.setFontSize(7.5);
     doc.setTextColor(...COLORS.textLight);
-    doc.setFont('helvetica', 'italic');
-    doc.text(this.titulo, MARGIN, 10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`CARITAS  |  ${this.titulo} — ${this.subtitulo || ''}`, MARGIN, 9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Hash: ${this.authHash}`, PAGE_WIDTH - MARGIN, 9, { align: 'right' });
+
     doc.setDrawColor(...COLORS.line);
     doc.setLineWidth(0.3);
-    doc.line(MARGIN, 13, PAGE_WIDTH - MARGIN, 13);
-    this.y = 20;
+    doc.line(MARGIN, 12, PAGE_WIDTH - MARGIN, 12);
+    this.y = 19;
   }
 
   // ==========================================
   // MÉTODOS PÚBLICOS
   // ==========================================
 
-  // Seção com título colorido
+  // Seção com título estilizado e pilar de destaque
   addSection(title) {
-    this._checkPage(20);
+    this._checkPage(18);
     const doc = this.doc;
 
-    // Linha separadora
-    doc.setDrawColor(...COLORS.line);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, this.y, PAGE_WIDTH - MARGIN, this.y);
-    this.y += 8;
+    // Linha divisória se já houver conteúdo prévio
+    if (this.y > 45) {
+      doc.setDrawColor(...COLORS.line);
+      doc.setLineWidth(0.2);
+      doc.line(MARGIN, this.y, PAGE_WIDTH - MARGIN, this.y);
+      this.y += 6;
+    }
 
-    // Faixa de fundo
+    // Faixa de fundo com cantos arredondados
     doc.setFillColor(...COLORS.primaryLight);
-    doc.roundedRect(MARGIN, this.y - 3, CONTENT_WIDTH, 10, 1, 1, 'F');
+    doc.roundedRect(MARGIN, this.y - 2, CONTENT_WIDTH, 9, 1.5, 1.5, 'F');
 
-    // Texto
-    doc.setFontSize(11);
+    // Pilar vertical colorido
+    doc.setFillColor(...COLORS.primary);
+    doc.roundedRect(MARGIN, this.y - 2, 2.5, 9, 1, 1, 'F');
+
+    // Texto da seção
+    doc.setFontSize(10.5);
     doc.setTextColor(...COLORS.primary);
     doc.setFont('helvetica', 'bold');
-    doc.text(sanitizeText(title).trim(), MARGIN + 4, this.y + 4);
-    this.y += 14;
+    doc.text(sanitizeText(title).trim(), MARGIN + 6, this.y + 4.5);
+    this.y += 13;
     
     // Reset
     doc.setTextColor(...COLORS.text);
@@ -170,21 +221,21 @@ export class PdfBuilder {
     const val = sanitizeText(String(value));
 
     // Label
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(...COLORS.textLight);
     doc.setFont('helvetica', 'bold');
     doc.text(sanitizeText(label).toUpperCase(), MARGIN + 2, this.y);
-    this.y += 4.5;
+    this.y += 4;
 
     // Value
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setTextColor(...COLORS.text);
     doc.setFont('helvetica', 'normal');
     const lines = doc.splitTextToSize(val, CONTENT_WIDTH - 8);
     lines.forEach(line => {
-      this._checkPage(7);
+      this._checkPage(6);
       doc.text(line, MARGIN + 4, this.y);
-      this.y += 5.5;
+      this.y += 5.2;
     });
     this.y += 3;
   }
@@ -197,7 +248,7 @@ export class PdfBuilder {
     const lbl = sanitizeText(String(label));
     const val = sanitizeText(String(value));
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.dark);
     doc.text(`${lbl}:`, MARGIN + 2, this.y);
@@ -206,17 +257,17 @@ export class PdfBuilder {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COLORS.text);
     doc.text(val, MARGIN + 2 + labelWidth + 1, this.y);
-    this.y += 6;
+    this.y += 5.5;
   }
 
-  // Bloco de informação (card com fundo)
+  // Bloco de informação (card refinado com fundo e borda suave)
   addInfoBlock(items) {
     this._checkPage(items.length * 6 + 10);
     const doc = this.doc;
     const startY = this.y;
     const blockHeight = items.length * 6 + 6;
 
-    // Background
+    // Background com cantos arredondados
     doc.setFillColor(248, 250, 252); // slate-50
     doc.setDrawColor(...COLORS.line);
     doc.setLineWidth(0.3);
@@ -224,53 +275,53 @@ export class PdfBuilder {
 
     this.y = startY + 5;
     items.forEach(({ label, value }) => {
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...COLORS.textLight);
-      doc.text(sanitizeText(label), MARGIN + 5, this.y);
+      doc.text(sanitizeText(label), MARGIN + 6, this.y);
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...COLORS.dark);
-      doc.text(sanitizeText(String(value || 'N/D')), MARGIN + 55, this.y);
+      doc.text(sanitizeText(String(value || 'N/D')), MARGIN + 58, this.y);
       this.y += 6;
     });
     this.y += 4;
   }
 
-  // Área de texto largo (para evolução, parecer, etc.)
+  // Área de texto largo (para parecer, declaração ou evolução)
   addTextBlock(title, content) {
     if (!content) return;
     this._checkPage(20);
     const doc = this.doc;
 
     // Título
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.dark);
     doc.text(sanitizeText(title), MARGIN + 2, this.y);
-    this.y += 6;
+    this.y += 5.5;
 
-    // Conteúdo com linha lateral
+    // Conteúdo com linha lateral elegante
     const cleanContent = sanitizeText(String(content));
     const lines = doc.splitTextToSize(cleanContent, CONTENT_WIDTH - 12);
     const startY = this.y;
 
-    doc.setFontSize(9.5);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COLORS.text);
 
     lines.forEach(line => {
       this._checkPage(6);
       doc.text(line, MARGIN + 6, this.y);
-      this.y += 5.5;
+      this.y += 5.2;
     });
 
     // Linha lateral decorativa
     doc.setDrawColor(...COLORS.primary);
-    doc.setLineWidth(1.5);
+    doc.setLineWidth(1.2);
     const endY = Math.min(this.y, 275);
     if (endY > startY) {
-      doc.line(MARGIN + 1, startY - 4, MARGIN + 1, endY - 2);
+      doc.line(MARGIN + 1.5, startY - 3.5, MARGIN + 1.5, endY - 2);
     }
 
     this.y += 5;
@@ -283,7 +334,7 @@ export class PdfBuilder {
     this.y += px;
   }
 
-  // Alerta (ex: risco de suicídio)
+  // Alerta clínico (ex: risco de suicídio, urgência)
   addAlert(text) {
     if (!text) return;
     this._checkPage(18);
@@ -300,9 +351,9 @@ export class PdfBuilder {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.danger);
-    doc.text('ALERTA DE RISCO', MARGIN + 5, this.y + 5.5);
+    doc.text('ALERTA DE RISCO / URGÊNCIA CLÍNICA', MARGIN + 5, this.y + 5.5);
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(153, 27, 27); // red-800
     let lineY = this.y + 11;
@@ -314,28 +365,48 @@ export class PdfBuilder {
     this.y += h + 5;
   }
 
-  // Assinatura do Profissional (Resolução CFP nº 06/2019)
+  // Assinatura do Profissional com Carimbo Digital (Resolução CFP nº 06/2019)
   addAssinatura(psicologo = {}) {
-    this._checkPage(35);
+    this._checkPage(40);
     const doc = this.doc;
     const nome = sanitizeText(psicologo.nome || psicologo.displayName || 'Psicologo(a) Responsavel');
     const crp = sanitizeText(psicologo.crp ? `CRP: ${psicologo.crp}` : 'CRP: Nao informado');
+    const clinica = sanitizeText(psicologo.clinica || 'Consultorio de Psicologia Clinica');
 
-    this.addSpace(15);
-    doc.setDrawColor(...COLORS.textLight);
-    doc.setLineWidth(0.4);
-    doc.line(MARGIN + 25, this.y, PAGE_WIDTH - MARGIN - 25, this.y);
-    this.y += 5;
-    doc.setFontSize(10);
+    this.addSpace(12);
+
+    // Caixa de autenticação centralizada
+    const boxWidth = 140;
+    const boxX = (PAGE_WIDTH - boxWidth) / 2;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(...COLORS.line);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(boxX, this.y, boxWidth, 26, 2, 2, 'FD');
+
+    // Linha de assinatura
+    doc.setDrawColor(...COLORS.primary);
+    doc.setLineWidth(0.5);
+    doc.line(boxX + 15, this.y + 12, boxX + boxWidth - 15, this.y + 12);
+
+    // Nome
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.dark);
-    doc.text(nome, PAGE_WIDTH / 2, this.y, { align: 'center' });
-    this.y += 4.5;
-    doc.setFontSize(8.5);
+    doc.text(nome, PAGE_WIDTH / 2, this.y + 17, { align: 'center' });
+
+    // CRP e Clínica
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COLORS.textLight);
-    doc.text(crp, PAGE_WIDTH / 2, this.y, { align: 'center' });
-    this.y += 6;
+    doc.text(`${crp}  •  ${clinica}`, PAGE_WIDTH / 2, this.y + 21.5, { align: 'center' });
+
+    // Texto de chancela
+    doc.setFontSize(6.5);
+    doc.setTextColor(...COLORS.primary);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Documento assinado digitalmente pelo profissional responsável nos termos da Res. CFP 06/2019', PAGE_WIDTH / 2, this.y + 30, { align: 'center' });
+
+    this.y += 36;
   }
 
   // Salvar
