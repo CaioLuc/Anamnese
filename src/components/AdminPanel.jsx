@@ -20,6 +20,7 @@ import {
 import { logoutFirebaseUser } from '../services/authService';
 import { exportarDadosCSV } from '../services/exportService';
 import { processarRelatorioUsabilidade } from '../utils/usabilityAnalyzer';
+import { confirmarPagamentoManual, alternarIsencaoPsicologo } from '../services/paymentService';
 import { useToast } from '../contexts/ToastContext';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
@@ -1202,6 +1203,34 @@ export default function AdminPanel() {
     try { await toggleAtivoPsicologo(uid, currentStatus === false); await loadData(); } catch (e) { logger.error(e); } finally { setActionLoading(null); }
   };
 
+  const handleRegularizarPagamento = async (uid) => {
+    setActionLoading(uid);
+    try { 
+      await confirmarPagamentoManual(uid, 30); 
+      showToast('Pagamento Regularizado', 'Assinatura liberada por 30 dias com sucesso.', 'success');
+      await loadData(); 
+    } catch (e) { 
+      logger.error(e); 
+      showToast('Erro', 'Não foi possível atualizar assinatura.', 'error');
+    } finally { 
+      setActionLoading(null); 
+    }
+  };
+
+  const handleToggleIsencao = async (uid, currentIsento) => {
+    setActionLoading(uid);
+    try { 
+      await alternarIsencaoPsicologo(uid, !currentIsento); 
+      showToast('Isenção Atualizada', !currentIsento ? 'Cortesia concedida.' : 'Cortesia removida.', 'success');
+      await loadData(); 
+    } catch (e) { 
+      logger.error(e); 
+      showToast('Erro', 'Não foi possível alterar status.', 'error');
+    } finally { 
+      setActionLoading(null); 
+    }
+  };
+
   const handleExcluirPerfil = (psi) => {
     setProfileToDelete(psi);
   };
@@ -1376,6 +1405,15 @@ export default function AdminPanel() {
                           {/* Badges */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <PlanoBadge plano={psi.plano} />
+                            {psi.isIsento ? (
+                              <Badge variant="neutral">🎁 Isento</Badge>
+                            ) : psi.statusPagamento === 'inadimplente' ? (
+                              <Badge variant="danger">⚠️ Vencido</Badge>
+                            ) : psi.statusPagamento === 'trial' ? (
+                              <Badge variant="warning">⏳ Trial</Badge>
+                            ) : (
+                              <Badge variant="success">💳 Em Dia</Badge>
+                            )}
                             <StatusBadge ativo={psi.ativo} />
                             <TrialBadge trialAte={psi.trialAte} />
                             <Badge variant="neutral">{pacienteCounts[psi.id] !== undefined ? `${pacienteCounts[psi.id]} pac.` : '...'}</Badge>
@@ -1397,6 +1435,12 @@ export default function AdminPanel() {
                                 ) : (
                                   <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'basico')} title="Rebaixar para Básico">📋 Basic</Button>
                                 )}
+                                <Button size="sm" variant="secondary" onClick={() => handleRegularizarPagamento(psi.id)} title="Liberar Assinatura por 30 dias">
+                                  💳 +30d
+                                </Button>
+                                <Button size="sm" variant={psi.isIsento ? 'primary' : 'secondary'} onClick={() => handleToggleIsencao(psi.id, psi.isIsento)} title={psi.isIsento ? 'Remover Isenção' : 'Conceder Isenção'}>
+                                  {psi.isIsento ? '🎁 Cortesia' : '🎁 Isentar'}
+                                </Button>
                                 <Button size="sm" variant={psi.ativo !== false ? 'secondary' : 'primary'} onClick={() => handleToggleAtivo(psi.id, psi.ativo)} title={psi.ativo !== false ? 'Desativar' : 'Ativar'}>
                                   {psi.ativo !== false ? '🔒 Desativar' : '🔓 Ativar'}
                                 </Button>

@@ -91,10 +91,14 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 
 ---
 
-## Melhorias no Financeiro
+## Melhorias no Financeiro & Assinaturas (Gateway Asaas)
 
 - [x] **Normalizar valores no save** — Conversão para `Number` no `SessaoEvolucao.jsx`.
 - [x] **Relatório mensal** — Exportação PDF com filtro mensal.
+- [x] **Sistema de Pagamentos e Assinaturas Recorrentes (Asaas)** — Módulo `paymentService.js` com catálogo de planos (Básico, Pro, Clínica), detecção de bandeira, validação e tolerância de 3 dias de carência.
+- [x] **Aba Meu Perfil & Plano (`/perfil`)** — Cadastro profissional completo (CRP, clínica, abordagem), seleção de planos com upgrade, formulário de Cartão de Crédito e QR Code PIX Mensal.
+- [x] **Bloqueio de Inadimplência com Auto-Regularização (`AssinaturaPendente.jsx`)** — Bloqueio de acesso clínico mantendo prontuários preservados conforme CFP/LGPD com checkout imediato.
+- [x] **Supervisão Financeira no Super Admin** — Badges de status de pagamento (Em Dia, Trial, Vencido, Isento) e ações de liberação manual (+30d) e cortesia.
 - [ ] **Integração com nota fiscal** — APIs de NFS-e (futuro).
 
 ---

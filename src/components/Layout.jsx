@@ -10,7 +10,7 @@ import { useToast } from '../contexts/ToastContext';
 import { 
   LayoutDashboard, Users, FileText, Calendar, DollarSign, 
   Building2, ClipboardList, Trash2, Search, HelpCircle, 
-  Sun, Moon, LogOut, Menu, X, ShieldCheck 
+  Sun, Moon, LogOut, Menu, X, ShieldCheck, CreditCard 
 } from 'lucide-react';
 
 export default function Layout({ 
@@ -42,6 +42,7 @@ export default function Layout({
     { name: 'Nova Sessão', id: 'nova-sessao', icon: FileText },
     { name: 'Agenda', id: 'agenda', icon: Calendar },
     { name: 'Financeiro', id: 'financas', icon: DollarSign },
+    { name: 'Meu Plano & Perfil', id: 'perfil', icon: CreditCard },
     { name: 'Líder Clínico', id: 'lider', icon: ShieldCheck, onlyLider: true },
     { name: 'Locais', id: 'clinicas', icon: Building2 },
     { name: 'Questionários', id: 'questionarios', icon: ClipboardList },

@@ -18,9 +18,12 @@ const Questionarios = lazy(() => import('./components/Questionarios'));
 const Clinicas = lazy(() => import('./components/Clinicas'));
 const Lixeira = lazy(() => import('./components/Lixeira'));
 const LiderClinicoDashboard = lazy(() => import('./components/lider/LiderClinicoDashboard'));
+const PerfilEPlano = lazy(() => import('./components/PerfilEPlano'));
+const AssinaturaPendente = lazy(() => import('./components/AssinaturaPendente'));
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
 import { trackAction } from './services/logService';
+import { verificarStatusAssinatura } from './services/paymentService';
 
 // Mapeamento de path de URL → id interno de navegação
 const PATH_MAP = {
@@ -30,6 +33,7 @@ const PATH_MAP = {
   '/nova-sessao': 'nova-sessao',
   '/agenda': 'agenda',
   '/financas': 'financas',
+  '/perfil': 'perfil',
   '/lider': 'lider',
   '/questionarios': 'questionarios',
   '/clinicas': 'clinicas',
@@ -42,6 +46,7 @@ const ID_TO_PATH = {
   'nova-sessao': '/nova-sessao',
   'agenda': '/agenda',
   'financas': '/financas',
+  'perfil': '/perfil',
   'lider': '/lider',
   'questionarios': '/questionarios',
   'clinicas': '/clinicas',
@@ -142,11 +147,15 @@ function AppMain() {
       setIsAdmin(false);
       let perfil = await lerPerfilPsicologo();
       if (!perfil) {
-        // Primeiro login: criar perfil com plano básico
+        // Primeiro login: criar perfil com plano básico e 14 dias de teste gratuito
+        const trialAte = new Date();
+        trialAte.setDate(trialAte.getDate() + 14);
         await salvarPerfilPsicologo({
           email: currentUser.email,
           nome: currentUser.displayName || '',
           plano: 'basico',
+          statusPagamento: 'trial',
+          trialAte: trialAte.toISOString().split('T')[0],
           ativo: true,
           max_locais: 1,
         });
@@ -290,6 +299,8 @@ function AppMain() {
         return <Agenda patients={patients} onAtender={handleAtenderPaciente} onRefreshPatients={fetchPatients} />;
       case 'financas':
         return <Financas patients={patients} isLoadingPatients={isLoadingPatients} />;
+      case 'perfil':
+        return <PerfilEPlano onProfileUpdated={() => carregarDadosUsuario(user)} />;
       case 'lider':
         if (!isLider) {
           return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} />;
@@ -352,7 +363,27 @@ function AppMain() {
     );
   }
 
-  // 5. Psicólogo normal / Líder Clínico
+  // 5. Psicólogo com assinatura inadimplente ou trial expirado (Paywall / Bloqueio de Acesso)
+  const statusAssinatura = verificarStatusAssinatura(perfilPsicologo);
+  if (perfilPsicologo && !statusAssinatura.emDia) {
+    return (
+      <div className="h-screen overflow-auto" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <Suspense fallback={
+          <div className="flex h-screen items-center justify-center">
+            <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          </div>
+        }>
+          <AssinaturaPendente 
+            perfil={perfilPsicologo} 
+            statusAssinatura={statusAssinatura} 
+            onPagamentoRegularizado={() => carregarDadosUsuario(user)} 
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
+  // 6. Psicólogo normal / Líder Clínico
   return (
     <div className="h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <Layout 
