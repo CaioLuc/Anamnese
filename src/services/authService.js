@@ -1,5 +1,6 @@
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail
@@ -15,6 +16,17 @@ export const loginFirebaseUser = async (email, password) => {
     return userCredential.user;
   } catch (error) {
     logger.error("Login errorMessage:", error);
+    throw error;
+  }
+};
+
+export const cadastrarFirebaseUser = async (email, password) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await trackAction('SIGNUP', { email, method: 'email_password' });
+    return userCredential.user;
+  } catch (error) {
+    logger.error("Signup errorMessage:", error);
     throw error;
   }
 };

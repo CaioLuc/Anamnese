@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   loginFirebaseUser, 
+  cadastrarFirebaseUser,
   logoutFirebaseUser,
   redefinirSenhaFirebase, 
   isDispositivoConfiavel, 
@@ -10,17 +11,20 @@ import {
   verificarCodigo2FA,
   obterCodigo2FAAtivo
 } from '../services/authService';
-import { Mail, Lock, AlertCircle, ShieldCheck, CheckCircle2, KeyRound, Laptop, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Mail, Lock, AlertCircle, ShieldCheck, CheckCircle2, KeyRound, Laptop, ArrowLeft, RefreshCw, User, Sparkles } from 'lucide-react';
 import Button from './ui/Button';
 import logo from '../assets/logo.svg';
+import { salvarPerfilPsicologo } from '../services/patientService';
 
 export default function Login({ pending2FAUser, on2FASuccess }) {
   const [email, setEmail] = useState(pending2FAUser?.email || '');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [nomeCadastro, setNomeCadastro] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Estados dos fluxos ('login' | '2fa' | 'recuperar_senha')
+  // Estados dos fluxos ('login' | 'cadastro' | '2fa' | 'recuperar_senha')
   const [viewState, setViewState] = useState(pending2FAUser ? '2fa' : 'login');
 
   // Estados do 2FA
@@ -72,6 +76,54 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
         setError('Muitas tentativas. Tente novamente mais tarde.');
       } else {
         setError('Erro ao fazer login. Verifique sua conexão.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Submissão do cadastro de nova conta (14 dias de teste)
+  const handleCadastro = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const emailLimpo = email.trim().toLowerCase();
+    if (!emailLimpo) {
+      setError('Informe um endereço de e-mail válido.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('As senhas digitadas não coincidem.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await cadastrarFirebaseUser(emailLimpo, password);
+      // Salva nome inicial no perfil se preenchido
+      if (nomeCadastro && nomeCadastro.trim()) {
+        try {
+          await salvarPerfilPsicologo({ nome: nomeCadastro.trim() });
+        } catch {}
+      }
+
+      // Máquina do cadastro: marca como confiável ou gera 2FA
+      const novoCodigo = gerarCodigo2FA(emailLimpo);
+      setCodigoExibido(novoCodigo);
+      setViewState('2fa');
+    } catch (err) {
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Este e-mail já possui uma conta cadastrada. Faça login.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Endereço de e-mail inválido.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('A senha é muito fraca. Utilize letras, números e no mínimo 6 caracteres.');
+      } else {
+        setError('Erro ao criar conta. Tente novamente mais tarde.');
       }
     } finally {
       setIsSubmitting(false);
@@ -182,6 +234,41 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
             </div>
           )}
 
+          {/* Abas Alternadoras (Login / Cadastro) */}
+          {(viewState === 'login' || viewState === 'cadastro') && (
+            <div className="flex border-b border-[var(--border)] mb-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewState('login');
+                  setError('');
+                }}
+                className={`flex-1 pb-3 text-center text-sm font-semibold transition-all border-b-2 ${
+                  viewState === 'login'
+                    ? 'border-[var(--accent)] text-[var(--accent)]'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                }`}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewState('cadastro');
+                  setError('');
+                }}
+                className={`flex-1 pb-3 text-center text-sm font-semibold transition-all border-b-2 flex items-center justify-center gap-1.5 ${
+                  viewState === 'cadastro'
+                    ? 'border-[var(--accent)] text-[var(--accent)]'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                }`}
+              >
+                <Sparkles size={14} className="text-amber-500" />
+                Criar Conta (14d grátis)
+              </button>
+            </div>
+          )}
+
           {/* ======================================================== */}
           {/* VISTA 1: FORMULÁRIO DE LOGIN NORMAL                      */}
           {/* ======================================================== */}
@@ -248,6 +335,109 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
 
               <p className="text-center text-xs pt-3" style={{ color: 'var(--text-muted)' }}>
                 Protegido por Criptografia e Políticas CFP / LGPD
+              </p>
+            </form>
+          )}
+
+          {/* ======================================================== */}
+          {/* VISTA: FORMULÁRIO DE CADASTRO DE NOVA CONTA              */}
+          {/* ======================================================== */}
+          {viewState === 'cadastro' && (
+            <form className="space-y-4" onSubmit={handleCadastro}>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Nome Completo
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User size={16} style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                  <input
+                    type="text"
+                    value={nomeCadastro}
+                    onChange={(e) => setNomeCadastro(e.target.value)}
+                    className="ds-input pl-10 py-2.5"
+                    placeholder="Dra. Camila Alencar"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Endereço de e-mail *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail size={16} style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="ds-input pl-10 py-2.5"
+                    placeholder="seu.email@exemplo.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Criar Senha (mínimo 6 caracteres) *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock size={16} style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="ds-input pl-10 py-2.5"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Confirmar Senha *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock size={16} style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="ds-input pl-10 py-2.5"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-emerald-500/10 rounded-lg text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                <ShieldCheck size={16} className="shrink-0 text-emerald-500" />
+                <span>14 dias grátis sem necessidade de cartão de crédito no cadastro.</span>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 text-sm font-bold shadow-md"
+                >
+                  {isSubmitting ? 'Criando Conta...' : 'Criar Conta e Iniciar Avaliação'}
+                </Button>
+              </div>
+
+              <p className="text-center text-xs pt-2" style={{ color: 'var(--text-muted)' }}>
+                Ao se cadastrar, você concorda com os termos de sigilo ético e proteção CFP / LGPD.
               </p>
             </form>
           )}
