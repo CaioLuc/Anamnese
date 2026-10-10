@@ -7,17 +7,19 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useToast } from '../contexts/ToastContext';
 import { trackAction } from '../services/logService';
 
+import { ClipboardList, Users, Target, Repeat, Moon, Activity, CheckCircle2 } from 'lucide-react';
+
 // ==========================================
 // CAMPOS E STEPS — Fonte única de verdade
 // ==========================================
 const STEPS = [
-  { key: 'historico', label: 'Histórico', icon: '📋' },
-  { key: 'familia', label: 'Família', icon: '👨‍👩‍👧' },
-  { key: 'motivo', label: 'Motivo', icon: '🎯' },
-  { key: 'dinamicas', label: 'Dinâmicas', icon: '🔄' },
-  { key: 'habitos', label: 'Hábitos', icon: '🌙' },
-  { key: 'clinico', label: 'Quadro Clínico', icon: '⚕️' },
-  { key: 'finalizacao', label: 'Finalização', icon: '✅' },
+  { key: 'historico', label: 'Histórico', icon: ClipboardList },
+  { key: 'familia', label: 'Família', icon: Users },
+  { key: 'motivo', label: 'Motivo', icon: Target },
+  { key: 'dinamicas', label: 'Dinâmicas', icon: Repeat },
+  { key: 'habitos', label: 'Hábitos', icon: Moon },
+  { key: 'clinico', label: 'Quadro Clínico', icon: Activity },
+  { key: 'finalizacao', label: 'Finalização', icon: CheckCircle2 },
 ];
 
 const INITIAL_STATE = {
@@ -357,7 +359,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                     boxShadow: currentStep === idx ? 'var(--shadow)' : 'none'
                   }}
                 >
-                  <span>{s.icon}</span> {s.label}
+                  <s.icon size={15} className="inline shrink-0" /> {s.label}
                 </button>
               ))}
             </div>

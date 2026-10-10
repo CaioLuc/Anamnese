@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useEscapeKey } from '../hooks/useKeyboard';
 import { trackAction } from '../services/logService';
+import { UserPlus, FileText, Calendar, DollarSign, ClipboardList, Building2, LayoutDashboard, User } from 'lucide-react';
 
 /**
  * GlobalSearch — Command Palette estilo Spotlight (Ctrl+K).
@@ -25,13 +26,13 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
 
   // Ações rápidas
   const quickActions = useMemo(() => [
-    { type: 'action', icon: '👤', label: 'Novo Paciente', description: 'Cadastrar um novo paciente', path: 'pacientes', actionType: 'addPatient' },
-    { type: 'action', icon: '📝', label: 'Nova Sessão', description: 'Registrar evolução clínica', path: 'nova-sessao' },
-    { type: 'action', icon: '📅', label: 'Abrir Agenda', description: 'Ver agendamentos', path: 'agenda' },
-    { type: 'action', icon: '💰', label: 'Financeiro', description: 'Ver painel financeiro', path: 'financas' },
-    { type: 'action', icon: '📋', label: 'Questionários', description: 'Gerenciar modelos', path: 'questionarios' },
-    { type: 'action', icon: '🏥', label: 'Locais', description: 'Gerenciar clínicas', path: 'clinicas' },
-    { type: 'action', icon: '🏠', label: 'Dashboard', description: 'Voltar ao início', path: 'dashboard' },
+    { type: 'action', icon: UserPlus, label: 'Novo Paciente', description: 'Cadastrar um novo paciente', path: 'pacientes', actionType: 'addPatient' },
+    { type: 'action', icon: FileText, label: 'Nova Sessão', description: 'Registrar evolução clínica', path: 'nova-sessao' },
+    { type: 'action', icon: Calendar, label: 'Abrir Agenda', description: 'Ver agendamentos', path: 'agenda' },
+    { type: 'action', icon: DollarSign, label: 'Financeiro', description: 'Ver painel financeiro', path: 'financas' },
+    { type: 'action', icon: ClipboardList, label: 'Questionários', description: 'Gerenciar modelos', path: 'questionarios' },
+    { type: 'action', icon: Building2, label: 'Locais', description: 'Gerenciar clínicas', path: 'clinicas' },
+    { type: 'action', icon: LayoutDashboard, label: 'Dashboard', description: 'Voltar ao início', path: 'dashboard' },
   ], []);
 
   // Filtrar resultados
@@ -54,7 +55,7 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
       .slice(0, 6)
       .map(p => ({
         type: 'patient',
-        icon: '👤',
+        icon: User,
         label: p.nome,
         description: p.clinica || (p.cpf ? `CPF: ${p.cpf}` : 'Sem informação adicional'),
         patient: p,
@@ -168,7 +169,9 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
                     backgroundColor: selectedIndex === idx ? 'var(--accent-light)' : 'transparent'
                   }}
                 >
-                  <span className="text-lg shrink-0">{item.icon}</span>
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent)' }}>
+                    <item.icon size={15} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate" style={{ color: selectedIndex === idx ? 'var(--accent)' : 'var(--text-primary)' }}>
                       {item.label}

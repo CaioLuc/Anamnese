@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 const ONBOARDING_STEPS = [
   {
-    title: 'Bem-vindo ao Caritas! 🎉',
+    title: 'Bem-vindo ao Caritas!',
     description: 'Sua plataforma inteligente para gestão de pacientes, anamneses e evolução clínica. Vamos fazer um tour rápido para você começar.',
     icon: (
       <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-xl shadow-indigo-500/30">

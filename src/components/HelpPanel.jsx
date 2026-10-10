@@ -1,5 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { HELP_DATA, searchHelp } from '../utils/helpData';
+import { Rocket, Settings, UserCheck, Keyboard, HelpCircle } from 'lucide-react';
+
+const renderCategoryIcon = (iconKey) => {
+  switch (iconKey) {
+    case 'rocket':
+      return <Rocket className="w-5 h-5 text-indigo-500" />;
+    case 'settings':
+      return <Settings className="w-5 h-5 text-cyan-500" />;
+    case 'user':
+      return <UserCheck className="w-5 h-5 text-emerald-500" />;
+    case 'keyboard':
+      return <Keyboard className="w-5 h-5 text-amber-500" />;
+    default:
+      return <HelpCircle className="w-5 h-5 text-slate-400" />;
+  }
+};
 
 /**
  * HelpPanel — Painel lateral deslizante de ajuda/FAQ.
@@ -135,7 +151,7 @@ export default function HelpPanel({ isOpen, onClose }) {
                       onClick={() => toggleItem(`search-${idx}`)}
                       className="w-full text-left p-4 flex items-start gap-3 transition-colors"
                     >
-                      <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
+                      <div className="shrink-0 mt-0.5">{renderCategoryIcon(item.icon)}</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{item.question}</p>
                         <p className="text-[10px] font-medium mt-1" style={{ color: 'var(--accent)' }}>{item.category}</p>
@@ -161,7 +177,7 @@ export default function HelpPanel({ isOpen, onClose }) {
                   onClick={() => toggleCategory(section.category)}
                   className="w-full text-left p-4 flex items-center gap-3 transition-colors"
                 >
-                  <span className="text-xl">{section.icon}</span>
+                  <div className="shrink-0">{renderCategoryIcon(section.icon)}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{section.category}</p>
                     <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{section.items.length} pergunta{section.items.length > 1 ? 's' : ''}</p>

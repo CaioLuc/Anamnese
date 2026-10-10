@@ -6,7 +6,7 @@ export const TEMPLATE_ADULTO = {
   nome: 'Anamnese Adulto (Padrão)',
   descricao: 'Questionário completo de anamnese para pacientes adultos.',
   tipo: 'padrao',
-  icone: '👤',
+  icone: 'user',
   campos: [
     { id: 's1', ordem: 0, tipo: 'section', label: 'I. Aspectos Demográficos e Contato' },
     { id: 'f_sexo', ordem: 0.5, tipo: 'radio', label: 'Sexo', opcoes: ['Masculino', 'Feminino', 'Outro / Prefiro não informar'], obrigatorio: false },
@@ -60,7 +60,7 @@ export const TEMPLATE_ADOLESCENTE = {
   nome: 'Anamnese Adolescente (Padrão)',
   descricao: 'Questionário focado em pacientes adolescentes (11–18 anos).',
   tipo: 'padrao',
-  icone: '🎒',
+  icone: 'graduation-cap',
   campos: [
     { id: 's1', ordem: 0, tipo: 'section', label: 'I. Dados Escolares e Identificação' },
     { id: 'f_sexo', ordem: 0.5, tipo: 'radio', label: 'Sexo', opcoes: ['Masculino', 'Feminino', 'Outro / Prefiro não informar'], obrigatorio: false },

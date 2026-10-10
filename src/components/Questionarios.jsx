@@ -11,21 +11,25 @@ import ConfirmDialog from './ConfirmDialog';
 import QuestionarioBuilder from './QuestionarioBuilder';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
-import { Plus, Search, FileText, Copy, Edit2, Trash2, LayoutList, GripHorizontal } from 'lucide-react';
+import { Plus, Search, FileText, Copy, Edit2, Trash2, LayoutList, GripHorizontal, User, GraduationCap, ClipboardList } from 'lucide-react';
 
-const TIPO_ICONS = { padrao: FileText, custom: Edit2 };
+const renderQuestionarioIcon = (icone, isPadrao) => {
+  if (icone === 'user') return <User size={24} className="text-indigo-500" />;
+  if (icone === 'graduation-cap') return <GraduationCap size={24} className="text-purple-500" />;
+  if (icone === 'clipboard') return <ClipboardList size={24} className="text-cyan-500" />;
+  return isPadrao ? <FileText size={24} className="text-indigo-500" /> : <Edit2 size={24} className="text-slate-400" />;
+};
 
 function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao }) {
   const totalCampos = (template.campos || []).filter(c => c.tipo !== 'section').length;
   const totalSecoes = (template.campos || []).filter(c => c.tipo === 'section').length;
-  const Icone = template.icone ? () => <span>{template.icone}</span> : (isPadrao ? FileText : Edit2);
 
   return (
     <div className="ds-card p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-500/50 group" style={{ backgroundColor: 'var(--bg-card)' }}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
-          <div className="text-2xl text-slate-400 group-hover:text-indigo-400 transition-colors">
-            {template.icone ? <span>{template.icone}</span> : <Icone size={24} />}
+          <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 transition-colors">
+            {renderQuestionarioIcon(template.icone, isPadrao)}
           </div>
           <div>
             <h3 className="font-heading font-semibold text-sm leading-tight" style={{ color: 'var(--text-primary)' }}>{template.nome}</h3>
@@ -130,7 +134,7 @@ export default function Questionarios() {
           ...dados,
           nome: `${template.nome} (cópia)`,
           tipo: 'custom',
-          icone: '📝',
+          icone: 'clipboard',
         });
       } else {
         await duplicarQuestionario(template.id);

@@ -2,6 +2,20 @@ import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { lerQuestionarios } from '../services/patientService';
 import { TEMPLATES_PADRAO } from '../services/templatesPadrao';
+import { ClipboardList, User, GraduationCap, FileText } from 'lucide-react';
+
+const renderTemplateIcon = (icone, id) => {
+  if (id === 'padrao_adulto' || icone === 'user') {
+    return <User className="w-6 h-6 text-indigo-500" />;
+  }
+  if (id === 'padrao_adolescente' || icone === 'graduation-cap') {
+    return <GraduationCap className="w-6 h-6 text-purple-500" />;
+  }
+  if (icone === 'clipboard') {
+    return <ClipboardList className="w-6 h-6 text-cyan-500" />;
+  }
+  return <FileText className="w-6 h-6 text-slate-500" />;
+};
 
 const TemplateCarda = ({ template, onSelecionar }) => {
   const totalCampos = (template.campos || []).filter(c => c.tipo !== 'section').length;
@@ -14,7 +28,9 @@ const TemplateCarda = ({ template, onSelecionar }) => {
       style={{ borderColor: 'var(--border)' }}
     >
       <div className="flex items-start gap-3">
-        <span className="text-2xl mt-0.5 flex-shrink-0">{template.icone || '📋'}</span>
+        <div className="mt-0.5 flex-shrink-0 p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+          {renderTemplateIcon(template.icone, template.id)}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm leading-tight transition-colors" style={{ color: 'var(--text-primary)' }}>
@@ -29,8 +45,8 @@ const TemplateCarda = ({ template, onSelecionar }) => {
           {template.descricao && (
             <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{template.descricao}</p>
           )}
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-            📋 {totalCampos} campo{totalCampos !== 1 ? 's' : ''}
+          <p className="text-xs mt-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+            <ClipboardList size={12} /> {totalCampos} campo{totalCampos !== 1 ? 's' : ''}
           </p>
         </div>
         <svg className="w-5 h-5 transition-colors flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">

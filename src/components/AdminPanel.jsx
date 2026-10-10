@@ -28,7 +28,9 @@ import {
   Users, Activity, Bell, Download, LogOut, ShieldAlert, X,
   Search, ShieldCheck, Shield, Users as UsersIcon, FileText, Database,
   Settings, Clock, CheckCircle2, XCircle, AlertTriangle, AlertCircle, RefreshCw, Trash2, ChevronDown,
-  Building2, Crown, Plus, Edit3, Sliders
+  Building2, Crown, Plus, Edit3, Sliders, LogIn, KeyRound, UserPlus, FolderOpen, FilePlus,
+  ClipboardList, Smile, DollarSign, Stethoscope, CreditCard, BookOpen, BarChart3, Receipt,
+  Archive, Star, Hourglass, Ban, Compass, HelpCircle, Lock, Unlock, Gift, Scale
 } from 'lucide-react';
 
 // ==========================================
@@ -81,7 +83,11 @@ function PlanoBadge({ plano }) {
   const isPro = plano === 'profissional';
   return (
     <Badge variant={isPro ? 'warning' : 'neutral'}>
-      {isPro ? '⭐ Pro' : '📋 Básico'}
+      {isPro ? (
+        <span className="inline-flex items-center gap-1"><Star size={11} /> Pro</span>
+      ) : (
+        <span className="inline-flex items-center gap-1"><ClipboardList size={11} /> Básico</span>
+      )}
     </Badge>
   );
 }
@@ -172,8 +178,9 @@ function RaioXModal({ psi, onClose }) {
               <p className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>Último acesso</p>
               <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{formatDate(psi.lastLogin || psi.updatedAt)}</p>
               {diasUltimoLogin !== null && (
-                <p className={`text-xs ${diasUltimoLogin > 10 ? 'font-bold text-red-500' : ''}`} style={diasUltimoLogin <= 10 ? { color: 'var(--text-muted)' } : {}}>
-                  ({diasUltimoLogin} dias atrás){diasUltimoLogin > 10 && ' ⚠️'}
+                <p className={`text-xs ${diasUltimoLogin > 10 ? 'font-bold text-red-500 flex items-center gap-1' : ''}`} style={diasUltimoLogin <= 10 ? { color: 'var(--text-muted)' } : {}}>
+                  <span>({diasUltimoLogin} dias atrás)</span>
+                  {diasUltimoLogin > 10 && <AlertTriangle size={12} className="inline text-amber-500" />}
                 </p>
               )}
             </div>
@@ -241,76 +248,77 @@ function RaioXModal({ psi, onClose }) {
 // ==========================================
 const ACTION_CONFIG = {
   // Auth
-  LOGIN:                      { label: 'Login',                   icon: '🔑', color: 'success' },
-  LOGOUT:                     { label: 'Logout',                  icon: '🚪', color: 'neutral' },
-  AUTO_LOGOUT:                { label: 'Auto-Logout (Inativo)',   icon: '⏱️', color: 'neutral' },
-  PASSWORD_RESET_REQUEST:     { label: 'Redefinição de Senha',    icon: '🔐', color: 'warning' },
-  '2FA_VERIFIED':             { label: '2FA Validado',            icon: '🛡️', color: 'success' },
+  LOGIN:                      { label: 'Login',                   icon: LogIn,          color: 'success' },
+  LOGOUT:                     { label: 'Logout',                  icon: LogOut,         color: 'neutral' },
+  AUTO_LOGOUT:                { label: 'Auto-Logout (Inativo)',   icon: Clock,          color: 'neutral' },
+  PASSWORD_RESET_REQUEST:     { label: 'Redefinição de Senha',    icon: KeyRound,       color: 'warning' },
+  '2FA_VERIFIED':             { label: '2FA Validado',            icon: ShieldCheck,    color: 'success' },
   // Pacientes
-  CREATE_PATIENT:             { label: 'Paciente Criado',         icon: '👤', color: 'info' },
-  UPDATE_PATIENT:             { label: 'Paciente Editado',        icon: '✏️', color: 'info' },
-  DELETE_PATIENT:             { label: 'Paciente Deletado',       icon: '🗑️', color: 'danger' },
-  RESTORE_PATIENT:            { label: 'Paciente Restaurado',     icon: '♻️', color: 'success' },
-  VIEW_PATIENT_PROFILE:       { label: 'Prontuário Aberto',      icon: '📂', color: 'info' },
+  CREATE_PATIENT:             { label: 'Paciente Criado',         icon: UserPlus,       color: 'info' },
+  UPDATE_PATIENT:             { label: 'Paciente Editado',        icon: Edit3,          color: 'info' },
+  DELETE_PATIENT:             { label: 'Paciente Deletado',       icon: Trash2,         color: 'danger' },
+  RESTORE_PATIENT:            { label: 'Paciente Restaurado',     icon: RefreshCw,      color: 'success' },
+  VIEW_PATIENT_PROFILE:       { label: 'Prontuário Aberto',       icon: FolderOpen,     color: 'info' },
   // Sessões
-  CREATE_SESSION:             { label: 'Sessão Criada',           icon: '📝', color: 'info' },
-  UPDATE_SESSION:             { label: 'Sessão Editada',          icon: '✏️', color: 'info' },
-  DELETE_SESSION:             { label: 'Sessão Deletada',         icon: '🗑️', color: 'danger' },
-  SESSION_EVOLVED:            { label: 'Evolução Clínica',        icon: '📊', color: 'warning' },
-  EDIT_SESSION_INLINE:        { label: 'Sessão Edit. Inline',     icon: '✏️', color: 'info' },
+  CREATE_SESSION:             { label: 'Sessão Criada',           icon: FilePlus,       color: 'info' },
+  UPDATE_SESSION:             { label: 'Sessão Editada',          icon: Edit3,          color: 'info' },
+  DELETE_SESSION:             { label: 'Sessão Deletada',         icon: Trash2,         color: 'danger' },
+  SESSION_EVOLVED:            { label: 'Evolução Clínica',        icon: Activity,       color: 'warning' },
+  EDIT_SESSION_INLINE:        { label: 'Sessão Edit. Inline',     icon: Edit3,          color: 'info' },
   // Anamneses
-  CREATE_ANAMNESIS:           { label: 'Anamnese Criada',         icon: '📋', color: 'warning' },
-  UPDATE_ANAMNESIS:           { label: 'Anamnese Editada',        icon: '✏️', color: 'warning' },
-  DELETE_ANAMNESIS:           { label: 'Anamnese Deletada',       icon: '🗑️', color: 'danger' },
-  SUBMIT_ANAMNESIS_FORM:      { label: 'Anamnese Salva (Form)',   icon: '📋', color: 'warning' },
-  UPDATE_ANAMNESIS_FORM:      { label: 'Anamnese Edit. (Form)',   icon: '✏️', color: 'warning' },
-  SUBMIT_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Salva', icon: '🧒', color: 'info' },
-  UPDATE_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Edit.', icon: '✏️', color: 'info' },
+  CREATE_ANAMNESIS:           { label: 'Anamnese Criada',         icon: ClipboardList,  color: 'warning' },
+  UPDATE_ANAMNESIS:           { label: 'Anamnese Editada',        icon: Edit3,          color: 'warning' },
+  DELETE_ANAMNESIS:           { label: 'Anamnese Deletada',       icon: Trash2,         color: 'danger' },
+  SUBMIT_ANAMNESIS_FORM:      { label: 'Anamnese Salva (Form)',   icon: ClipboardList,  color: 'warning' },
+  UPDATE_ANAMNESIS_FORM:      { label: 'Anamnese Edit. (Form)',   icon: Edit3,          color: 'warning' },
+  SUBMIT_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Salva', icon: Smile,          color: 'info' },
+  UPDATE_ANAMNESIS_ADOLESCENT:{ label: 'Anamnese Adolesc. Edit.', icon: Edit3,          color: 'info' },
   // Questionários & Clínicas
-  CREATE_QUESTIONNAIRE:       { label: 'Questionário Criado',     icon: '📑', color: 'warning' },
-  DELETE_QUESTIONNAIRE:       { label: 'Questionário Deletado',   icon: '🗑️', color: 'danger' },
-  CREATE_CLINIC:              { label: 'Clínica Criada',          icon: '🏥', color: 'success' },
-  DELETE_CLINIC:              { label: 'Clínica Deletada',        icon: '🗑️', color: 'danger' },
+  CREATE_QUESTIONNAIRE:       { label: 'Questionário Criado',     icon: FileText,       color: 'warning' },
+  DELETE_QUESTIONNAIRE:       { label: 'Questionário Deletado',   icon: Trash2,         color: 'danger' },
+  CREATE_CLINIC:              { label: 'Clínica Criada',          icon: Building2,      color: 'success' },
+  DELETE_CLINIC:              { label: 'Clínica Deletada',        icon: Trash2,         color: 'danger' },
   // Agenda
-  CREATE_APPOINTMENT:         { label: 'Agendamento Criado',      icon: '📅', color: 'info' },
-  UPDATE_APPOINTMENT:         { label: 'Agendamento Editado',     icon: '✏️', color: 'info' },
-  DELETE_APPOINTMENT:         { label: 'Agendamento Deletado',    icon: '🗑️', color: 'danger' },
-  SAVE_AGENDA_CONFIG:         { label: 'Config. Agenda Salva',    icon: '⚙️', color: 'neutral' },
+  CREATE_APPOINTMENT:         { label: 'Agendamento Criado',      icon: Calendar,       color: 'info' },
+  UPDATE_APPOINTMENT:         { label: 'Agendamento Editado',     icon: Edit3,          color: 'info' },
+  DELETE_APPOINTMENT:         { label: 'Agendamento Deletado',    icon: Trash2,         color: 'danger' },
+  SAVE_AGENDA_CONFIG:         { label: 'Config. Agenda Salva',    icon: Settings,       color: 'neutral' },
   // Finanças
-  TOGGLE_PAYMENT:             { label: 'Pagamento Alternado',     icon: '💰', color: 'success' },
+  TOGGLE_PAYMENT:             { label: 'Pagamento Alternado',     icon: DollarSign,     color: 'success' },
   // Documentos Oficiais CFP (Resolução 06/2019)
-  EMITIR_DECLARACAO_CFP:      { label: 'Declaração CFP',          icon: '📜', color: 'info' },
-  EMITIR_ATESTADO_CFP:        { label: 'Atestado CFP',            icon: '🩺', color: 'warning' },
-  EMITIR_RELATORIO_CFP:       { label: 'Relatório Encaminham.',   icon: '📋', color: 'info' },
-  EMITIR_RECIBO_REEMBOLSO:    { label: 'Recibo Reembolso',        icon: '💳', color: 'success' },
+  EMITIR_DECLARACAO_CFP:      { label: 'Declaração CFP',          icon: FileText,       color: 'info' },
+  EMITIR_ATESTADO_CFP:        { label: 'Atestado CFP',            icon: Stethoscope,    color: 'warning' },
+  EMITIR_RELATORIO_CFP:       { label: 'Relatório Encaminham.',   icon: ClipboardList,  color: 'info' },
+  EMITIR_RECIBO_REEMBOLSO:    { label: 'Recibo Reembolso',        icon: CreditCard,     color: 'success' },
   // PDF Exports
-  EXPORT_PDF_EVOLUTION:       { label: 'PDF Evolução',            icon: '📄', color: 'danger' },
-  EXPORT_PDF_ANAMNESIS:       { label: 'PDF Anamnese',            icon: '📄', color: 'danger' },
-  EXPORT_PDF_SESSION:         { label: 'PDF Sessão',              icon: '📄', color: 'danger' },
-  EXPORT_PDF_COMPLETE_RECORD: { label: 'PDF Prontuário Total',    icon: '📚', color: 'danger' },
-  EXPORT_PDF_FINANCIAL:       { label: 'PDF Balanço Financ.',     icon: '📊', color: 'success' },
-  EXPORT_PDF_PENDENCIAS:      { label: 'PDF Pendências',          icon: '⚠️', color: 'warning' },
-  EXPORT_PDF_RECIBO:          { label: 'PDF Recibo',              icon: '🧾', color: 'info' },
-  EXPORT_CSV_BULK:            { label: 'Exportação CSV Massa',    icon: '📦', color: 'neutral' },
+  EXPORT_PDF_EVOLUTION:       { label: 'PDF Evolução',            icon: FileText,       color: 'danger' },
+  EXPORT_PDF_ANAMNESIS:       { label: 'PDF Anamnese',            icon: FileText,       color: 'danger' },
+  EXPORT_PDF_SESSION:         { label: 'PDF Sessão',              icon: FileText,       color: 'danger' },
+  EXPORT_PDF_COMPLETE_RECORD: { label: 'PDF Prontuário Total',    icon: BookOpen,       color: 'danger' },
+  EXPORT_PDF_FINANCIAL:       { label: 'PDF Balanço Financ.',     icon: BarChart3,      color: 'success' },
+  EXPORT_PDF_PENDENCIAS:      { label: 'PDF Pendências',          icon: AlertTriangle,  color: 'warning' },
+  EXPORT_PDF_RECIBO:          { label: 'PDF Recibo',              icon: Receipt,        color: 'info' },
+  EXPORT_CSV_BULK:            { label: 'Exportação CSV Massa',    icon: Archive,        color: 'neutral' },
   // Admin & Super Admin
-  UPDATE_PLAN_PSYCHOLOGIST:   { label: 'Plano Alterado (Admin)',  icon: '⭐', color: 'warning' },
-  TOGGLE_ACTIVE_PSYCHOLOGIST: { label: 'Status Psi (Admin)',      icon: '🔄', color: 'neutral' },
-  UPDATE_TRIAL_PSYCHOLOGIST:  { label: 'Trial Alterado (Admin)',  icon: '⏳', color: 'neutral' },
-  DELETE_PSYCHOLOGIST_PROFILE:{ label: 'Perfil Excluído (Admin)', icon: '🚫', color: 'danger' },
-  SAVE_GLOBAL_NOTICE:         { label: 'Aviso Global Salvo',      icon: '📢', color: 'info' },
-  SAVE_CLIENT_CLINIC:         { label: 'Contrato Cliente Salvo',  icon: '🏢', color: 'success' },
-  UPDATE_CLIENT_LIMITS:       { label: 'Limites Líder Alterados', icon: '🎛️', color: 'info' },
-  DELETE_CLIENT_CLINIC:       { label: 'Contrato Cliente Deletado',icon: '🗑️', color: 'danger' },
+  UPDATE_PLAN_PSYCHOLOGIST:   { label: 'Plano Alterado (Admin)',  icon: Star,           color: 'warning' },
+  TOGGLE_ACTIVE_PSYCHOLOGIST: { label: 'Status Psi (Admin)',      icon: RefreshCw,      color: 'neutral' },
+  UPDATE_TRIAL_PSYCHOLOGIST:  { label: 'Trial Alterado (Admin)',  icon: Hourglass,      color: 'neutral' },
+  DELETE_PSYCHOLOGIST_PROFILE:{ label: 'Perfil Excluído (Admin)', icon: Ban,            color: 'danger' },
+  SAVE_GLOBAL_NOTICE:         { label: 'Aviso Global Salvo',      icon: Bell,           color: 'info' },
+  SAVE_CLIENT_CLINIC:         { label: 'Contrato Cliente Salvo',  icon: Building2,      color: 'success' },
+  UPDATE_CLIENT_LIMITS:       { label: 'Limites Líder Alterados', icon: Sliders,        color: 'info' },
+  DELETE_CLIENT_CLINIC:       { label: 'Contrato Cliente Deletado',icon: Trash2,        color: 'danger' },
   // Navegação & Busca
-  NAVIGATE:                   { label: 'Navegação',               icon: '🧭', color: 'neutral' },
-  SEARCH_SELECT:              { label: 'Busca Global',            icon: '🔍', color: 'neutral' },
+  NAVIGATE:                   { label: 'Navegação',               icon: Compass,        color: 'neutral' },
+  SEARCH_SELECT:              { label: 'Busca Global',            icon: Search,         color: 'neutral' },
 };
 
 function ActionBadge({ type }) {
-  const cfg = ACTION_CONFIG[type] || { label: type, icon: '❓', color: 'neutral' };
+  const cfg = ACTION_CONFIG[type] || { label: type, icon: HelpCircle, color: 'neutral' };
+  const IconComp = cfg.icon || HelpCircle;
   return (
     <Badge variant={cfg.color}>
-      <span>{cfg.icon}</span> {cfg.label}
+      <IconComp size={12} className="inline mr-1" /> {cfg.label}
     </Badge>
   );
 }
@@ -474,10 +482,10 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                       <div className="flex items-center gap-2 flex-wrap">
                         <ActionBadge type={log.actionType} />
                         {dur && (
-                          <Badge variant="warning">⏱ {dur}</Badge>
+                          <Badge variant="warning"><Clock size={11} className="inline mr-1" />{dur}</Badge>
                         )}
                         {meta.completionRate && (
-                          <Badge variant="info">📊 {meta.completionRate}</Badge>
+                          <Badge variant="info"><BarChart3 size={11} className="inline mr-1" />{meta.completionRate}</Badge>
                         )}
                         {meta.status && (
                           <Badge variant={meta.status === 'Presente' ? 'success' : 'danger'}>{meta.status}</Badge>
@@ -508,7 +516,13 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                               <div key={key} className="flex flex-col rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}>
                                 <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{key}</span>
                                 <span className="text-sm font-medium break-all mt-0.5" style={{ color: 'var(--text-primary)' }}>
-                                  {typeof val === 'boolean' ? (val ? '✅ Sim' : '❌ Não') : String(val)}
+                                  {typeof val === 'boolean' ? (
+                                    val ? (
+                                      <span className="inline-flex items-center gap-1 text-emerald-600"><CheckCircle2 size={13} /> Sim</span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-red-500"><XCircle size={13} /> Não</span>
+                                    )
+                                  ) : String(val)}
                                 </span>
                               </div>
                             ))}
@@ -603,7 +617,9 @@ function DecideReportCard({ logs }) {
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-heading font-extrabold" style={{ color: 'var(--text-primary)' }}>📊 Relatório de Usabilidade — Framework DECIDE</h3>
+          <h3 className="text-lg font-heading font-extrabold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+            <BarChart3 size={20} className="text-indigo-500" /> Relatório de Usabilidade — Framework DECIDE
+          </h3>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Gera 6 planilhas CSV completas para análise acadêmica dos testes de usabilidade com os participantes.</p>
         </div>
       </div>
@@ -622,8 +638,8 @@ function DecideReportCard({ logs }) {
             />
           </div>
           <div className="flex items-end gap-2">
-            <Button onClick={handlePreview} variant="secondary">
-              🔍 Pré-visualizar
+            <Button onClick={handlePreview} variant="secondary" icon={Search}>
+              Pré-visualizar
             </Button>
           </div>
         </div>
@@ -655,15 +671,15 @@ function DecideReportCard({ logs }) {
               {preview.csvs.map((csv, i) => (
                 <div key={i} className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderTop: '0.5px solid var(--border)' }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">📄</span>
+                    <FileText size={16} className="text-slate-400 shrink-0" />
                     <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{csv.name}</span>
                   </div>
                   <button
                     onClick={() => handleDownloadSingleCSV(csv)}
-                    className="text-[10px] font-bold px-2 py-1 rounded-lg transition-colors"
+                    className="text-[10px] font-bold px-2 py-1 rounded-lg transition-colors inline-flex items-center gap-1"
                     style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-light)' }}
                   >
-                    ⬇ Baixar
+                    <Download size={11} /> Baixar
                   </button>
                 </div>
               ))}
@@ -679,7 +695,7 @@ function DecideReportCard({ logs }) {
               {isDownloading ? (
                 <><RefreshCw size={16} className="animate-spin" /> Gerando ZIP...</>
               ) : (
-                <>📦 Baixar Relatório Completo (ZIP com {preview.csvs.length} planilhas)</>
+                <><Archive size={16} /> Baixar Relatório Completo (ZIP com {preview.csvs.length} planilhas)</>
               )}
             </button>
           </div>
@@ -687,8 +703,8 @@ function DecideReportCard({ logs }) {
 
         {preview && preview.stats.total === 0 && (
           <div className="p-4 rounded-xl text-center" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
-            <p className="text-sm font-medium" style={{ color: 'var(--status-warning-text)' }}>
-              ⚠️ Nenhum participante encontrado com o padrão "{emailPattern}". Verifique o filtro.
+            <p className="text-sm font-medium inline-flex items-center justify-center gap-1.5" style={{ color: 'var(--status-warning-text)' }}>
+              <AlertTriangle size={15} className="text-amber-500 shrink-0" /> Nenhum participante encontrado com o padrão "{emailPattern}". Verifique o filtro.
             </p>
           </div>
         )}
@@ -1406,13 +1422,13 @@ export default function AdminPanel() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <PlanoBadge plano={psi.plano} />
                             {psi.isIsento ? (
-                              <Badge variant="neutral">🎁 Isento</Badge>
+                              <Badge variant="neutral"><Gift size={11} className="inline mr-1 text-purple-500" /> Isento</Badge>
                             ) : psi.statusPagamento === 'inadimplente' ? (
-                              <Badge variant="danger">⚠️ Vencido</Badge>
+                              <Badge variant="danger"><AlertTriangle size={11} className="inline mr-1" /> Vencido</Badge>
                             ) : psi.statusPagamento === 'trial' ? (
-                              <Badge variant="warning">⏳ Trial</Badge>
+                              <Badge variant="warning"><Clock size={11} className="inline mr-1" /> Trial</Badge>
                             ) : (
-                              <Badge variant="success">💳 Em Dia</Badge>
+                              <Badge variant="success"><CreditCard size={11} className="inline mr-1" /> Em Dia</Badge>
                             )}
                             <StatusBadge ativo={psi.ativo} />
                             <TrialBadge trialAte={psi.trialAte} />
@@ -1431,18 +1447,26 @@ export default function AdminPanel() {
                             ) : (
                               <>
                                 {(!psi.plano || psi.plano === 'basico') ? (
-                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'profissional')} title="Promover para Profissional">⭐ Pro</Button>
+                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'profissional')} title="Promover para Profissional">
+                                    <Star size={11} className="mr-1" /> Pro
+                                  </Button>
                                 ) : (
-                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'basico')} title="Rebaixar para Básico">📋 Basic</Button>
+                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'basico')} title="Rebaixar para Básico">
+                                    <ClipboardList size={11} className="mr-1" /> Basic
+                                  </Button>
                                 )}
                                 <Button size="sm" variant="secondary" onClick={() => handleRegularizarPagamento(psi.id)} title="Liberar Assinatura por 30 dias">
-                                  💳 +30d
+                                  <CreditCard size={11} className="mr-1" /> +30d
                                 </Button>
                                 <Button size="sm" variant={psi.isIsento ? 'primary' : 'secondary'} onClick={() => handleToggleIsencao(psi.id, psi.isIsento)} title={psi.isIsento ? 'Remover Isenção' : 'Conceder Isenção'}>
-                                  {psi.isIsento ? '🎁 Cortesia' : '🎁 Isentar'}
+                                  <Gift size={11} className="mr-1" /> {psi.isIsento ? 'Cortesia' : 'Isentar'}
                                 </Button>
                                 <Button size="sm" variant={psi.ativo !== false ? 'secondary' : 'primary'} onClick={() => handleToggleAtivo(psi.id, psi.ativo)} title={psi.ativo !== false ? 'Desativar' : 'Ativar'}>
-                                  {psi.ativo !== false ? '🔒 Desativar' : '🔓 Ativar'}
+                                  {psi.ativo !== false ? (
+                                    <><Lock size={11} className="mr-1" /> Desativar</>
+                                  ) : (
+                                    <><Unlock size={11} className="mr-1" /> Ativar</>
+                                  )}
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => handleExcluirPerfil(psi)} style={{ color: 'var(--status-danger)' }} title="Excluir Perfil do Psicólogo">
                                   <Trash2 size={16} />
@@ -1545,7 +1569,7 @@ export default function AdminPanel() {
 
             <div className="p-3 rounded-xl text-xs space-y-1" style={{ backgroundColor: 'var(--status-warning-bg)', border: '0.5px solid var(--status-warning)' }}>
               <p className="font-bold flex items-center gap-1.5" style={{ color: 'var(--status-warning-text)' }}>
-                <span>⚖️</span> Conformidade CFP & LGPD
+                <Scale size={14} className="text-amber-500" /> Conformidade CFP & LGPD
               </p>
               <p style={{ color: 'var(--status-warning-text)' }}>
                 A exclusão cadastral é irreversível. Conforme a Resolução CFP nº 01/2009 e LGPD, a trilha de auditoria e guarda documental de 5 anos permanecerão protegidas.

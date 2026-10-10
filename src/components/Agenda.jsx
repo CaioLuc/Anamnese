@@ -640,8 +640,8 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                       {/* Preview */}
                       {recurringPreview.length > 0 && (
                         <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-primary)', border: '0.5px solid var(--border)' }}>
-                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--accent)' }}>
-                            📅 {recurringPreview.length} agendamentos serão criados:
+                          <p className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent)' }}>
+                            <CalendarIcon size={14} /> {recurringPreview.length} agendamentos serão criados:
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {recurringPreview.map((d, i) => (

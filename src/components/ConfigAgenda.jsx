@@ -157,8 +157,16 @@ export default function ConfigAgenda({ onClose }) {
               />
             </div>
             {slugStatus === 'checking' && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Verificando...</span>}
-            {slugStatus === 'ok' && <span className="text-xs font-semibold" style={{ color: 'var(--status-success)' }}>✓ Disponível</span>}
-            {slugStatus === 'taken' && <span className="text-xs font-semibold" style={{ color: 'var(--status-danger)' }}>✗ Em uso</span>}
+            {slugStatus === 'ok' && (
+              <span className="text-xs font-semibold inline-flex items-center gap-1" style={{ color: 'var(--status-success)' }}>
+                <Check size={13} /> Disponível
+              </span>
+            )}
+            {slugStatus === 'taken' && (
+              <span className="text-xs font-semibold inline-flex items-center gap-1" style={{ color: 'var(--status-danger)' }}>
+                <X size={13} /> Em uso
+              </span>
+            )}
           </div>
         </div>
 

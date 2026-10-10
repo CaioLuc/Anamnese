@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { generatePixPayload, identificarTipoChave } from '../utils/pixUtils';
-import { X, Copy, Check, MessageCircle, QrCode } from 'lucide-react';
+import { X, Copy, Check, MessageCircle, QrCode, AlertTriangle, Smartphone, Laptop } from 'lucide-react';
 import logger from '../utils/logger';
 
 /**
@@ -139,7 +139,7 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
     const dataFormatada = formatDateBR(sessao?.data_sessao);
     const valorFormatado = `R$ ${formatCurrency(valor)}`;
 
-    const mensagem = `Olá, ${nomeP}! 😊\n\nSegue o PIX para pagamento da sessão do dia *${dataFormatada}* no valor de *${valorFormatado}*.\n\n📋 *Código Copia e Cola:*\n${payload}\n\nBasta copiar o código acima e colar no app do seu banco na opção "PIX Copia e Cola". 🙏`;
+    const mensagem = `Olá, ${nomeP}!\n\nSegue o PIX para pagamento da sessão do dia *${dataFormatada}* no valor de *${valorFormatado}*.\n\n*Código Copia e Cola:*\n${payload}\n\nBasta copiar o código acima e colar no app do seu banco na opção "PIX Copia e Cola".`;
 
     try {
       const blob = await qrToImageBlob();
@@ -220,7 +220,9 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
         <div className="px-5 pb-5 space-y-4">
           {error ? (
             <div className="p-4 rounded-xl text-center" style={{ backgroundColor: 'var(--status-danger-bg)', border: '1px solid var(--status-danger)' }}>
-              <p className="text-sm font-medium" style={{ color: 'var(--status-danger-text)' }}>⚠️ {error}</p>
+              <p className="text-sm font-medium flex items-center justify-center gap-1.5" style={{ color: 'var(--status-danger-text)' }}>
+                <AlertTriangle size={16} /> {error}
+              </p>
             </div>
           ) : (
             <>
@@ -284,10 +286,10 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
                 Enviar QR Code pelo WhatsApp
               </button>
 
-              <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
-                📱 No celular: envia a imagem + texto direto pelo WhatsApp.
-                💻 No PC: baixa a imagem do QR e abre o WhatsApp Web com o texto.
-              </p>
+              <div className="text-[10px] text-center flex flex-col sm:flex-row items-center justify-center gap-3 pt-1" style={{ color: 'var(--text-muted)' }}>
+                <span className="flex items-center gap-1"><Smartphone size={12} /> No celular: envia imagem + texto direto.</span>
+                <span className="flex items-center gap-1"><Laptop size={12} /> No PC: baixa imagem e abre WhatsApp Web.</span>
+              </div>
             </>
           )}
         </div>

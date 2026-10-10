@@ -6,7 +6,7 @@
 export const HELP_DATA = [
   {
     category: 'Primeiros Passos',
-    icon: '🚀',
+    icon: 'rocket',
     items: [
       {
         question: 'Como cadastrar meu primeiro paciente?',
@@ -32,7 +32,7 @@ export const HELP_DATA = [
   },
   {
     category: 'Funcionalidades',
-    icon: '⚙️',
+    icon: 'settings',
     items: [
       {
         question: 'Como funciona a Agenda?',
@@ -73,7 +73,7 @@ export const HELP_DATA = [
   },
   {
     category: 'Conta e Planos',
-    icon: '👤',
+    icon: 'user',
     items: [
       {
         question: 'Qual a diferença entre plano Básico e PRO?',
@@ -99,7 +99,7 @@ export const HELP_DATA = [
   },
   {
     category: 'Dicas e Atalhos',
-    icon: '⌨️',
+    icon: 'keyboard',
     items: [
       {
         question: 'Quais atalhos de teclado estão disponíveis?',

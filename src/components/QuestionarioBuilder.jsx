@@ -4,7 +4,9 @@ import { criarQuestionario, atualizarQuestionario } from '../services/patientSer
 import Button from './ui/Button';
 import { 
   Folder, AlignLeft, FileText, CircleDot, CheckSquare, List, Hash, Calendar, 
-  Trash2, ChevronUp, ChevronDown, ChevronDown as ChevronDownIcon, X, Plus, Smile
+  Trash2, ChevronUp, ChevronDown, ChevronDown as ChevronDownIcon, X, Plus, Smile,
+  ClipboardList, Activity, Heart, Target, User, GraduationCap, Building2, BookOpen,
+  CheckCircle2, Star, Sparkles
 } from 'lucide-react';
 
 const TIPOS_CAMPO = [
@@ -19,7 +21,29 @@ const TIPOS_CAMPO = [
   { tipo: 'date', label: 'Data', icone: Calendar, desc: 'Campo de data' },
 ];
 
-const EMOJIS = ['📋', '📝', '🧠', '❤️', '🌿', '⚡', '🎯', '🔬', '👤', '🎒', '🏥', '🌟'];
+const AVAILABLE_ICONS = [
+  { id: 'clipboard', label: 'Prontuário', icon: ClipboardList },
+  { id: 'file-text', label: 'Texto', icon: FileText },
+  { id: 'activity', label: 'Saúde Mental', icon: Activity },
+  { id: 'heart', label: 'Acolhimento', icon: Heart },
+  { id: 'target', label: 'Metas', icon: Target },
+  { id: 'user', label: 'Adulto', icon: User },
+  { id: 'graduation-cap', label: 'Adolescente', icon: GraduationCap },
+  { id: 'building', label: 'Clínica', icon: Building2 },
+  { id: 'book-open', label: 'Histórico', icon: BookOpen },
+  { id: 'check-circle', label: 'Checklist', icon: CheckCircle2 },
+  { id: 'star', label: 'Destaque', icon: Star },
+  { id: 'sparkles', label: 'Evolução', icon: Sparkles },
+];
+
+const renderIconById = (id, size = 20) => {
+  const found = AVAILABLE_ICONS.find(item => item.id === id);
+  if (found) {
+    const IconComp = found.icon;
+    return <IconComp size={size} />;
+  }
+  return <ClipboardList size={size} />;
+};
 
 // Editor de opções com inputs individuais (substituindo o textarea)
 function OpcoesEditor({ opcoes = [], onChange }) {
@@ -208,7 +232,7 @@ function CampoEditor({ campo, onChange, onRemover, onMover, isFirst, isLast }) {
 export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) {
   const [nome, setNome] = useState(template?.nome || '');
   const [descricao, setDescricao] = useState(template?.descricao || '');
-  const [icone, setIcone] = useState(template?.icone || '📝');
+  const [icone, setIcone] = useState(template?.icone || 'clipboard');
   const [campos, setCampos] = useState(template?.campos || []);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -288,32 +312,38 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
         style={{ borderBottom: '0.5px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}
       >
         <div className="flex items-center gap-3 flex-1">
-          {/* Emoji picker */}
+          {/* Icon picker */}
           <div className="relative">
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setShowEmojis(s => !s); }}
-              className="text-2xl w-10 h-10 flex items-center justify-center rounded-xl transition-transform hover:scale-110"
-              style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)' }}
+              className="w-10 h-10 flex items-center justify-center rounded-xl transition-transform hover:scale-105"
+              style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
+              title="Escolher ícone"
             >
-              {icone}
+              {renderIconById(icone, 20)}
             </button>
             {showEmojis && (
               <div
-                className="absolute top-12 left-0 z-50 flex flex-wrap gap-1.5 p-3 rounded-2xl shadow-2xl w-52"
+                className="absolute top-12 left-0 z-50 grid grid-cols-4 gap-1.5 p-3 rounded-2xl shadow-2xl w-52"
                 onClick={(e) => e.stopPropagation()}
                 style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}
               >
-                {EMOJIS.map(e => (
-                  <button
-                    key={e}
-                    type="button"
-                    onClick={() => { setIcone(e); setShowEmojis(false); }}
-                    className="text-xl w-8 h-8 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/10"
-                  >
-                    {e}
-                  </button>
-                ))}
+                {AVAILABLE_ICONS.map(item => {
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => { setIcone(item.id); setShowEmojis(false); }}
+                      className={`p-2 rounded-xl transition-colors flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 ${icone === item.id ? 'ring-2 ring-indigo-500' : ''}`}
+                      title={item.label}
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      <IconComp size={18} />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -5,7 +5,7 @@
  * Formato: EMV® QR Code (TLV — Tag-Length-Value)
  * Referência: Manual BR Code v3.0.1 do Banco Central
  * 
- * ⚠️ Esse utilitário é agnóstico de banco de dados.
+ * Nota: Esse utilitário é agnóstico de banco de dados.
  *    Funciona igual no Firebase e no Supabase.
  */
 

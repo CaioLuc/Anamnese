@@ -8,6 +8,7 @@ import logger from '../utils/logger';
 import Pagination from './ui/Pagination';
 import ModalCobrancaPix from './ModalCobrancaPix';
 import Select from './ui/Select';
+import { QrCode, Check, Inbox, CheckCircle2, FileText, X } from 'lucide-react';
 
 const PERIODOS = [
   { id: 'semana', label: 'Semana' },
@@ -429,7 +430,9 @@ export default function Financas({ patients, isLoadingPatients }) {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </div>
             <div>
-              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>💠 Configurações do PIX</p>
+              <p className="text-sm font-bold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+                <QrCode size={16} className="text-[var(--accent)]" /> Configurações do PIX
+              </p>
               <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                 {pixConfig?.pix_chave ? `Chave: ${pixConfig.pix_chave}` : 'Configure sua chave para cobrar pacientes'}
               </p>
@@ -484,7 +487,9 @@ export default function Financas({ patients, isLoadingPatients }) {
                 {savingPix ? 'Salvando...' : 'Salvar PIX'}
               </button>
               {pixSaved && (
-                <span className="text-xs font-semibold animate-in fade-in" style={{ color: 'var(--status-success)' }}>✓ Salvo!</span>
+                <span className="text-xs font-semibold animate-in fade-in flex items-center gap-1" style={{ color: 'var(--status-success)' }}>
+                  <Check size={14} /> Salvo!
+                </span>
               )}
             </div>
           </div>
@@ -635,7 +640,7 @@ export default function Financas({ patients, isLoadingPatients }) {
           </div>
         ) : sessoesFiltradas.length === 0 ? (
           <div className="py-16 text-center">
-            <span className="text-3xl block mb-2">📭</span>
+            <Inbox size={36} className="mx-auto mb-2 opacity-40 text-[var(--text-muted)]" />
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Nenhuma sessão encontrada para este filtro.</p>
           </div>
         ) : (
@@ -709,26 +714,26 @@ export default function Financas({ patients, isLoadingPatients }) {
                             <button
                               onClick={() => setEditingPayment(s.id)}
                               disabled={isUpdating}
-                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
+                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50 flex items-center gap-1"
                               style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success-text)', border: '1px solid var(--status-success)' }}
                             >
-                              💰 Dar Baixa
+                              <CheckCircle2 size={13} /> Dar Baixa
                             </button>
                             <button
                               onClick={() => setPixSessao(s)}
-                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all"
+                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all flex items-center gap-1"
                               style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
                               title="Cobrar via PIX"
                             >
-                              💠 PIX
+                              <QrCode size={13} /> PIX
                             </button>
                             <button
                               onClick={() => handleRecibo(s)}
-                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all"
+                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all flex items-center justify-center"
                               style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
                               title="Gerar Recibo PDF"
                             >
-                              📄
+                              <FileText size={14} />
                             </button>
                           </div>
                         ) : !s.pago && isEditing ? (
@@ -746,9 +751,9 @@ export default function Financas({ patients, isLoadingPatients }) {
                             ))}
                             <button
                               onClick={() => setEditingPayment(null)}
-                              className="px-1.5 py-1 rounded-md text-[10px]" style={{ color: 'var(--text-muted)' }}
+                              className="px-1.5 py-1 rounded-md text-[10px] flex items-center justify-center" style={{ color: 'var(--text-muted)' }}
                             >
-                              ✕
+                              <X size={12} />
                             </button>
                           </div>
                         ) : (
@@ -762,11 +767,11 @@ export default function Financas({ patients, isLoadingPatients }) {
                             </button>
                             <button
                               onClick={() => handleRecibo(s)}
-                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all"
+                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all flex items-center justify-center"
                               style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
                               title="Gerar Recibo PDF"
                             >
-                              📄
+                              <FileText size={14} />
                             </button>
                           </div>
                         )}
