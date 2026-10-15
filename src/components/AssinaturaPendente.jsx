@@ -7,8 +7,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { logoutFirebaseUser } from '../services/authService';
 import { 
   PLANOS_CARITAS, 
-  cadastrarCartaoEAtivarPlano, 
-  gerarDadosPixMensal, 
+  iniciarAssinaturaCartao, 
+  gerarCobrancaPix, 
   detectarBandeiraCartao 
 } from '../services/paymentService';
 import { useToast } from '../contexts/ToastContext';
@@ -28,37 +28,53 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
     cvv: '',
   });
 
+  // Dados do titular exigidos pelo Asaas (CPF/CNPJ vale para cartão e PIX)
+  const [titular, setTitular] = useState({
+    cpfCnpj: '',
+    telefone: perfil?.telefone || '',
+    cep: '',
+    numeroEndereco: '',
+  });
+
   // PIX state
   const [pixData, setPixData] = useState(null);
 
   const planoObj = PLANOS_CARITAS[planoId] || PLANOS_CARITAS.basico;
   const bandeira = detectarBandeiraCartao(cartaoForm.numero);
 
+  // Só cria a assinatura: o plano é ativado pelo webhook quando o Asaas confirmar o pagamento
   const handlePagarCartao = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await cadastrarCartaoEAtivarPlano({
-        numeroCartao: cartaoForm.numero,
-        nomeTitular: cartaoForm.nomeTitular,
-        validade: cartaoForm.validade,
-        cvv: cartaoForm.cvv,
+      await iniciarAssinaturaCartao({
         planoId,
+        cpfCnpj: titular.cpfCnpj,
+        telefone: titular.telefone,
+        cep: titular.cep,
+        numeroEndereco: titular.numeroEndereco,
+        cartao: { ...cartaoForm },
       });
-
-      showToast({ type: 'success', message: 'Cartão cadastrado e plano ativado.' });
+      showToast({ type: 'info', message: 'Cartão recebido. O plano é ativado assim que o Asaas confirmar o pagamento.' });
       if (onPagamentoRegularizado) onPagamentoRegularizado();
     } catch (err) {
-      logger.error('Erro ao regularizar com cartão:', err);
+      logger.error('Erro ao iniciar assinatura por cartão:', err);
       showToast({ type: 'error', message: err.message || 'Erro ao cadastrar o cartão.' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGerarPix = () => {
-    const dados = gerarDadosPixMensal(planoId, perfil?.email);
-    setPixData(dados);
+  const handleGerarPix = async () => {
+    setIsLoading(true);
+    try {
+      setPixData(await gerarCobrancaPix({ planoId, cpfCnpj: titular.cpfCnpj }));
+    } catch (err) {
+      logger.error('Erro ao gerar cobrança PIX:', err);
+      showToast({ type: 'error', message: err.message || 'Não foi possível gerar o PIX.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const copiarPix = async () => {
@@ -72,9 +88,9 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
     }
   };
 
-  // Sem confirmação automática do PIX: só avisa e recarrega o perfil (o acesso depende do status salvo).
+  // Não confirma nada no cliente: só recarrega o perfil. O acesso depende do status gravado pelo webhook.
   const handleConfirmarPixManual = () => {
-    showToast({ type: 'info', message: 'Recebemos seu aviso. O acesso é liberado assim que o pagamento for confirmado — normalmente em até 1 dia útil. Em caso de dúvida, fale com o suporte.' });
+    showToast({ type: 'info', message: 'Estamos aguardando a confirmação do pagamento. O acesso é liberado automaticamente quando o Asaas confirmar. Em caso de dúvida, fale com o suporte.' });
     if (onPagamentoRegularizado) onPagamentoRegularizado();
   };
 
@@ -140,7 +156,6 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                 type="button"
                 onClick={() => {
                   setMetodo('pix');
-                  handleGerarPix();
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   metodo === 'pix'
@@ -153,9 +168,65 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
             </div>
           </div>
 
+          {/* Dados do titular (o Asaas exige para cobrar) */}
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+              CPF/CNPJ do Titular
+            </label>
+            <input
+              type="text"
+              required
+              value={titular.cpfCnpj}
+              onChange={(e) => setTitular({ ...titular, cpfCnpj: e.target.value })}
+              placeholder="000.000.000-00"
+              className="ds-input w-full font-mono"
+            />
+          </div>
+
           {/* Checkout com Cartão de Crédito */}
           {metodo === 'cartao' && (
             <form onSubmit={handlePagarCartao} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                    Telefone (com DDD)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={titular.telefone}
+                    onChange={(e) => setTitular({ ...titular, telefone: e.target.value })}
+                    placeholder="(11) 99999-9999"
+                    className="ds-input w-full font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                    CEP
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={titular.cep}
+                    onChange={(e) => setTitular({ ...titular, cep: e.target.value })}
+                    placeholder="00000-000"
+                    className="ds-input w-full font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                  Número do Endereço
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={titular.numeroEndereco}
+                  onChange={(e) => setTitular({ ...titular, numeroEndereco: e.target.value })}
+                  className="ds-input w-full"
+                />
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                   Número do Cartão de Crédito
@@ -233,7 +304,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                 className="ds-btn ds-btn-primary w-full py-3 flex items-center justify-center gap-2 text-sm font-semibold shadow-lg"
               >
                 {isLoading ? <RefreshCw className="animate-spin" size={18} /> : <Check size={18} />}
-                Cadastrar Cartão e Ativar Plano
+                Assinar com Cartão
               </button>
             </form>
           )}
@@ -241,6 +312,17 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
           {/* Checkout com PIX Instantâneo */}
           {metodo === 'pix' && (
             <div className="space-y-4">
+              {!pixData && (
+                <button
+                  type="button"
+                  onClick={handleGerarPix}
+                  disabled={isLoading || !titular.cpfCnpj}
+                  className="ds-btn bg-emerald-600 hover:bg-emerald-700 text-white w-full py-3 flex items-center justify-center gap-2 text-sm font-semibold shadow-lg"
+                >
+                  {isLoading ? <RefreshCw className="animate-spin" size={18} /> : <QrCode size={18} />}
+                  Gerar QR Code PIX
+                </button>
+              )}
               {pixData && (
                 <>
                   <div className="flex flex-col items-center p-4 bg-white rounded-xl shadow-inner border border-slate-200">

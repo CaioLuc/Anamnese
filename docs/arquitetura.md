@@ -189,6 +189,17 @@ Firestore Database
 
 > Publicar as regras sem as functions ou sem a extensão bloqueia o acesso de todos (ninguém recebe código).
 
+### Testes das regras e do 2FA (Firebase Emulator Suite)
+
+`npm run test:rules` sobe os emuladores de Auth, Firestore e Functions (`firebase emulators:exec`, projeto `demo-caritas`, nada toca produção) e roda `tests/emulador/` com `vitest.emulador.config.js`. `npm test` não inclui esses arquivos.
+
+Pré-requisitos: Firebase CLI global (`npm i -g firebase-tools`), **JDK 21+** no PATH (o Firestore emulator não roda com JRE reduzido nem Java < 21) e `npm install` dentro de `functions/`.
+
+- `regras.test.js` (`@firebase/rules-unit-testing`): sem `mfa_sessoes/{uid}_{auth_time}` válido, `psicologos/{uid}/**` é negado (inclusive sessão expirada ou de outro login); `admins/{uid}` só pelo e-mail bootstrap com `email_verified`; slugs só pelo dono; agendamento público só no formato da página, com espelho `horarios_ocupados` igual em data/hora (`getAfter`); `action_logs` append-only; campos de plano/cobrança fora do alcance do dono.
+- `mfa-functions.test.js`: usa ID tokens reais do Auth emulator e chama as callables. Prova que `request.auth.token.auth_time` existe nas regras e que o id gravado pela Function é o mesmo que `mfaOk()` procura (leitura REST passa de 403 para 200 após `verificarCodigoMfa`). Cobre 5 tentativas erradas, validade de 10 min, reenvio a cada 60 s e dispositivo confiável.
+
+> O emulador reproduz o formato do token, mas não é produção. Depois de publicar, confirmar um login real com 2FA antes de liberar o hosting.
+
 ---
 
 ## Scripts de Desenvolvimento
@@ -197,6 +208,8 @@ Firestore Database
 npm run dev              # Servidor de desenvolvimento (Vite)
 npm run build            # Build de produção
 npm run preview          # Preview do build localmente
+npm test                 # Testes unitários (Vitest)
+npm run test:rules       # Regras do Firestore + functions de 2FA no Emulator Suite (JDK 21+)
 npm run deploy:hosting   # Build + deploy no Firebase Hosting
 firebase deploy          # Deploy completo (hosting + rules + functions)
 ```

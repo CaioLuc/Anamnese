@@ -6,12 +6,15 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 
 ## Pendências abertas pela revisão de 15/10/2026
 
-- [ ] **Pagamento real (Asaas) no servidor** — hoje o cliente grava `plano`/`statusPagamento` sozinho; as regras permitem que o dono edite esses campos. Mover cobrança e ativação para Cloud Function + webhook e bloquear essas chaves nas regras.
+- [x] **Pagamento real (Asaas) no servidor** — cobrança em `criarCobrancaPix`/`criarAssinaturaCartao`, ativação só em `webhookAsaas`, campos de cobrança bloqueados nas regras (ADR-2026-10-G). Falta: validar ponta a ponta no sandbox e configurar o webhook.
+- [ ] **Configurar Asaas** — (1) criar `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no Secret Manager; (2) deploy de functions; (3) cadastrar a URL de `webhookAsaas` no Asaas sandbox com o token; (4) testar cartão e PIX de teste; (5) só então `ASAAS_AMBIENTE=producao`.
+- [ ] **Chave de IA e custo** — `gerarResumoIA` usa `OPENAI_API_KEY` (gpt-4o-mini). Avaliar Gemini (Flash-Lite) se o custo importar; exige contrato que proíba treino com dado de saúde.
+- [ ] **Troca de plano com cartão** — `criarAssinaturaCartao` cria a nova assinatura e cancela a anterior, sem crédito do período já pago.
 - [ ] **Agendamento público via Cloud Function** — validação de horário/conflito em transação, rate limit e App Check (hoje a regra só valida formato).
 - [ ] **Criptografia AES-GCM dos campos clínicos** (AGENTS.md §2.3) — ainda em texto puro no Firestore.
 - [ ] **Auditoria com IP no servidor** (`audit_logs`, LGPD art. 37) — hoje `action_logs` é gravado pelo cliente, sem IP.
 - [ ] **Exclusão física de anamnese/sessão** (`deletarAnamnese`, `deletarSessao`) — avaliar soft delete por causa da guarda de 5 anos.
-- [ ] **PIX da assinatura** — chave `caritas-pagamentos@asaas.com.br` é fictícia; trocar pela cobrança gerada no Asaas.
+- [x] **PIX da assinatura** — chave fictícia removida; cada cobrança PIX é criada no Asaas (`criarCobrancaPix`).
 - [ ] **TTL do Firestore** em `mfa_sessoes.expiraEm` e `mfa_dispositivos.expiraEm`.
 
 ---

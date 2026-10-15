@@ -158,6 +158,15 @@ Documento que registra as decisões de design e arquitetura inferidas a partir d
 ### ADR-2026-10-E — Nova identidade visual "Consultório"
 - **Decisão**: papel quente (#F5F3EE), tinta esverdeada, petróleo (#0E6B66) como marca e terracota pontual; Newsreader (títulos) + Public Sans (interface). Mantidos nome e logo. Detalhes em `design-system.md`.
 
+### ADR-2026-10-G — Cobrança Asaas no servidor (plano só muda pelo webhook)
+- **Contexto**: o cliente gravava `plano`, `statusPagamento` e a fatura "PAGO" direto no Firestore, e as regras deixavam o dono editar esses campos. Qualquer conta se promovia a Líder Clínico (`plano === 'clinica'`) e liberava o resumo por IA.
+- **Decisão**: `criarCobrancaPix` e `criarAssinaturaCartao` (callables, `southamerica-east1`) criam a cobrança no Asaas. `webhookAsaas` (HTTP) ativa, inadimplenta ou cancela com o Admin SDK. Preço vem do servidor (`functions/asaas.js`), e o cliente só envia `planoId`.
+- **Webhook**: confere o header `asaas-access-token` (comparação em tempo constante), confere o status do pagamento/assinatura direto na API do Asaas e valida o valor contra o preço do plano. Idempotente por `asaas_eventos/{evento}_{id}`. Responde 500 em falha, para o Asaas reenviar.
+- **Regras**: dono não grava `plano`, `statusPagamento`, `trialAte`, `proximoVencimento`, `historicoFaturas`, `max_locais`, `cartaoInfo`, `asaasCustomerId` nem `asaasSubscriptionId`. Criação inicial só em trial, plano básico, 1 local. Delete do perfil só admin, para não recomeçar o trial.
+- **Segredos**: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no Secret Manager. `ASAAS_AMBIENTE` (`sandbox` por padrão) escolhe a URL.
+- **Consequências**: cartão não é guardado (só bandeira e 4 últimos dígitos). Trocar plano com assinatura de cartão cancela a anterior depois da nova ser criada. Cancelamento de assinatura substituída é ignorado. Cobrança PIX não paga não altera o acesso. Deploy das functions e das regras precisa ser conjunto.
+- **Limites**: preços duplicados no servidor (`PLANOS_COBRANCA`) e no cliente (`PLANOS_CARITAS`), mantidos iguais por teste manual. Teste ponta a ponta só no sandbox do Asaas.
+
 ### ADR-2026-10-F — Trilha de auditoria append-only
 - **Decisão**: `action_logs` sem `update`/`delete` nas regras; `psicologoId` precisa ser o do usuário autenticado. Removido o botão "Limpar +30d" do Painel Admin.
 

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
+import * as svc from '../services/paymentService';
 import {
   PLANOS_CARITAS,
   detectarBandeiraCartao,
   validarNumeroCartao,
   verificarStatusAssinatura,
-  gerarDadosPixMensal,
   DIAS_CARENCIA_BLOQUEIO
 } from '../services/paymentService';
 import { dataLocalISO } from '../utils/formatUtils';
@@ -142,12 +142,15 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
     });
   });
 
-  describe('Geração de PIX Mensal', () => {
-    it('deve gerar payload PIX com cópia e cola e valor do plano correspondente', () => {
-      const pixPro = gerarDadosPixMensal('profissional', 'psicologo@email.com');
-      expect(pixPro.valor).toBe(139.90);
-      expect(pixPro.copiaECola).toContain('00020126530014br.gov.bcb.pix0131caritas-pagamentos@asaas.com.br');
-      expect(pixPro.txid).toBeDefined();
+  describe('Cobrança no servidor (sem ativação no cliente)', () => {
+    it('não exporta mais nenhuma função que grava plano ou fatura no cliente', () => {
+      expect(svc.cadastrarCartaoEAtivarPlano).toBeUndefined();
+      expect(svc.gerarDadosPixMensal).toBeUndefined();
+    });
+
+    it('expõe apenas os callables de cobrança', () => {
+      expect(typeof svc.iniciarAssinaturaCartao).toBe('function');
+      expect(typeof svc.gerarCobrancaPix).toBe('function');
     });
   });
 });

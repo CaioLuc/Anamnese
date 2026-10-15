@@ -1,8 +1,8 @@
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from './firebaseConfig';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { db, auth, app } from './firebaseConfig';
 import { trackAction } from './logService';
 import { parseDate, dataLocalISO } from '../utils/formatUtils';
-import { generatePixPayload } from '../utils/pixUtils';
 
 // ==========================================
 // CATÁLOGO DE PLANOS CARITAS
@@ -235,115 +235,55 @@ function formatarData(dataIso) {
 }
 
 // ==========================================
-// PROCESSAMENTO DE CARTÃO DE CRÉDITO (ASAAS API OU MOCK)
+// COBRANÇA ASAAS (CALLABLES: o servidor cria a cobrança e o plano só muda pelo webhook)
 // ==========================================
-export async function cadastrarCartaoEAtivarPlano({
-  numeroCartao,
-  nomeTitular,
-  validade,
-  // shortcut: pagamento simulado no cliente; cvv e cpfCnpj só serão usados quando houver integração com o Asaas
-  planoId = 'profissional',
-}) {
-  const planoEscolhido = PLANOS_CARITAS[planoId] || PLANOS_CARITAS.basico;
-  const user = auth.currentUser;
-  if (!user) throw new Error('Usuário não autenticado.');
+const chamarFuncao = (nome) => httpsCallable(getFunctions(app, 'southamerica-east1'), nome);
 
-  // Validações básicas de cartão
-  const numLimpo = String(numeroCartao).replace(/\D/g, '');
+// Pré-validação só para feedback rápido; a validação final é do servidor
+function validarDadosCartao({ numero, nomeTitular, validade }) {
+  const numLimpo = String(numero).replace(/\D/g, '');
   if (numLimpo.length < 13 || !validarNumeroCartao(numLimpo)) {
     throw new Error('Número de cartão de crédito inválido.');
   }
-
   if (!nomeTitular || nomeTitular.trim().length < 3) {
     throw new Error('Informe o nome impresso no cartão de crédito.');
   }
-
-  const [mes, ano] = (validade || '').split('/').map(v => v.trim());
-  if (!mes || !ano || parseInt(mes, 10) < 1 || parseInt(mes, 10) > 12) {
+  const [mes] = (validade || '').split('/').map(v => v.trim());
+  if (!mes || parseInt(mes, 10) < 1 || parseInt(mes, 10) > 12) {
     throw new Error('Data de validade do cartão inválida (use MM/AA).');
   }
-
-  const bandeira = detectarBandeiraCartao(numLimpo);
-  const ultimos4 = numLimpo.slice(-4);
-
-  // Calcula próximo vencimento: hoje + 30 dias
-  const dataHoje = new Date();
-  const proximaCobranca = new Date(dataHoje);
-  proximaCobranca.setDate(proximaCobranca.getDate() + 30);
-  const proximoVencimentoIso = dataLocalISO(proximaCobranca);
-
-  const faturaId = `FAT-${Date.now().toString(36).toUpperCase()}`;
-
-  const novaFatura = {
-    id: faturaId,
-    data: dataHoje.toISOString(),
-    valor: planoEscolhido.preco,
-    plano: planoEscolhido.nome,
-    formaPagamento: `Cartão de Crédito (${bandeira} •••• ${ultimos4})`,
-    status: 'PAGO',
-  };
-
-  // Persiste no Firestore
-  const psicRef = doc(db, 'psicologos', user.uid);
-  const snap = await getDoc(psicRef);
-  const faturasAtuais = snap.exists() ? (snap.data().historicoFaturas || []) : [];
-
-  const updatePayload = {
-    plano: planoEscolhido.id,
-    max_locais: planoEscolhido.maxLocais,
-    statusPagamento: 'ativo',
-    proximoVencimento: proximoVencimentoIso,
-    cartaoInfo: {
-      bandeira,
-      ultimos4,
-      nomeTitular: nomeTitular.toUpperCase().trim(),
-      validade: `${mes}/${ano}`,
-      atualizadoEm: new Date().toISOString(),
-    },
-    historicoFaturas: [novaFatura, ...faturasAtuais].slice(0, 50),
-    updatedAt: serverTimestamp(),
-  };
-
-  await updateDoc(psicRef, updatePayload);
-
-  await trackAction('SUBSCRIPTION_PLAN_UPGRADE', {
-    plano: planoEscolhido.id,
-    valor: planoEscolhido.preco,
-    bandeira,
-    ultimos4,
-  });
-
-  return {
-    success: true,
-    plano: planoEscolhido,
-    proximoVencimento: proximoVencimentoIso,
-    fatura: novaFatura,
-  };
+  return numLimpo;
 }
 
-// ==========================================
-// GERAÇÃO DE PIX MENSAL (ASAAS)
-// ==========================================
-export function gerarDadosPixMensal(planoId = 'profissional') {
-  const plano = PLANOS_CARITAS[planoId] || PLANOS_CARITAS.basico;
-  const txid = `CARITAS${Date.now().toString(36).toUpperCase()}`.slice(0, 25);
-  // BR Code válido (TLV + CRC16) gerado pelo utilitário oficial do projeto
-  const copiaECola = generatePixPayload({
-    chave: 'caritas-pagamentos@asaas.com.br',
-    nome: 'CARITAS',
-    cidade: 'SAO PAULO',
-    valor: plano.preco,
-    txid,
+/**
+ * Cria a assinatura recorrente no cartão. O plano só é ativado quando o Asaas confirmar o pagamento (webhook).
+ * Os dados do cartão seguem ao servidor e não são guardados no Firestore.
+ * @returns {Promise<{assinaturaId: string, status: string}>}
+ */
+export async function iniciarAssinaturaCartao({ planoId, cpfCnpj, cartao, cep, numeroEndereco, telefone }) {
+  if (!auth.currentUser) throw new Error('Usuário não autenticado.');
+  const numero = validarDadosCartao(cartao);
+  const { data } = await chamarFuncao('criarAssinaturaCartao')({
+    planoId,
+    cpfCnpj,
+    cep,
+    numeroEndereco,
+    telefone,
+    cartao: { numero, nomeTitular: cartao.nomeTitular, validade: cartao.validade, cvv: cartao.cvv },
   });
-
-  return {
-    txid,
-    valor: plano.preco,
-    planoNome: plano.nome,
-    copiaECola,
-    dataExpiracao: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  };
+  return data;
 }
+
+/**
+ * Gera a cobrança PIX do mês. A liberação acontece quando o webhook confirmar o pagamento.
+ * @returns {Promise<{paymentId: string, valor: number, copiaECola: string, qrCodeImagem: string, expiraEm: string}>}
+ */
+export async function gerarCobrancaPix({ planoId, cpfCnpj }) {
+  if (!auth.currentUser) throw new Error('Usuário não autenticado.');
+  const { data } = await chamarFuncao('criarCobrancaPix')({ planoId, cpfCnpj });
+  return data;
+}
+
 
 // ==========================================
 // REGULARIZAR ASSINATURA MANUALMENTE (SUPER ADMIN OU PIX CONFIRMADO)

@@ -45,6 +45,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Idempotência dos eventos do Asaas (webhookAsaas grava com Admin SDK)
+    match /asaas_eventos/{id} {
+      allow read, write: if false;
+    }
+
     // Fila da extensão Trigger Email
     match /mail/{id} {
       allow read, write: if false;
@@ -76,13 +81,26 @@ service cloud.firestore {
     }
 
     match /psicologos/{uid} {
-      // O próprio psicólogo pode ler e editar seu perfil, exceto bloqueio e cortesia (só admin).
-      // shortcut: plano/statusPagamento ainda são graváveis pelo dono enquanto o pagamento é simulado no cliente;
-      // bloquear junto quando a cobrança Asaas for para Cloud Function (docs/tarefas.md).
-      allow read, delete: if isOwner(uid) || isAdmin();
-      allow create: if isAdmin() || (isOwner(uid) && request.resource.data.get('isIsento', false) == false);
+      // O dono lê o próprio perfil e edita dados cadastrais. Plano, cobrança e trial são gravados
+      // só pelas Cloud Functions (webhookAsaas, Admin SDK) e pelo admin (docs/decisoes.md, cobrança Asaas).
+      allow read: if isOwner(uid) || isAdmin();
+      // Perfil inicial só nasce em trial, no plano básico, sem vínculo de cobrança
+      allow create: if isAdmin() || (isOwner(uid) &&
+        request.resource.data.get('isIsento', false) == false &&
+        request.resource.data.get('plano', 'basico') == 'basico' &&
+        request.resource.data.get('statusPagamento', 'trial') == 'trial' &&
+        request.resource.data.get('max_locais', 1) == 1 &&
+        !('cartaoInfo' in request.resource.data) &&
+        !('historicoFaturas' in request.resource.data) &&
+        !('asaasCustomerId' in request.resource.data) &&
+        !('asaasSubscriptionId' in request.resource.data));
       allow update: if isAdmin() || (isOwner(uid) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ativo', 'isIsento']));
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'ativo', 'isIsento', 'plano', 'statusPagamento', 'trialAte', 'proximoVencimento',
+          'historicoFaturas', 'max_locais', 'cartaoInfo', 'asaasCustomerId', 'asaasSubscriptionId'
+        ]));
+      // Apagar perfil (e recomeçar o trial) é só do admin
+      allow delete: if isAdmin();
 
       // Regras para subcoleções dentro do perfil do psicólogo
       match /pacientes/{pid} {

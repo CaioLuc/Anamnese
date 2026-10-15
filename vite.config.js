@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { configDefaults } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -25,5 +26,9 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 800
+  },
+  // Testes do emulador rodam só via `npm run test:rules` (precisam do Firebase Emulator Suite)
+  test: {
+    exclude: [...configDefaults.exclude, 'tests/emulador/**']
   }
 })

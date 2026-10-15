@@ -10,8 +10,8 @@ import { lerPerfilPsicologo, salvarPerfilPsicologo } from '../services/patientSe
 import { 
   PLANOS_CARITAS, 
   verificarStatusAssinatura, 
-  cadastrarCartaoEAtivarPlano, 
-  gerarDadosPixMensal, 
+  iniciarAssinaturaCartao, 
+  gerarCobrancaPix, 
   detectarBandeiraCartao 
 } from '../services/paymentService';
 import logger from '../utils/logger';
@@ -43,6 +43,8 @@ export default function PerfilEPlano({ onProfileUpdated }) {
     validade: '',
     cvv: '',
     cpfCnpj: '',
+    cep: '',
+    numeroEndereco: '',
   });
   const [cartaoLoading, setCartaoLoading] = useState(false);
   const [mostrarFormCartao, setMostrarFormCartao] = useState(false);
@@ -51,6 +53,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
   const [pixData, setPixData] = useState(null);
   // null = plano atual; preenchido ao clicar em "Contratar {plano}"
   const [pixPlanoSelecionado, setPixPlanoSelecionado] = useState(null);
+  const [pixLoading, setPixLoading] = useState(false);
 
   const carregarPerfil = async () => {
     setIsLoading(true);
@@ -105,21 +108,21 @@ export default function PerfilEPlano({ onProfileUpdated }) {
     setCartaoLoading(true);
     try {
       const targetPlano = planoIdEscolhido || perfil?.plano || 'profissional';
-      const res = await cadastrarCartaoEAtivarPlano({
-        numeroCartao: cartaoForm.numero,
-        nomeTitular: cartaoForm.nomeTitular,
-        validade: cartaoForm.validade,
-        cvv: cartaoForm.cvv,
+      await iniciarAssinaturaCartao({
         cpfCnpj: cartaoForm.cpfCnpj,
+        telefone: formData.telefone,
+        cep: cartaoForm.cep,
+        numeroEndereco: cartaoForm.numeroEndereco,
+        cartao: { numero: cartaoForm.numero, nomeTitular: cartaoForm.nomeTitular, validade: cartaoForm.validade, cvv: cartaoForm.cvv },
         planoId: targetPlano,
       });
 
       showToast({ 
         type: 'success', 
-        message: `Cartão vinculado com sucesso! Plano ${res.plano.nome} ativo.` 
+        message: `Assinatura criada. O plano é ativado quando o Asaas confirmar o pagamento.` 
       });
       setMostrarFormCartao(false);
-      setCartaoForm({ numero: '', nomeTitular: '', validade: '', cvv: '', cpfCnpj: '' });
+      setCartaoForm({ numero: '', nomeTitular: '', validade: '', cvv: '', cpfCnpj: '', cep: '', numeroEndereco: '' });
       await carregarPerfil();
       if (onProfileUpdated) onProfileUpdated();
     } catch (err) {
@@ -130,10 +133,18 @@ export default function PerfilEPlano({ onProfileUpdated }) {
     }
   };
 
-  const handleGerarPix = (planoId) => {
+  // Só cria a cobrança no servidor: a liberação vem do webhook, nunca daqui
+  const handleGerarPix = async (planoId) => {
     setPixPlanoSelecionado(planoId);
-    const dados = gerarDadosPixMensal(planoId);
-    setPixData(dados);
+    setPixLoading(true);
+    try {
+      setPixData(await gerarCobrancaPix({ planoId, cpfCnpj: cartaoForm.cpfCnpj }));
+    } catch (err) {
+      logger.error('Erro ao gerar cobrança PIX:', err);
+      showToast({ type: 'error', message: err.message || 'Não foi possível gerar o PIX.' });
+    } finally {
+      setPixLoading(false);
+    }
   };
 
   const copiarPix = async () => {
@@ -646,6 +657,34 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                      CEP
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={cartaoForm.cep}
+                      onChange={(e) => setCartaoForm({ ...cartaoForm, cep: e.target.value })}
+                      placeholder="00000-000"
+                      className="ds-input w-full font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                      Número do Endereço
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={cartaoForm.numeroEndereco}
+                      onChange={(e) => setCartaoForm({ ...cartaoForm, numeroEndereco: e.target.value })}
+                      className="ds-input w-full"
+                    />
+                  </div>
+                </div>
+
                 <div className="p-3 bg-[var(--bg-secondary)] rounded-lg text-[11px] text-[var(--text-muted)] flex items-start gap-2">
                   <Lock size={14} className="shrink-0 mt-0.5 text-emerald-500" />
                   <span>O número completo do cartão e o CVV não são armazenados; guardamos apenas bandeira, 4 últimos dígitos, titular e validade.</span>
@@ -667,7 +706,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                     className="ds-btn ds-btn-primary flex-1 flex items-center justify-center gap-2"
                   >
                     {cartaoLoading ? <RefreshCw className="animate-spin" size={16} /> : <Check size={16} />}
-                    Cadastrar e Ativar Plano
+                    Assinar com Cartão
                   </button>
                 </div>
               </form>
@@ -689,6 +728,19 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
             {!pixData ? (
               <div className="text-center py-8 space-y-4">
+                <div className="text-left">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                    CPF/CNPJ do Titular
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={cartaoForm.cpfCnpj}
+                    onChange={(e) => setCartaoForm({ ...cartaoForm, cpfCnpj: e.target.value })}
+                    placeholder="000.000.000-00"
+                    className="ds-input w-full font-mono"
+                  />
+                </div>
                 <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-600 mx-auto flex items-center justify-center">
                   <QrCode size={32} />
                 </div>
@@ -703,6 +755,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
                 <button
                   onClick={() => handleGerarPix(planoSelecionadoId)}
+                  disabled={pixLoading || !cartaoForm.cpfCnpj}
                   className="ds-btn ds-btn-primary px-6 py-2.5 inline-flex items-center gap-2"
                 >
                   <QrCode size={16} /> Gerar QR Code PIX

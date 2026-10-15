@@ -31,4 +31,9 @@ export default defineConfig([
     files: ['functions/**/*.js'],
     languageOptions: { globals: globals.node, sourceType: 'commonjs' },
   },
+  {
+    // Testes do Firebase Emulator Suite rodam em Node (ESM)
+    files: ['tests/emulador/**/*.js', 'vitest.emulador.config.js'],
+    languageOptions: { globals: globals.node },
+  },
 ])

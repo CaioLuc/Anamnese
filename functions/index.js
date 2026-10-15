@@ -1,8 +1,18 @@
 const crypto = require("crypto");
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+// Import modular: no emulador o proxy de admin.firestore perde FieldValue/Timestamp
+const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { OpenAI } = require("openai");
+const {
+  PLANOS_COBRANCA,
+  DIAS_CICLO,
+  montarReferencia,
+  chamarAsaas,
+  dataIsoMaisDias,
+  tratarWebhookAsaas,
+} = require("./asaas");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -107,7 +117,7 @@ exports.gerarResumoIA = onCall(
         tipo,
         tokens: tokensUsados,
         modelo: "gpt-4o-mini",
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
       });
 
       return { resumo, tokens: tokensUsados };
@@ -135,7 +145,7 @@ const MFA_SESSAO_VALIDADE_MS = 12 * 60 * 60 * 1000;
 const MFA_DISPOSITIVO_VALIDADE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const sha256 = (valor) => crypto.createHash("sha256").update(valor).digest("hex");
-const ts = (ms) => admin.firestore.Timestamp.fromMillis(ms);
+const ts = (ms) => Timestamp.fromMillis(ms);
 
 function exigirLogin(request) {
   if (!request.auth || !request.auth.token.email) {
@@ -162,7 +172,7 @@ async function liberarSessao(auth) {
   await db.doc(`mfa_sessoes/${auth.uid}_${auth.token.auth_time}`).set({
     uid: auth.uid,
     authTime: auth.token.auth_time,
-    verificadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    verificadoEm: FieldValue.serverTimestamp(),
     expiraEm: ts(Date.now() + MFA_SESSAO_VALIDADE_MS),
   });
 }
@@ -255,7 +265,7 @@ exports.verificarCodigoMfa = onCall({ region: REGIAO, cors: true }, async (reque
     tokenDispositivo = crypto.randomBytes(32).toString("base64url");
     await db.doc(`mfa_dispositivos/${sha256(tokenDispositivo)}`).set({
       uid: auth.uid,
-      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+      criadoEm: FieldValue.serverTimestamp(),
       expiraEm: ts(Date.now() + MFA_DISPOSITIVO_VALIDADE_MS),
     });
   }
@@ -274,4 +284,233 @@ exports.validarDispositivoMfa = onCall({ region: REGIAO, cors: true }, async (re
   }
   await liberarSessao(auth);
   return { ok: true };
+});
+
+// =============================================
+// COBRANÇA ASAAS (cartão recorrente e PIX mensal)
+// =============================================
+// O plano só muda no webhookAsaas, depois que o Asaas confirma o pagamento.
+// Os callables apenas criam a cobrança. Dados de cartão são repassados ao Asaas e não são guardados.
+
+const ASAAS_API_KEY = defineSecret("ASAAS_API_KEY");
+const ASAAS_WEBHOOK_TOKEN = defineSecret("ASAAS_WEBHOOK_TOKEN");
+// "sandbox" para testes; "producao" só depois de validar o fluxo inteiro
+const ASAAS_AMBIENTE = defineString("ASAAS_AMBIENTE", { default: "sandbox" });
+
+const configAsaas = () => ({ apiKey: ASAAS_API_KEY.value(), ambiente: ASAAS_AMBIENTE.value() });
+const somenteDigitos = (valor) => String(valor || "").replace(/\D/g, "");
+
+// Erro de dado do Asaas (4xx) vai ao usuário; o resto vira falha genérica, sem detalhe técnico
+function erroAsaas(err) {
+  console.error("Erro Asaas:", err.message, err.status || "");
+  if (err.status >= 400 && err.status < 500) {
+    return new HttpsError("invalid-argument", err.message);
+  }
+  return new HttpsError("internal", "Não foi possível falar com o Asaas. Tente novamente.");
+}
+
+async function comErroAsaas(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    throw erroAsaas(err);
+  }
+}
+
+async function exigirPsicologo(uid) {
+  const snap = await db.doc(`psicologos/${uid}`).get();
+  if (!snap.exists) throw new HttpsError("not-found", "Perfil de psicólogo não encontrado.");
+  return snap.data();
+}
+
+async function obterOuCriarCliente(uid, perfil, cpfCnpj, config) {
+  if (perfil.asaasCustomerId) return perfil.asaasCustomerId;
+  const cliente = await chamarAsaas(config, "/customers", {
+    metodo: "POST",
+    corpo: { name: perfil.nome || perfil.email, email: perfil.email, cpfCnpj, externalReference: uid },
+  });
+  await db.doc(`psicologos/${uid}`).update({ asaasCustomerId: cliente.id });
+  return cliente.id;
+}
+
+function validarCpfCnpj(valor) {
+  const cpf = somenteDigitos(valor);
+  if (cpf.length !== 11 && cpf.length !== 14) {
+    throw new HttpsError("invalid-argument", "Informe um CPF ou CNPJ válido.");
+  }
+  return cpf;
+}
+
+exports.criarCobrancaPix = onCall({ region: REGIAO, cors: true, secrets: [ASAAS_API_KEY] }, async (request) => {
+  const auth = exigirLogin(request);
+  await exigirSessaoMfa(auth);
+  const { planoId, cpfCnpj } = request.data || {};
+  const plano = PLANOS_COBRANCA[planoId];
+  if (!plano) throw new HttpsError("invalid-argument", "Plano inválido.");
+  const cpf = validarCpfCnpj(cpfCnpj);
+
+  const perfil = await exigirPsicologo(auth.uid);
+  const config = configAsaas();
+  return comErroAsaas(async () => {
+    const customer = await obterOuCriarCliente(auth.uid, perfil, cpf, config);
+    const cobranca = await chamarAsaas(config, "/payments", {
+      metodo: "POST",
+      corpo: {
+        customer,
+        billingType: "PIX",
+        value: plano.preco,
+        dueDate: dataIsoMaisDias(1),
+        description: `CARITAS — ${plano.nome}`,
+        externalReference: montarReferencia(auth.uid, planoId),
+      },
+    });
+    const qr = await chamarAsaas(config, `/payments/${cobranca.id}/pixQrCode`);
+    return {
+      paymentId: cobranca.id,
+      valor: plano.preco,
+      copiaECola: qr.payload,
+      qrCodeImagem: qr.encodedImage,
+      expiraEm: qr.expirationDate,
+    };
+  });
+});
+
+exports.criarAssinaturaCartao = onCall({ region: REGIAO, cors: true, secrets: [ASAAS_API_KEY] }, async (request) => {
+  const auth = exigirLogin(request);
+  await exigirSessaoMfa(auth);
+  const dados = request.data || {};
+  const plano = PLANOS_COBRANCA[dados.planoId];
+  if (!plano) throw new HttpsError("invalid-argument", "Plano inválido.");
+  const cpf = validarCpfCnpj(dados.cpfCnpj);
+
+  const numero = somenteDigitos(dados.cartao?.numero);
+  if (numero.length < 13 || numero.length > 19) {
+    throw new HttpsError("invalid-argument", "Número de cartão inválido.");
+  }
+  const [mes, ano] = String(dados.cartao?.validade || "").split("/").map((v) => v.trim());
+  if (!/^(0[1-9]|1[0-2])$/.test(mes || "") || !/^\d{2}$/.test(ano || "")) {
+    throw new HttpsError("invalid-argument", "Validade inválida (use MM/AA).");
+  }
+  const cvv = somenteDigitos(dados.cartao?.cvv);
+  if (cvv.length < 3 || cvv.length > 4) {
+    throw new HttpsError("invalid-argument", "CVV inválido.");
+  }
+  const nomeTitular = String(dados.cartao?.nomeTitular || "").trim();
+  if (nomeTitular.length < 3) {
+    throw new HttpsError("invalid-argument", "Informe o nome impresso no cartão.");
+  }
+  const cep = somenteDigitos(dados.cep);
+  if (cep.length !== 8) throw new HttpsError("invalid-argument", "CEP inválido.");
+  const numeroEndereco = String(dados.numeroEndereco || "").trim();
+  if (!numeroEndereco) throw new HttpsError("invalid-argument", "Informe o número do endereço.");
+  const telefone = somenteDigitos(dados.telefone);
+  if (telefone.length < 10) throw new HttpsError("invalid-argument", "Informe um telefone com DDD.");
+
+  const perfil = await exigirPsicologo(auth.uid);
+  const config = configAsaas();
+  return comErroAsaas(async () => {
+    const customer = await obterOuCriarCliente(auth.uid, perfil, cpf, config);
+    const assinatura = await chamarAsaas(config, "/subscriptions", {
+      metodo: "POST",
+      corpo: {
+        customer,
+        billingType: "CREDIT_CARD",
+        cycle: "MONTHLY",
+        value: plano.preco,
+        nextDueDate: dataIsoMaisDias(0),
+        description: `CARITAS — ${plano.nome}`,
+        externalReference: montarReferencia(auth.uid, dados.planoId),
+        creditCard: {
+          holderName: nomeTitular.toUpperCase(),
+          number: numero,
+          expiryMonth: mes,
+          expiryYear: `20${ano}`,
+          ccv: cvv,
+        },
+        creditCardHolderInfo: {
+          name: nomeTitular,
+          email: perfil.email,
+          cpfCnpj: cpf,
+          postalCode: cep,
+          addressNumber: numeroEndereco,
+          phone: telefone,
+        },
+        remoteIp: request.rawRequest?.ip,
+      },
+    });
+
+    // Assinatura anterior (troca de plano ou de cartão) sai só depois de a nova ser criada
+    if (perfil.asaasSubscriptionId) {
+      await chamarAsaas(config, `/subscriptions/${perfil.asaasSubscriptionId}`, { metodo: "DELETE" })
+        .catch((err) => console.error("Falha ao cancelar assinatura anterior:", err.message));
+    }
+
+    const cartao = assinatura.creditCard || {};
+    await db.doc(`psicologos/${auth.uid}`).update({
+      asaasSubscriptionId: assinatura.id,
+      cartaoInfo: {
+        bandeira: cartao.creditCardBrand || "Cartão",
+        ultimos4: String(cartao.creditCardNumber || numero).slice(-4),
+        nomeTitular: nomeTitular.toUpperCase(),
+        validade: `${mes}/${ano}`,
+        atualizadoEm: new Date().toISOString(),
+      },
+    });
+    // O plano só muda quando o webhook confirmar o primeiro pagamento
+    return { assinaturaId: assinatura.id, status: assinatura.status };
+  });
+});
+
+// Grava o efeito de um evento do Asaas. Idempotente: o mesmo evento (retry) não é aplicado duas vezes.
+async function aplicarEventoAsaas({ eventoId, uid, status, planoId, fatura, assinaturaCancelada }) {
+  const eventoRef = db.doc(`asaas_eventos/${eventoId}`);
+  const psicRef = db.doc(`psicologos/${uid}`);
+  return db.runTransaction(async (tx) => {
+    if ((await tx.get(eventoRef)).exists) return "duplicado";
+    const psic = await tx.get(psicRef);
+    if (!psic.exists) return "sem-perfil";
+    // Cancelamento de assinatura já substituída não pode derrubar a nova
+    if (assinaturaCancelada && psic.data().asaasSubscriptionId !== assinaturaCancelada) return "ignorado";
+
+    const dados = { statusPagamento: status, updatedAt: FieldValue.serverTimestamp() };
+    if (status === "ativo") {
+      Object.assign(dados, {
+        plano: planoId,
+        max_locais: PLANOS_COBRANCA[planoId].maxLocais,
+        proximoVencimento: dataIsoMaisDias(DIAS_CICLO),
+        historicoFaturas: FieldValue.arrayUnion(fatura),
+      });
+    }
+    if (assinaturaCancelada) dados.asaasSubscriptionId = FieldValue.delete();
+
+    tx.update(psicRef, dados);
+    tx.create(eventoRef, { uid, status, criadoEm: FieldValue.serverTimestamp() });
+    return "aplicado";
+  });
+}
+
+exports.webhookAsaas = onRequest({ region: REGIAO, secrets: [ASAAS_API_KEY, ASAAS_WEBHOOK_TOKEN] }, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({ mensagem: "Método não permitido." });
+    return;
+  }
+  try {
+    const { status, mensagem } = await tratarWebhookAsaas({
+      headers: req.headers,
+      corpo: req.body,
+      tokenEsperado: ASAAS_WEBHOOK_TOKEN.value(),
+      dependencias: {
+        consultarPagamento: (id) => chamarAsaas(configAsaas(), `/payments/${id}`),
+        consultarAssinatura: (id) => chamarAsaas(configAsaas(), `/subscriptions/${id}`),
+        aplicarEvento: aplicarEventoAsaas,
+        registrarErro: (msg) => console.error("Webhook Asaas:", msg),
+      },
+    });
+    res.status(status).json({ mensagem });
+  } catch (err) {
+    // 500 faz o Asaas tentar de novo
+    console.error("Erro no webhook Asaas:", err.message);
+    res.status(500).json({ mensagem: "Erro interno." });
+  }
 });
