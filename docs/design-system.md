@@ -72,7 +72,10 @@ Escalas Tailwind: `brand-50…950` (petróleo) e `clay-50…900` (terracota). N�
 | `ds-badge` + `-success/-warning/-danger` | Pílulas de status |
 | `ds-segmented` | Controle segmentado; o botão ativo usa `aria-pressed="true"` |
 | `ds-nav-item` / `ds-nav-group` | Item e título de grupo da navegação lateral |
-| `animate-in` | Entrada discreta (fade + 6px), desligada em `prefers-reduced-motion` |
+| `animate-in` | Entrada discreta (fade + 6px). Variações: `fade-in` (só opacidade), `zoom-in`/`zoom-in-95` (escala 0.96), `slide-in-from-top-2` (desce 8px). Em `prefers-reduced-motion` vira só opacidade em 150ms |
+| `ds-arrive` | Contorno de destaque que se apaga em 900ms: mostra onde um item chegou (campo novo/movido no construtor, texto trocado pela I.A.). Não desloca nada, por isso continua em movimento reduzido |
+
+**Movimento nas telas clínicas:** o stepper das anamneses (`components/anamnese/AnamneseStepper.jsx`) acompanha a rolagem, desliza um marcador até a etapa ativa e troca o ícone por um check quando todos os campos de texto da seção estão preenchidos. Barras de progresso animam `transform: scaleX`, nunca `width`.
 
 ---
 

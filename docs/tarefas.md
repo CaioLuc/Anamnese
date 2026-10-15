@@ -16,6 +16,18 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 - [ ] **Exclusão física de anamnese/sessão** (`deletarAnamnese`, `deletarSessao`) — avaliar soft delete por causa da guarda de 5 anos.
 - [x] **PIX da assinatura** — chave fictícia removida; cada cobrança PIX é criada no Asaas (`criarCobrancaPix`).
 - [ ] **TTL do Firestore** em `mfa_sessoes.expiraEm` e `mfa_dispositivos.expiraEm`.
+- [x] **Pagar antes de usar** — conta nova nasce `pendente`, preços R$ 59,90/119,90, Clínica sob consulta, pacientes ilimitados (ADR-2026-10-I).
+- [ ] **Cancelar cobranças antigas no Asaas sandbox** — as abertas com preço antigo não ativam plano após o deploy.
+
+## Pendências da auditoria de segurança de 15/10/2026
+
+Detalhes em [`auditoria-seguranca-2026-10-15.md`](./auditoria-seguranca-2026-10-15.md).
+
+- [ ] **Cartão fora do nosso servidor** — trocar o formulário de cartão pela página hospedada do Asaas (`invoiceUrl`).
+- [ ] **Admin sem leitura de pacientes de outros tenants** — contador `totalPacientes` no perfil e tirar `isAdmin()` de `pacientes`.
+- [ ] **Pseudonimizar texto enviado à OpenAI** e avisar antes do envio.
+- [ ] **App Check** nas callables.
+- [ ] **2FA**: tentativas por hora (não por código) e revogar dispositivos confiáveis na troca de senha.
 
 ---
 
