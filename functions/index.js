@@ -5,6 +5,7 @@ const admin = require("firebase-admin");
 // Import modular: no emulador o proxy de admin.firestore perde FieldValue/Timestamp
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { OpenAI } = require("openai");
+const nodemailer = require("nodemailer");
 const {
   PLANOS_COBRANCA,
   DIAS_CICLO,
@@ -132,7 +133,7 @@ exports.gerarResumoIA = onCall(
 // VERIFICAÇÃO EM DUAS ETAPAS (2FA) POR E-MAIL
 // =============================================
 // O código nunca sai do servidor: é gerado aqui, guardado só como hash e
-// enviado por e-mail pela extensão "Trigger Email" (coleção `mail`).
+// enviado direto por SMTP (nodemailer) — não fica gravado no Firestore.
 // A sessão liberada fica em `mfa_sessoes/{uid}_{auth_time}`, que as regras do
 // Firestore exigem para ler qualquer dado clínico.
 
@@ -191,7 +192,30 @@ function emailDoCodigo(codigo) {
   return { subject: "Seu código de verificação do CARITAS", text: texto, html };
 }
 
-exports.enviarCodigoMfa = onCall({ region: REGIAO, cors: true }, async (request) => {
+// SMTP do Brevo: login e remetente verificado em functions/.env, chave SMTP no Secret Manager
+const SMTP_USUARIO = defineString("SMTP_USUARIO", { default: "" });
+const SMTP_REMETENTE = defineString("SMTP_REMETENTE", { default: "" });
+const SMTP_SENHA = defineSecret("SMTP_SENHA");
+
+async function enviarEmail(para, mensagem) {
+  // No emulador o e-mail vai para a coleção `mail` (negada ao cliente) para os testes lerem o código
+  if (process.env.FUNCTIONS_EMULATOR === "true") {
+    await db.collection("mail").add({ to: para, message: mensagem });
+    return;
+  }
+  const usuario = SMTP_USUARIO.value();
+  const remetente = SMTP_REMETENTE.value();
+  if (!usuario || !remetente) throw new Error("SMTP_USUARIO/SMTP_REMETENTE não configurados em functions/.env");
+  const transporte = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    requireTLS: true,
+    auth: { user: usuario, pass: SMTP_SENHA.value() },
+  });
+  await transporte.sendMail({ from: `CARITAS <${remetente}>`, to: para, ...mensagem });
+}
+
+exports.enviarCodigoMfa = onCall({ region: REGIAO, cors: true, secrets: [SMTP_SENHA] }, async (request) => {
   const auth = exigirLogin(request);
   const ref = db.doc(`mfa_codigos/${auth.uid}`);
   const agora = Date.now();
@@ -216,8 +240,16 @@ exports.enviarCodigoMfa = onCall({ region: REGIAO, cors: true }, async (request)
       tentativas: 0,
       envios: [...enviosRecentes, agora],
     });
-    tx.create(db.collection("mail").doc(), { to: auth.token.email, message: emailDoCodigo(codigo) });
   });
+
+  try {
+    await enviarEmail(auth.token.email, emailDoCodigo(codigo));
+  } catch (e) {
+    console.error("Envio do código 2FA:", e.message);
+    // Falha no envio não conta como envio: invalida o código e libera novo pedido na hora
+    await ref.update({ hash: null, envios: FieldValue.arrayRemove(agora) });
+    throw new HttpsError("unavailable", "Não foi possível enviar o e-mail agora. Tente novamente em instantes.");
+  }
 
   return {
     enviadoPara: mascararEmail(auth.token.email),

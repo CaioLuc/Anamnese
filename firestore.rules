@@ -50,7 +50,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Fila da extensão Trigger Email
+    // E-mails do 2FA no emulador (produção envia por SMTP); nunca acessível ao cliente
     match /mail/{id} {
       allow read, write: if false;
     }

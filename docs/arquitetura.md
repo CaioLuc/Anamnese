@@ -170,7 +170,7 @@ Firestore Database
 
 1. **Login**: E-mail + senha via Firebase Auth (`authService.js`).
 2. **Verificação em duas etapas (2FA) por e-mail** — o código nunca existe no navegador:
-   - `enviarCodigoMfa` (Cloud Function) gera 6 dígitos com `crypto.randomInt`, grava só o **hash** em `mfa_codigos/{uid}` (validade 10 min, 5 tentativas, reenvio a cada 60 s, máx. 5 envios/hora) e enfileira o e-mail na coleção `mail` (extensão **Trigger Email**).
+   - `enviarCodigoMfa` (Cloud Function) gera 6 dígitos com `crypto.randomInt`, grava só o **hash** em `mfa_codigos/{uid}` (validade 10 min, 5 tentativas, reenvio a cada 60 s, máx. 10 envios/hora) e envia o e-mail direto por SMTP (Brevo via `nodemailer`). O código não fica gravado no Firestore.
    - `verificarCodigoMfa` compara em tempo constante, cria `mfa_sessoes/{uid}_{auth_time}` (validade 12 h), marca `emailVerified` e, se pedido, devolve um **token de dispositivo confiável** (30 dias; só o hash fica em `mfa_dispositivos`).
    - `validarDispositivoMfa` libera um novo login com esse token.
    - **Regras do Firestore** (`mfaOk()`): nenhum dado de `psicologos/**`, `config` ou `admins` é lido/escrito sem a sessão 2FA do `auth_time` atual. Senha vazada sozinha não abre prontuário.
@@ -182,12 +182,13 @@ Firestore Database
 
 ### Implantação do 2FA (obrigatória antes de publicar as regras)
 
-1. Instalar a extensão **Trigger Email from Firestore** (coleção `mail`) e configurar o SMTP.
-2. `firebase deploy --only functions` (runtime Node 22).
-3. `firebase deploy --only firestore:rules`.
-4. (Recomendado) Política de TTL do Firestore no campo `expiraEm` de `mfa_sessoes` e `mfa_dispositivos`.
+1. No Brevo: verificar o e-mail remetente (Senders) e gerar uma chave SMTP (SMTP & API).
+2. Em `functions/.env`: `SMTP_USUARIO=<login SMTP do Brevo>` e `SMTP_REMETENTE=<remetente verificado>`; depois `firebase functions:secrets:set SMTP_SENHA` (chave SMTP).
+3. `firebase deploy --only functions` (runtime Node 22).
+4. `firebase deploy --only firestore:rules`.
+5. (Recomendado) Política de TTL do Firestore no campo `expiraEm` de `mfa_sessoes` e `mfa_dispositivos`.
 
-> Publicar as regras sem as functions ou sem a extensão bloqueia o acesso de todos (ninguém recebe código).
+> Publicar as regras sem as functions ou com o SMTP mal configurado bloqueia o acesso de todos (ninguém recebe código).
 
 ### Testes das regras e do 2FA (Firebase Emulator Suite)
 

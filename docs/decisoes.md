@@ -142,7 +142,7 @@ Documento que registra as decisões de design e arquitetura inferidas a partir d
 
 ### ADR-2026-10-A — 2FA validado no servidor e exigido pelas regras
 - **Contexto**: o código era gerado no navegador, exibido na tela e havia um código mestre (`123456`). Não protegia nada.
-- **Decisão**: código gerado e conferido em Cloud Functions, enviado só por e-mail (extensão Trigger Email, sem dependência nova), sessão ligada ao `auth_time` do token e checada nas regras (`mfaOk()`).
+- **Decisão**: código gerado e conferido em Cloud Functions, enviado só por e-mail (SMTP direto da Function com `nodemailer`; ver ADR-2026-10-H), sessão ligada ao `auth_time` do token e checada nas regras (`mfaOk()`).
 - **Consequência**: deploy de functions + rules precisa ser conjunto; e-mail mal configurado bloqueia o acesso.
 
 ### ADR-2026-10-B — Líder Clínico vem do plano
@@ -166,6 +166,11 @@ Documento que registra as decisões de design e arquitetura inferidas a partir d
 - **Segredos**: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no Secret Manager. `ASAAS_AMBIENTE` (`sandbox` por padrão) escolhe a URL.
 - **Consequências**: cartão não é guardado (só bandeira e 4 últimos dígitos). Trocar plano com assinatura de cartão cancela a anterior depois da nova ser criada. Cancelamento de assinatura substituída é ignorado. Cobrança PIX não paga não altera o acesso. Deploy das functions e das regras precisa ser conjunto.
 - **Limites**: preços duplicados no servidor (`PLANOS_COBRANCA`) e no cliente (`PLANOS_CARITAS`), mantidos iguais por teste manual. Teste ponta a ponta só no sandbox do Asaas.
+
+### ADR-2026-10-H — E-mail do 2FA direto da Function, sem a extensão Trigger Email
+- **Contexto**: a extensão Trigger Email exigia instalação e configuração à parte e deixava o código em claro na coleção `mail` até o TTL.
+- **Decisão**: `enviarCodigoMfa` envia pelo SMTP do Brevo com `nodemailer` (`SMTP_USUARIO` e `SMTP_REMETENTE` em `functions/.env`, `SMTP_SENHA` no Secret Manager). Falha no envio invalida o código e não conta no limite de reenvio.
+- **Consequência**: uma dependência nova (`nodemailer`); plano grátis do Brevo (~300 e-mails/dia); senha de app do Gmail não estava disponível na conta. No emulador o e-mail vai para `mail` para os testes lerem o código.
 
 ### ADR-2026-10-F — Trilha de auditoria append-only
 - **Decisão**: `action_logs` sem `update`/`delete` nas regras; `psicologoId` precisa ser o do usuário autenticado. Removido o botão "Limpar +30d" do Painel Admin.
