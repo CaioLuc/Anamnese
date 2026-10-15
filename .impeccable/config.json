@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-10-15T18:29:10.997Z",
+        "reason": "Template de e-mail do codigo 2FA (functions/index.js, emailDoCodigo), ja existia no HEAD. Arial e a fonte segura para e-mail nos clientes; nao e UI do app."
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "src/components/PerfilEPlano.jsx"
+        ],
+        "createdAt": "2026-10-15T18:29:11.197Z",
+        "reason": "Abas Navegacao (rounded-t-lg + border-b-2) ja existiam no HEAD. Borda so na base, cantos de baixo quadrados: indicador de aba ativa, sem conflito com o raio."
+      }
+    ]
+  }
+}

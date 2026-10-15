@@ -6,6 +6,7 @@ import { useKeyboard } from '../hooks/useKeyboard';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useToast } from '../contexts/ToastContext';
 import { trackAction } from '../services/logService';
+import AnamneseStepper from './anamnese/AnamneseStepper';
 
 import { ClipboardList, Users, Target, Repeat, Moon, Activity, CheckCircle2 } from 'lucide-react';
 
@@ -88,11 +89,13 @@ function Switch({ label, name, checked, onChange }) {
   );
 }
 
+// Mesmo ícone da etapa no stepper: liga visualmente o cabeçalho ao lugar onde ele aparece no topo
 function SectionHeader({ title, desc, step }) {
+  const Icone = STEPS[Number(step)]?.icon;
   return (
     <div className="flex items-center gap-4 mb-6 pt-8 first:pt-0">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
-         {step}
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
+         {Icone && <Icone size={17} aria-hidden="true" />}
       </div>
       <div>
         <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
@@ -391,24 +394,13 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             </div>
 
             {/* Stepper */}
-            <div className="flex gap-1.5 overflow-x-auto pb-3 custom-scrollbar sticky top-0 z-30 pt-2 px-1 border-b" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
-              {STEPS.map((s, idx) => (
-                <button
-                  type="button"
-                  key={idx}
-                  onClick={() => scrollToStep(idx)}
-                  className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] sm:min-h-0 text-[11px] font-bold whitespace-nowrap rounded-xl transition-all border"
-                  style={{
-                    backgroundColor: currentStep === idx ? 'var(--accent)' : 'var(--bg-card)',
-                    color: currentStep === idx ? '#FFFFFF' : 'var(--text-secondary)',
-                    borderColor: currentStep === idx ? 'var(--accent)' : 'transparent',
-                    boxShadow: currentStep === idx ? 'var(--shadow)' : 'none'
-                  }}
-                >
-                  <s.icon size={15} className="inline shrink-0" /> {s.label}
-                </button>
-              ))}
-            </div>
+            <AnamneseStepper
+              steps={STEPS}
+              active={currentStep}
+              onActiveChange={setCurrentStep}
+              onSelect={scrollToStep}
+              progressKey={formData}
+            />
             
             {/* ==========================================
                 SEÇÃO 0: Histórico Prévio
@@ -516,7 +508,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             {/* ==========================================
                 SEÇÃO 4: Hábitos e Rotina (NOVO)
             ========================================== */}
-            <section id="step-4" className={sectionClass} style={{ borderLeft: '4px solid var(--accent)' }}>
+            <section id="step-4" className={sectionClass}>
                 <SectionHeader step="4" title="Hábitos e Rotina" desc="Padrões de sono, alimentação, exercício e lazer." />
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
