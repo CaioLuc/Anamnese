@@ -129,3 +129,43 @@ export const formatDuration = (minutes) => {
   return `${m} min`;
 };
 
+
+/**
+ * Data local no formato 'YYYY-MM-DD'.
+ * Use no lugar de `toISOString().split('T')[0]`, que devolve a data UTC
+ * (após 21h no horário de Brasília já seria o dia seguinte).
+ * @param {Date} [data]
+ * @returns {string}
+ */
+export const dataLocalISO = (data = new Date()) => {
+  const y = data.getFullYear();
+  const m = String(data.getMonth() + 1).padStart(2, '0');
+  const d = String(data.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Telefone brasileiro em formato internacional só com dígitos (ex: 5521999990000).
+ * Retorna '' quando o número não tem 10 ou 11 dígitos nacionais (sem DDI) ou 12/13 com DDI 55.
+ * @param {string} tel
+ * @returns {string}
+ */
+export const telefoneInternacionalBR = (tel) => {
+  const digitos = String(tel || '').replace(/\D/g, '');
+  if (digitos.length === 10 || digitos.length === 11) return `55${digitos}`;
+  if ((digitos.length === 12 || digitos.length === 13) && digitos.startsWith('55')) return digitos;
+  return '';
+};
+
+/**
+ * Link do WhatsApp para um telefone brasileiro. Sem telefone válido, retorna '' para
+ * que a mensagem (que pode conter dados do paciente) nunca vá para o número errado.
+ * @param {string} tel
+ * @param {string} texto
+ * @returns {string}
+ */
+export const linkWhatsApp = (tel, texto = '') => {
+  const numero = telefoneInternacionalBR(tel);
+  if (!numero) return '';
+  return `https://wa.me/${numero}${texto ? `?text=${encodeURIComponent(texto)}` : ''}`;
+};

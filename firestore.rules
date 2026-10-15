@@ -1,76 +1,138 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Helper function to check if the user is logged in
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    // Verificação em duas etapas concluída nesta sessão de login.
+    // O documento só é criado pelas Cloud Functions (enviarCodigoMfa / verificarCodigoMfa /
+    // validarDispositivoMfa) e vale para o auth_time do token atual.
+    function mfaOk() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/mfa_sessoes/$(request.auth.uid + '_' + string(request.auth.token.auth_time))).data.expiraEm > request.time;
+    }
+
     // Helper function for the hierarchical structure: psicologos/{uid}/...
     function isOwner(uid) {
-      return isAuthenticated() && request.auth.uid == uid;
+      return isAuthenticated() && request.auth.uid == uid && mfaOk();
     }
 
     // Helper function to check if the user is an admin
     function isAdmin() {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        mfaOk();
+    }
+
+    // ===================================
+    // 2FA (somente Cloud Functions escrevem)
+    // ===================================
+    match /mfa_sessoes/{sid} {
+      // O app só consulta a sessão do próprio login atual
+      allow get: if isAuthenticated() &&
+        sid == request.auth.uid + '_' + string(request.auth.token.auth_time);
+      allow list, write: if false;
+    }
+
+    match /mfa_codigos/{uid} {
+      allow read, write: if false;
+    }
+
+    match /mfa_dispositivos/{id} {
+      allow read, write: if false;
+    }
+
+    // Fila da extensão Trigger Email
+    match /mail/{id} {
+      allow read, write: if false;
     }
 
     // ===================================
     // ADMIN ACCESS
     // ===================================
     match /admins/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid) || isAdmin();
+      // Somente o e-mail bootstrap (com e-mail comprovado pelo 2FA) se auto-registra.
+      // Demais admins: console do Firebase ou Admin SDK.
+      allow create: if isOwner(uid) &&
+        request.auth.token.email == '241.14.035@uniriosead.com' &&
+        request.auth.token.email_verified == true;
+      allow update, delete: if false;
     }
 
-    // ===================================
-    // ESTRUTURA PROTEGIDA (PER-USER)
-    // ===================================
     // ===================================
     // SLUG LOOKUP (Leitura pública)
     // ===================================
     match /slugs/{slug} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      // Cada psicólogo só cria ou move slugs que apontam para o próprio uid
+      allow create: if isAuthenticated() && mfaOk() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAuthenticated() && mfaOk() &&
+        resource.data.uid == request.auth.uid &&
+        (request.method == 'delete' || request.resource.data.uid == request.auth.uid);
     }
 
     match /psicologos/{uid} {
-      // O próprio psicólogo pode ler e editar seu perfil
-      // Admins podem ler e editar qualquer perfil
-      allow read, write: if isOwner(uid) || isAdmin();
-      
+      // O próprio psicólogo pode ler e editar seu perfil, exceto bloqueio e cortesia (só admin).
+      // shortcut: plano/statusPagamento ainda são graváveis pelo dono enquanto o pagamento é simulado no cliente;
+      // bloquear junto quando a cobrança Asaas for para Cloud Function (docs/tarefas.md).
+      allow read, delete: if isOwner(uid) || isAdmin();
+      allow create: if isAdmin() || (isOwner(uid) && request.resource.data.get('isIsento', false) == false);
+      allow update: if isAdmin() || (isOwner(uid) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ativo', 'isIsento']));
+
       // Regras para subcoleções dentro do perfil do psicólogo
       match /pacientes/{pid} {
         allow read, write: if isOwner(uid) || isAdmin();
-        
+
         match /anamneses/{aid} {
           allow read, write: if isOwner(uid);
         }
-        
+
         match /sessoes/{sid} {
           allow read, write: if isOwner(uid);
         }
       }
-      
+
       match /questionarios/{qid} {
         allow read, write: if isOwner(uid);
       }
-      
+
       // Agendamentos: PRIVADO — contém dados pessoais (nome, CPF, telefone)
       // Somente o psicólogo dono pode ler e gerenciar
       // Criação pública permitida (paciente agenda pelo link)
+      // Criação pública só no formato da página de agendamento: status pendente,
+      // origem pública, sem vínculo com paciente e com tamanhos limitados.
       match /agendamentos/{aid} {
         allow read, update, delete: if isOwner(uid);
-        allow create: if true;
+        allow create: if isOwner(uid) || (
+          request.resource.data.status == 'pendente' &&
+          request.resource.data.origem == 'publico' &&
+          !('id_paciente' in request.resource.data) &&
+          request.resource.data.data is string && request.resource.data.data.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+          request.resource.data.hora is string && request.resource.data.hora.matches('^\\d{2}:\\d{2}$') &&
+          request.resource.data.size() <= 15 &&
+          (!('observacoes' in request.resource.data) || request.resource.data.observacoes.size() <= 500) &&
+          (!('nome_paciente' in request.resource.data) || request.resource.data.nome_paciente.size() <= 120) &&
+          (!('cpf_paciente' in request.resource.data) || request.resource.data.cpf_paciente.size() <= 14) &&
+          (!('telefone_paciente' in request.resource.data) || request.resource.data.telefone_paciente.size() <= 20)
+        );
       }
 
       // Horários ocupados: PÚBLICO — espelho seguro (apenas data, hora, duração, status)
-      // Nenhum dado pessoal. Leitura e criação públicas para a página de agendamento.
+      // Nenhum dado pessoal. Criação pública só como espelho de um agendamento existente.
       match /horarios_ocupados/{sid} {
         allow read: if true;
-        allow create: if true;
+        allow create: if isOwner(uid) || (
+          existsAfter(/databases/$(database)/documents/psicologos/$(uid)/agendamentos/$(sid)) &&
+          getAfter(/databases/$(database)/documents/psicologos/$(uid)/agendamentos/$(sid)).data.data == request.resource.data.data &&
+          getAfter(/databases/$(database)/documents/psicologos/$(uid)/agendamentos/$(sid)).data.hora == request.resource.data.hora &&
+          request.resource.data.keys().hasOnly(['data', 'hora', 'duracao_min', 'status']) &&
+          request.resource.data.status == 'pendente'
+        );
         allow update, delete: if isOwner(uid);
       }
 
@@ -78,9 +140,10 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
-      // Config da agenda: dono escreve, leitura pública (para página de agendamento)
+      // Config da agenda: dono escreve, leitura pública (para página de agendamento).
+      // Demais configs (ex.: config/pix com a chave PIX) são privadas.
       match /config/{docId} {
-        allow read: if true;
+        allow read: if docId == 'agenda' || isOwner(uid);
         allow write: if isOwner(uid);
       }
     }
@@ -89,8 +152,13 @@ service cloud.firestore {
     // CONFIG GLOBAL (avisos, etc.)
     // ===================================
     match /config/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && mfaOk();
       allow write: if isAdmin();
+    }
+
+    // Contratos de clínicas (Painel Admin → Clientes & Líderes)
+    match /clinicas_clientes/{id} {
+      allow read, write: if isAdmin();
     }
 
     // ===================================
@@ -104,10 +172,16 @@ service cloud.firestore {
     // ===================================
     // LOGS DE AUDITORIA (Telemetria)
     // ===================================
+    // Criação antes do 2FA é necessária para registrar LOGIN / tentativas.
     match /action_logs/{logId} {
-      allow create: if isAuthenticated();
-      allow read, delete: if isAdmin();
-      allow update: if false;
+      allow create: if isAuthenticated() &&
+        request.resource.data.psicologoId == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['psicologoId', 'psicologoEmail', 'actionType', 'metadata', 'createdAt', 'userAgent']) &&
+        request.resource.data.actionType is string && request.resource.data.actionType.size() <= 64 &&
+        request.resource.data.metadata.size() <= 30;
+      allow read: if isAdmin();
+      // Trilha de auditoria append-only (LGPD art. 37 / AGENTS.md §2.4)
+      allow update, delete: if false;
     }
 
     // Bloqueio padrão para qualquer outra rota não especificada

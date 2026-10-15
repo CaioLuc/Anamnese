@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { generatePixPayload, identificarTipoChave } from '../utils/pixUtils';
-import { X, Copy, Check, MessageCircle, QrCode, AlertTriangle, Smartphone, Laptop } from 'lucide-react';
+import { generatePixPayload } from '../utils/pixUtils';
+import { linkWhatsApp } from '../utils/formatUtils';
+import { X, Copy, Check, MessageCircle, QrCode, AlertTriangle, Smartphone, Laptop, Loader2 } from 'lucide-react';
 import logger from '../utils/logger';
 
 /**
@@ -13,29 +14,31 @@ import logger from '../utils/logger';
  * @param {object} sessao       — { data_sessao, pago, forma_pagamento, ... }
  * @param {object} paciente     — { nome, telefone, ... }
  * @param {number} valor        — valor numérico já calculado
- * @param {object} pixConfig    — { pix_chave, pix_titular, pix_cidade } do psicólogo
+ * @param {object|null} pixConfig — { pix_chave, pix_titular, pix_cidade } do psicólogo; null = ainda carregando
  */
 export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, valor, pixConfig }) {
   const [copied, setCopied] = useState(false);
   const [payload, setPayload] = useState('');
   const [error, setError] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [avisoWhats, setAvisoWhats] = useState('');
+  const [linkWhats, setLinkWhats] = useState('');
   const modalRef = useRef(null);
+  const carregandoPix = pixConfig == null;
 
   useEffect(() => {
     if (!isOpen) return;
     setCopied(false);
     setError('');
+    setAvisoWhats('');
+    setLinkWhats('');
+    setPayload('');
 
-    if (!pixConfig?.pix_chave || !pixConfig?.pix_titular || !pixConfig?.pix_cidade) {
+    // Configuração ainda não chegou: não acusa erro antes de saber
+    if (!pixConfig) return;
+
+    if (!pixConfig.pix_chave || !pixConfig.pix_titular || !pixConfig.pix_cidade) {
       setError('Configure sua chave PIX nas Configurações da Agenda antes de cobrar.');
-      setPayload('');
-      return;
-    }
-
-    const { valid } = identificarTipoChave(pixConfig.pix_chave);
-    if (!valid) {
-      setError('A chave PIX configurada parece inválida. Verifique nas Configurações.');
-      setPayload('');
       return;
     }
 
@@ -50,8 +53,7 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
       setPayload(pix);
     } catch (e) {
       logger.error('Erro ao gerar payload PIX:', e);
-      setError('Erro ao gerar o código PIX. Verifique as configurações.');
-      setPayload('');
+      setError(e.message || 'Erro ao gerar o código PIX. Verifique as configurações.');
     }
   }, [isOpen, pixConfig, valor]);
 
@@ -141,50 +143,58 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
 
     const mensagem = `Olá, ${nomeP}!\n\nSegue o PIX para pagamento da sessão do dia *${dataFormatada}* no valor de *${valorFormatado}*.\n\n*Código Copia e Cola:*\n${payload}\n\nBasta copiar o código acima e colar no app do seu banco na opção "PIX Copia e Cola".`;
 
-    try {
-      const blob = await qrToImageBlob();
-      const file = new File([blob], `pix-${nomeP.replace(/\s/g, '-')}.png`, { type: 'image/png' });
+    setAvisoWhats('');
+    setLinkWhats('');
+    // Sem telefone válido, a mensagem com dados do paciente não sai para conversa nenhuma
+    const link = linkWhatsApp(paciente?.telefone, mensagem);
+    if (!link) {
+      setAvisoWhats('Cadastre o telefone do paciente (com DDD) para enviar a cobrança pelo WhatsApp.');
+      return;
+    }
 
-      // Tenta a Web Share API (funciona no celular e PWA — envia imagem + texto junto)
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          text: mensagem,
-          files: [file],
-        });
-        return;
+    const nomeArquivo = `pix-${nomeP.replace(/\s/g, '-')}.png`;
+    const podeCompartilhar = !!navigator.canShare?.({ files: [new File([], nomeArquivo, { type: 'image/png' })] });
+    // Abre a aba ainda no clique: window.open depois de await é bloqueado como pop-up
+    const janela = podeCompartilhar ? null : window.open('', '_blank');
+    if (janela) janela.opener = null;
+
+    setEnviando(true);
+    try {
+      let blob = null;
+      try {
+        blob = await qrToImageBlob();
+        // Web Share API (celular e PWA — envia imagem + texto junto)
+        if (podeCompartilhar) {
+          await navigator.share({ text: mensagem, files: [new File([blob], nomeArquivo, { type: 'image/png' })] });
+          return;
+        }
+      } catch (e) {
+        if (e.name === 'AbortError') return; // Usuário cancelou, não faz nada
+        logger.warn('Web Share não disponível, usando fallback:', e);
       }
-    } catch (e) {
-      // Se o usuário cancelou o share ou não suporta, cai no fallback abaixo
-      if (e.name === 'AbortError') return; // Usuário cancelou, não faz nada
-      logger.warn('Web Share não disponível, usando fallback:', e);
-    }
 
-    // Fallback: baixa a imagem e abre o WhatsApp com o texto
-    try {
-      const blob = await qrToImageBlob();
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `pix-${nomeP.replace(/\s/g, '-')}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-    } catch (e) {
-      logger.warn('Falha ao baixar QR:', e);
-    }
+      // Fallback: baixa a imagem e abre o WhatsApp com o texto
+      try {
+        if (!blob) throw new Error('QR Code indisponível');
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = nomeArquivo;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+      } catch (e) {
+        logger.warn('Falha ao baixar QR:', e);
+        setAvisoWhats('Não foi possível baixar a imagem do QR Code. A mensagem segue com o código Copia e Cola.');
+      }
 
-    // Abre WhatsApp com o texto
-    let tel = '';
-    if (paciente?.telefone) {
-      tel = paciente.telefone.replace(/\D/g, '');
-      if (!tel.startsWith('55')) tel = '55' + tel;
+      // Pop-up bloqueado ou Web Share falhou: oferece o link para clique manual
+      if (janela) janela.location.href = link;
+      else setLinkWhats(link);
+    } finally {
+      setEnviando(false);
     }
-
-    const url = tel
-      ? `https://wa.me/${tel}?text=${encodeURIComponent(mensagem)}`
-      : `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
-    window.open(url, '_blank');
   };
 
   return (
@@ -218,7 +228,11 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
 
         {/* Body */}
         <div className="px-5 pb-5 space-y-4">
-          {error ? (
+          {carregandoPix ? (
+            <p className="p-4 text-sm font-medium flex items-center justify-center gap-1.5" style={{ color: 'var(--text-muted)' }} role="status">
+              <Loader2 size={16} className="animate-spin" /> Carregando dados do PIX…
+            </p>
+          ) : error ? (
             <div className="p-4 rounded-xl text-center" style={{ backgroundColor: 'var(--status-danger-bg)', border: '1px solid var(--status-danger)' }}>
               <p className="text-sm font-medium flex items-center justify-center gap-1.5" style={{ color: 'var(--status-danger-text)' }}>
                 <AlertTriangle size={16} /> {error}
@@ -279,12 +293,25 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
               {/* Botão WhatsApp */}
               <button
                 onClick={handleWhatsApp}
-                className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98]"
+                disabled={enviando}
+                className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                 style={{ backgroundColor: '#25D366', color: '#FFFFFF' }}
               >
-                <MessageCircle size={18} />
-                Enviar QR Code pelo WhatsApp
+                {enviando
+                  ? <><Loader2 size={18} className="animate-spin" /> Preparando envio…</>
+                  : <><MessageCircle size={18} /> Enviar QR Code pelo WhatsApp</>}
               </button>
+
+              {(avisoWhats || linkWhats) && (
+                <p className="text-xs font-medium text-center" style={{ color: 'var(--status-warning-text)' }} role="alert">
+                  {avisoWhats}{' '}
+                  {linkWhats && (
+                    <a href={linkWhats} target="_blank" rel="noopener noreferrer" className="underline font-bold">
+                      Abrir WhatsApp
+                    </a>
+                  )}
+                </p>
+              )}
 
               <div className="text-[10px] text-center flex flex-col sm:flex-row items-center justify-center gap-3 pt-1" style={{ color: 'var(--text-muted)' }}>
                 <span className="flex items-center gap-1"><Smartphone size={12} /> No celular: envia imagem + texto direto.</span>

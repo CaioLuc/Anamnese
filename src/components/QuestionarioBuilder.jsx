@@ -1,7 +1,9 @@
 import logger from '../utils/logger';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { criarQuestionario, atualizarQuestionario } from '../services/patientService';
 import Button from './ui/Button';
+import ConfirmDialog from './ConfirmDialog';
+import { useToast } from '../contexts/ToastContext';
 import { 
   Folder, AlignLeft, FileText, CircleDot, CheckSquare, List, Hash, Calendar, 
   Trash2, ChevronUp, ChevronDown, ChevronDown as ChevronDownIcon, X, Plus, Smile,
@@ -45,6 +47,29 @@ const renderIconById = (id, size = 20) => {
   return <ClipboardList size={size} />;
 };
 
+// Área de toque mínima de 44px no mobile (WCAG 2.5.5)
+const TOQUE_44 = 'min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center';
+
+const limitar = (v, lo, hi) => Math.min(hi, Math.max(lo, parseInt(v, 10) || 0));
+
+// Retorna a descrição do primeiro problema que impede salvar, ou '' se estiver tudo certo
+function primeiroProblema(nome, campos) {
+  if (!nome.trim()) return 'O nome do questionário é obrigatório.';
+  if (campos.length === 0) return 'Adicione pelo menos um campo.';
+  for (const [i, c] of campos.entries()) {
+    const ref = c.label?.trim() ? `Campo ${i + 1} ("${c.label.trim()}")` : `Campo ${i + 1}`;
+    if (!c.label?.trim()) return `${ref}: o título/pergunta não pode ficar vazio.`;
+    if (['radio', 'checkbox', 'select'].includes(c.tipo)) {
+      const opcoes = (c.opcoes || []).map(o => o.trim().toLowerCase());
+      if (opcoes.length === 0) return `${ref}: adicione pelo menos uma opção.`;
+      if (opcoes.includes('')) return `${ref}: há uma opção em branco.`;
+      if (new Set(opcoes).size !== opcoes.length) return `${ref}: há opções duplicadas.`;
+    }
+    if (c.tipo === 'scale' && (c.min ?? 1) >= (c.max ?? 10)) return `${ref}: o mínimo da escala deve ser menor que o máximo.`;
+  }
+  return '';
+}
+
 // Editor de opções com inputs individuais (substituindo o textarea)
 function OpcoesEditor({ opcoes = [], onChange }) {
   const [novaOpcao, setNovaOpcao] = useState('');
@@ -81,7 +106,7 @@ function OpcoesEditor({ opcoes = [], onChange }) {
                 value={opcao}
                 onChange={(e) => editOpcao(idx, e.target.value)}
                 className="flex-1 px-2 py-1.5 text-sm rounded-md transition-colors"
-                style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)', color: 'var(--text-primary)' }}
+                style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               />
               <button
                 type="button"
@@ -125,30 +150,31 @@ function CampoEditor({ campo, onChange, onRemover, onMover, isFirst, isLast }) {
   const TipoIcon = TIPOS_CAMPO.find(t => t.tipo === campo.tipo)?.icone || FileText;
 
   return (
-    <div className="rounded-xl overflow-hidden transition-shadow" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)', boxShadow: expanded ? 'var(--shadow)' : 'none' }}>
+    <div className="rounded-xl overflow-hidden transition-shadow" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: expanded ? 'var(--shadow)' : 'none' }}>
       {/* Header do campo */}
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: expanded ? '0.5px solid var(--border)' : 'none' }}>
+      <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: expanded ? '1px solid var(--border)' : 'none' }}>
         <div className="flex flex-col gap-0.5">
-          <button onClick={() => onMover('up')} disabled={isFirst} className="disabled:opacity-20 transition-colors" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={() => onMover('up')} disabled={isFirst} aria-label="Mover campo para cima" className={`${TOQUE_44} disabled:opacity-20 transition-colors`} style={{ color: 'var(--text-muted)' }}>
             <ChevronUp size={14} />
           </button>
-          <button onClick={() => onMover('down')} disabled={isLast} className="disabled:opacity-20 transition-colors" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={() => onMover('down')} disabled={isLast} aria-label="Mover campo para baixo" className={`${TOQUE_44} disabled:opacity-20 transition-colors`} style={{ color: 'var(--text-muted)' }}>
             <ChevronDown size={14} />
           </button>
         </div>
 
-        <span className="text-sm font-medium flex-1 truncate flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <TipoIcon size={16} style={{ color: 'var(--text-muted)' }} />
+        <span className="text-sm font-medium flex-1 min-w-0 truncate flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <TipoIcon size={16} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
           {campo.label || <span className="italic" style={{ color: 'var(--text-muted)' }}>(sem título)</span>}
         </span>
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+        {/* No mobile o ícone já indica o tipo; o badge cede espaço aos alvos de toque */}
+        <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
           {TIPOS_CAMPO.find(t => t.tipo === campo.tipo)?.label || campo.tipo}
         </span>
 
-        <button onClick={() => setExpanded(e => !e)} className="transition-transform duration-200" style={{ color: 'var(--text-muted)', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+        <button onClick={() => setExpanded(e => !e)} aria-label={expanded ? 'Recolher campo' : 'Expandir campo'} aria-expanded={expanded} className={`${TOQUE_44} transition-transform duration-200`} style={{ color: 'var(--text-muted)', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
           <ChevronDownIcon size={16} />
         </button>
-        <button onClick={onRemover} className="transition-colors hover:text-red-500" style={{ color: 'var(--status-danger)' }}>
+        <button onClick={onRemover} aria-label="Remover campo" className={`${TOQUE_44} transition-colors hover:text-red-500`} style={{ color: 'var(--status-danger)' }}>
           <Trash2 size={16} />
         </button>
       </div>
@@ -196,12 +222,18 @@ function CampoEditor({ campo, onChange, onRemover, onMover, isFirst, isLast }) {
             <div className="flex gap-3">
               <div className="flex-1">
                 <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Mínimo</label>
-                <input type="number" value={campo.min ?? 1} onChange={(e) => onChange({ ...campo, min: Number(e.target.value) })}
+                {/* Mínimo 0..10; ao sair, empurra o máximo se ficou igual/menor */}
+                <input type="number" min={0} max={10} value={campo.min ?? 1}
+                  onChange={(e) => onChange({ ...campo, min: limitar(e.target.value, 0, 10) })}
+                  onBlur={() => (campo.max ?? 10) <= (campo.min ?? 1) && onChange({ ...campo, max: (campo.min ?? 1) + 1 })}
                   className="ds-input" />
               </div>
               <div className="flex-1">
                 <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Máximo</label>
-                <input type="number" value={campo.max ?? 10} onChange={(e) => onChange({ ...campo, max: Number(e.target.value) })}
+                {/* Máximo (mínimo+1)..20 → no máximo 21 botões; o piso só é aplicado no blur para não travar a digitação */}
+                <input type="number" min={(campo.min ?? 1) + 1} max={20} value={campo.max ?? 10}
+                  onChange={(e) => onChange({ ...campo, max: limitar(e.target.value, 0, 20) })}
+                  onBlur={() => onChange({ ...campo, max: limitar(campo.max ?? 10, (campo.min ?? 1) + 1, 20) })}
                   className="ds-input" />
               </div>
             </div>
@@ -210,9 +242,15 @@ function CampoEditor({ campo, onChange, onRemover, onMover, isFirst, isLast }) {
           {/* Obrigatório */}
           {campo.tipo !== 'section' && (
             <label className="flex items-center gap-2 cursor-pointer pt-2">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={!!campo.obrigatorio}
+                onChange={(e) => onChange({ ...campo, obrigatorio: e.target.checked })}
+              />
               <div
-                onClick={() => onChange({ ...campo, obrigatorio: !campo.obrigatorio })}
-                className={`relative w-8 h-4 rounded-full transition-colors cursor-pointer`}
+                aria-hidden="true"
+                className="relative w-8 h-4 rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500"
                 style={{ backgroundColor: campo.obrigatorio ? 'var(--accent)' : 'var(--border)' }}
               >
                 <div 
@@ -237,6 +275,20 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
+  const [confirmarDescarte, setConfirmarDescarte] = useState(false);
+  const { showToast } = useToast();
+
+  // "Sujo" = difere do estado inicial; o useState guarda só o snapshot do 1º render
+  const snapshotAtual = JSON.stringify({ nome, descricao, icone, campos });
+  const [snapshotInicial] = useState(snapshotAtual);
+  const dirty = snapshotAtual !== snapshotInicial;
+
+  useEffect(() => {
+    if (!dirty) return;
+    const avisar = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', avisar);
+    return () => window.removeEventListener('beforeunload', avisar);
+  }, [dirty]);
 
   const addCampo = (tipo) => {
     const novo = {
@@ -272,8 +324,12 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
 
   const handleSalvar = async () => {
     setError('');
-    if (!nome.trim()) { setError('O nome do questionário é obrigatório.'); return; }
-    if (campos.length === 0) { setError('Adicione pelo menos um campo.'); return; }
+    const problema = primeiroProblema(nome, campos);
+    if (problema) {
+      setError(problema);
+      showToast({ type: 'error', message: problema });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -308,10 +364,10 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
     <div className="flex-1 flex flex-col h-full overflow-hidden" onClick={() => showEmojis && setShowEmojis(false)}>
       {/* Header */}
       <div 
-        className="flex-shrink-0 px-6 pt-6 pb-4 flex items-center justify-between gap-4"
-        style={{ borderBottom: '0.5px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}
+        className="flex-shrink-0 px-6 pt-6 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}
       >
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* Icon picker */}
           <div className="relative">
             <button
@@ -327,7 +383,7 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
               <div
                 className="absolute top-12 left-0 z-50 grid grid-cols-4 gap-1.5 p-3 rounded-2xl shadow-2xl w-52"
                 onClick={(e) => e.stopPropagation()}
-                style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
               >
                 {AVAILABLE_ICONS.map(item => {
                   const IconComp = item.icon;
@@ -336,7 +392,7 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
                       key={item.id}
                       type="button"
                       onClick={() => { setIcone(item.id); setShowEmojis(false); }}
-                      className={`p-2 rounded-xl transition-colors flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 ${icone === item.id ? 'ring-2 ring-indigo-500' : ''}`}
+                      className={`p-2 rounded-xl transition-colors flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 ${icone === item.id ? 'ring-2 ring-brand-500' : ''}`}
                       title={item.label}
                       style={{ color: 'var(--text-primary)' }}
                     >
@@ -347,13 +403,13 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
               </div>
             )}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <input
               type="text"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Nome do questionário..."
-              className="w-full text-lg font-heading font-bold bg-transparent placeholder-slate-400 focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5 transition-colors"
+              className="w-full min-w-0 text-lg font-heading font-bold bg-transparent placeholder-slate-400 focus:outline-none border-b border-transparent focus:border-brand-500 pb-0.5 transition-colors"
               style={{ color: 'var(--text-primary)' }}
             />
             <input
@@ -366,8 +422,8 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={onCancelar}>
+        <div className="flex items-center justify-end gap-2 flex-shrink-0">
+          <Button variant="ghost" onClick={() => (dirty ? setConfirmarDescarte(true) : onCancelar())}>
             Cancelar
           </Button>
           <Button onClick={handleSalvar} disabled={isSaving}>
@@ -377,19 +433,19 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
       </div>
 
       {error && (
-        <div className="mx-6 mt-4 p-3 rounded-xl text-sm" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '0.5px solid var(--status-danger)' }}>
+        <div className="mx-6 mt-4 p-3 rounded-xl text-sm" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '1px solid var(--status-danger)' }}>
           {error}
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Campos list */}
         <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar" style={{ backgroundColor: 'var(--bg-primary)' }}>
           {campos.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-60 text-center border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)' }}>
               <Plus size={32} className="mb-2" style={{ color: 'var(--text-muted)' }} />
               <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>Seu questionário está vazio</p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Adicione campos usando o painel à direita</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Adicione campos usando o painel &quot;Adicionar Campo&quot;</p>
             </div>
           ) : (
             campos.map((campo, idx) => (
@@ -407,28 +463,39 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
         </div>
 
         {/* Sidebar de tipos */}
-        <div className="w-64 flex-shrink-0 overflow-y-auto p-4 custom-scrollbar" style={{ backgroundColor: 'var(--bg-secondary)', borderLeft: '0.5px solid var(--border)' }}>
+        {/* Abaixo de lg: painel em largura total sob a lista, com altura limitada para não esconder os campos */}
+        <div className="w-full lg:w-64 max-h-48 lg:max-h-none flex-shrink-0 overflow-y-auto p-4 custom-scrollbar" style={{ backgroundColor: 'var(--bg-secondary)', borderLeft: '1px solid var(--border)' }}>
           <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>Adicionar Campo</p>
           <div className="space-y-1.5">
-            {TIPOS_CAMPO.map(({ tipo, label, icone: Icon, desc }) => (
+            {TIPOS_CAMPO.map((t) => (
               <button
-                key={tipo}
-                onClick={() => addCampo(tipo)}
+                key={t.tipo}
+                onClick={() => addCampo(t.tipo)}
                 className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all group"
                 style={{ backgroundColor: 'transparent' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-card)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                <Icon size={18} className="mt-0.5" style={{ color: 'var(--text-muted)' }} />
+                <t.icone size={18} className="mt-0.5" style={{ color: 'var(--text-muted)' }} />
                 <div>
-                  <p className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{label}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{desc}</p>
+                  <p className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{t.label}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.desc}</p>
                 </div>
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmarDescarte}
+        title="Descartar alterações?"
+        message="As alterações não salvas neste questionário serão perdidas."
+        variant="warning"
+        confirmText="Descartar"
+        onConfirm={() => { setConfirmarDescarte(false); onCancelar(); }}
+        onCancel={() => setConfirmarDescarte(false)}
+      />
     </div>
   );
 }

@@ -4,8 +4,8 @@
   "description": "Plataforma Inteligente de Gestão Clínica para Psicólogos",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0D1117",
-  "theme_color": "#2563EB",
+  "background_color": "#F5F3EE",
+  "theme_color": "#0E6B66",
   "orientation": "any",
   "icons": [
     {

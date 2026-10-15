@@ -44,7 +44,7 @@ Este documento define as diretrizes, padrões técnicos, regras de segurança (L
 * **Roteamento:** `react-router-dom` v7 com rotas SPA reais (`/dashboard`, `/pacientes`, `/nova-sessao`, `/agenda`, `/financas`, `/questionarios`, `/clinicas`, `/lixeira`, `/agendar/:slug`).
 * **Estilização:** Tailwind CSS 3.4 com `darkMode: 'class'` controlado pelo `ThemeContext.jsx`.
 * **Design System:** Usar as variáveis CSS de tema (`var(--bg-primary)`, `var(--bg-card)`, `var(--text-primary)`, `var(--accent)`, `var(--status-*)`) e classes utilitárias:
-  * `ds-card`, `ds-btn`, `ds-input`, `font-heading` (fonte `Sora` para títulos; `Inter` para texto corrido).
+  * `ds-card`, `ds-btn`, `ds-input`, `ds-label`, `ds-segmented`, `font-heading` (fonte `Newsreader` para títulos; `Public Sans` para interface e texto corrido). Ver `docs/design-system.md`.
 * **Componentes Reutilizáveis:** Priorizar os componentes em [`src/components/ui/`](file:///c:/Projetos%20Faculdade/Anamnese/src/components/ui/) (`Button`, `Card`, `Badge`, `Pagination`, `Select`).
 * **Telemetria e Logs:** Nunca usar `console.log` solto em produção; usar [`src/utils/logger.js`](file:///c:/Projetos%20Faculdade/Anamnese/src/utils/logger.js).
 

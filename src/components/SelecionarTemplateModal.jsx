@@ -6,13 +6,13 @@ import { ClipboardList, User, GraduationCap, FileText } from 'lucide-react';
 
 const renderTemplateIcon = (icone, id) => {
   if (id === 'padrao_adulto' || icone === 'user') {
-    return <User className="w-6 h-6 text-indigo-500" />;
+    return <User className="w-6 h-6 text-brand-500" />;
   }
   if (id === 'padrao_adolescente' || icone === 'graduation-cap') {
-    return <GraduationCap className="w-6 h-6 text-purple-500" />;
+    return <GraduationCap className="w-6 h-6 text-brand-500" />;
   }
   if (icone === 'clipboard') {
-    return <ClipboardList className="w-6 h-6 text-cyan-500" />;
+    return <ClipboardList className="w-6 h-6 text-brand-500" />;
   }
   return <FileText className="w-6 h-6 text-slate-500" />;
 };
@@ -37,7 +37,7 @@ const TemplateCarda = ({ template, onSelecionar }) => {
               {template.nome || 'Questionário Sem Nome'}
             </span>
             {isPadrao && (
-              <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20">
+              <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 rounded-md border border-brand-200 dark:border-brand-500/20">
                 Padrão
               </span>
             )}
@@ -65,6 +65,8 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
 
   useEffect(() => {
     if (!isOpen) return;
+    // Início de carregamento assíncrono a cada abertura
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     setIsError(false);
     lerQuestionarios()
@@ -122,10 +124,14 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
         <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-2 custom-scrollbar">
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
-              <svg className="w-7 h-7 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+              <svg className="w-7 h-7 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-10" role="alert">
+              <p className="text-sm" style={{ color: 'var(--status-danger-text)' }}>Não foi possível carregar os questionários. Feche e abra novamente.</p>
             </div>
           ) : filtrados.length === 0 ? (
             <div className="text-center py-10">

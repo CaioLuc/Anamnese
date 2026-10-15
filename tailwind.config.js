@@ -8,10 +8,37 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        heading: ['Sora', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Public Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['Newsreader', 'Georgia', 'serif'],
       },
       colors: {
+        // Petróleo: cor da marca CARITAS (ações, seleção, foco)
+        brand: {
+          50: '#EEF7F6',
+          100: '#D5ECE9',
+          200: '#AED9D4',
+          300: '#7FBFB8',
+          400: '#4FA39B',
+          500: '#2A877F',
+          600: '#0E6B66',
+          700: '#0B5753',
+          800: '#0A4643',
+          900: '#083835',
+          950: '#04201F',
+        },
+        // Terracota: acento quente, uso pontual (destaques de marca, "hoje")
+        clay: {
+          50: '#FBF1EB',
+          100: '#F5DECF',
+          200: '#EBBE9F',
+          300: '#E09E72',
+          400: '#D9875A',
+          500: '#C46A3D',
+          600: '#A9532A',
+          700: '#8A4222',
+          800: '#6B331B',
+          900: '#4D2513',
+        },
         ds: {
           'bg-primary': 'var(--bg-primary)',
           'bg-secondary': 'var(--bg-secondary)',
@@ -47,31 +74,30 @@ export default {
       },
       boxShadow: {
         'ds': 'var(--shadow)',
+        'ds-lg': 'var(--shadow-lg)',
       },
       borderColor: {
         'ds': 'var(--border)',
       },
+      borderRadius: {
+        'ds': 'var(--radius)',
+        'ds-sm': 'var(--radius-sm)',
+      },
+      transitionTimingFunction: {
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
       animation: {
-        blob: "blob 7s infinite",
-        shimmer: "shimmer 2s linear infinite",
-        fall: "fall linear infinite",
+        shimmer: "shimmer 1.6s linear infinite",
+        'fade-up': "fade-up 260ms cubic-bezier(0.16, 1, 0.3, 1) both",
       },
       keyframes: {
-        blob: {
-          "0%": { transform: "translate(0px, 0px) scale(1)" },
-          "33%": { transform: "translate(30px, -50px) scale(1.1)" },
-          "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
-          "100%": { transform: "translate(0px, 0px) scale(1)" },
-        },
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
-        fall: {
-          "0%": { transform: "translateY(-10vh)", opacity: 0 },
-          "10%": { opacity: 1 },
-          "90%": { opacity: 1 },
-          "100%": { transform: "translateY(110vh)", opacity: 0 },
-        }
+        'fade-up': {
+          "0%": { opacity: 0, transform: "translateY(6px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
       }
     }
   },

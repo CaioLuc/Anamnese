@@ -6,7 +6,13 @@ import {
   gerarAtestadoPDF,
   gerarRelatorioEncaminhamentoPDF,
   gerarReciboReembolsoPDF,
+  gerarAnamnesePDF,
+  gerarEvolucaoSessaoPDF,
+  gerarProntuarioCompletoPDF,
   sanitizeText,
+  temValor,
+  valorPorExtenso,
+  paraNumero,
 } from '../services/pdfUtils';
 
 describe('calcularIdade', () => {
@@ -83,7 +89,7 @@ describe('CFP Documents (Resolucao CFP 06/2019)', () => {
       skipSave: true,
     });
     expect(pdf).toBeDefined();
-    expect(pdf.titulo).toBe('Declaracao Psicologica');
+    expect(pdf.titulo).toBe('Declaração Psicológica');
     expect(pdf.subtitulo).toBe('Maria da Silva');
   });
 
@@ -95,7 +101,7 @@ describe('CFP Documents (Resolucao CFP 06/2019)', () => {
       skipSave: true,
     });
     expect(pdf).toBeDefined();
-    expect(pdf.titulo).toBe('Atestado Psicologico');
+    expect(pdf.titulo).toBe('Atestado Psicológico');
     expect(pdf.subtitulo).toBe('Maria da Silva');
   });
 
@@ -109,7 +115,7 @@ describe('CFP Documents (Resolucao CFP 06/2019)', () => {
       skipSave: true,
     });
     expect(pdf).toBeDefined();
-    expect(pdf.titulo).toBe('Relatorio de Encaminhamento');
+    expect(pdf.titulo).toBe('Relatório Psicológico');
     expect(pdf.subtitulo).toBe('Maria da Silva');
   });
 
@@ -130,5 +136,116 @@ describe('CFP Documents (Resolucao CFP 06/2019)', () => {
   it('should sanitize text by removing unprintable / emojis', () => {
     expect(sanitizeText('Consulta 🩺 Psicológica')).toBe('Consulta  Psicológica');
     expect(sanitizeText(null)).toBe('');
+  });
+});
+
+describe('temValor', () => {
+  it('ignora vazios, false e marcadores de "sem resposta"', () => {
+    expect(temValor('')).toBe(false);
+    expect(temValor('   ')).toBe(false);
+    expect(temValor(null)).toBe(false);
+    expect(temValor(false)).toBe(false);
+    expect(temValor('N/D')).toBe(false);
+    expect(temValor('Nao informada')).toBe(false);
+    expect(temValor([])).toBe(false);
+    expect(temValor(['', 'Ansiedade'])).toBe(true);
+    expect(temValor(0)).toBe(true);
+    expect(temValor('Não')).toBe(true);
+  });
+});
+
+describe('valorPorExtenso', () => {
+  it('escreve valores de recibo em português', () => {
+    expect(valorPorExtenso(150)).toBe('cento e cinquenta reais');
+    expect(valorPorExtenso(1)).toBe('um real');
+    expect(valorPorExtenso(100)).toBe('cem reais');
+    expect(valorPorExtenso(1250)).toBe('mil duzentos e cinquenta reais');
+    expect(valorPorExtenso(2020)).toBe('dois mil e vinte reais');
+    expect(valorPorExtenso(180.5)).toBe('cento e oitenta reais e cinquenta centavos');
+    expect(valorPorExtenso(0.01)).toBe('um centavo');
+  });
+});
+
+describe('PDFs sem seções vazias', () => {
+  const paciente = { nome: 'Maria da Silva', cpf: '12345678900', data_nascimento: '1995-05-10' };
+
+  it('anamnese quase vazia só gera as seções preenchidas', () => {
+    const pdf = gerarAnamnesePDF(paciente, { tipo: 'adulto', motivo_consulta: 'Ansiedade no trabalho', qtd_irmaos: 0, psicologo_previo: false }, null, { skipSave: true });
+    // Identificação + Motivo da consulta
+    expect(pdf.numeroSecao).toBe(2);
+  });
+
+  it('anamnese completa inclui família, hábitos e quadro clínico', () => {
+    const pdf = gerarAnamnesePDF(paciente, {
+      tipo: 'adulto',
+      psicologo_previo: true,
+      nome_mae: 'Ana', idade_mae: '60',
+      motivo_consulta: 'Insônia',
+      rotina_sono: 'Dorme 4h por noite',
+      sintomas_apresentados: 'Irritabilidade',
+      tentativa_suicidio: 'Ideação em 2020',
+      observacoes_gerais: 'Encaminhar para psiquiatria',
+    }, { nome: 'Dra. Ana', crp: '06/123456' }, { skipSave: true });
+    // Identificação, Histórico, Família, Motivo, Hábitos, Quadro clínico, Considerações finais
+    expect(pdf.numeroSecao).toBe(7);
+  });
+
+  it('anamnese dinâmica ignora perguntas sem resposta e seções vazias', () => {
+    const pdf = gerarAnamnesePDF(paciente, {
+      tipo: 'dinamico',
+      template_snapshot: { campos: [
+        { id: 's1', tipo: 'section', label: 'Bloco vazio' },
+        { id: 'a', tipo: 'text', label: 'Pergunta sem resposta' },
+        { id: 's2', tipo: 'section', label: 'Bloco respondido' },
+        { id: 'b', tipo: 'checkbox', label: 'Sintomas' },
+      ] },
+      respostas: { b: ['Ansiedade', 'Insônia'] },
+    }, null, { skipSave: true });
+    // Identificação + Bloco respondido
+    expect(pdf.numeroSecao).toBe(2);
+  });
+
+  it('evolução e prontuário completo geram sem erro', () => {
+    const sessao = { data_sessao: '2026-10-10', status: 'Presente', observacoes: 'Paciente relata melhora.', humor: 7 };
+    expect(gerarEvolucaoSessaoPDF(paciente, sessao, null, { skipSave: true }).numeroSecao).toBe(2);
+    const pront = gerarProntuarioCompletoPDF(paciente, [], [sessao, { data_sessao: '2026-10-03' }], null, { skipSave: true });
+    // Identificação + Evolução das sessões (sessão sem conteúdo é omitida)
+    expect(pront.numeroSecao).toBe(2);
+  });
+});
+
+describe('valores e recibos', () => {
+  const paciente = { nome: 'Maria da Silva', cpf: '12345678900' };
+  const prof = { nome: 'Dra. Ana', crp: 'CRP 06/123456' };
+
+  it('lê valores em formato brasileiro', () => {
+    expect(paraNumero('1.250,00')).toBe(1250);
+    expect(paraNumero('150,50')).toBe(150.5);
+    expect(paraNumero('150.00')).toBe(150);
+    expect(paraNumero('')).toBe(0);
+    expect(paraNumero(80)).toBe(80);
+  });
+
+  it('valor por extenso fora da faixa não inventa texto', () => {
+    expect(valorPorExtenso(-150)).toBe('');
+    expect(valorPorExtenso(1e9)).toBe('');
+    expect(valorPorExtenso(NaN)).toBe('');
+  });
+
+  it('recibo de reembolso recusa sessão com pagamento pendente', () => {
+    expect(() => gerarReciboReembolsoPDF({ data_sessao: '2026-10-10', valor: '150', pago: false }, paciente, prof, { skipSave: true }))
+      .toThrow(/pendente/);
+  });
+
+  it('recibo de reembolso usa o valor do formulário, não o da sessão salva', () => {
+    const pdf = gerarReciboReembolsoPDF({ data_sessao: '2026-10-10', valor: '150', pago: true }, paciente, prof, { valor: '120,00', skipSave: true });
+    const texto = pdf.doc.output();
+    expect(texto).toContain('R$ 120,00');
+    expect(texto).not.toContain('R$ 150,00');
+  });
+
+  it('resposta negativa sobre risco de suicídio não vira alerta', () => {
+    const pdf = gerarAnamnesePDF(paciente, { tipo: 'adulto', tentativa_suicidio: 'Nega.' }, null, { skipSave: true });
+    expect(pdf.doc.output()).not.toContain('ATEN');
   });
 });

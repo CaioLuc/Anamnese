@@ -72,7 +72,7 @@ export default function Tooltip({ children, text, showIcon = false, position = '
               backgroundColor: 'var(--bg-sidebar)', 
               color: '#E6EDF3',
               boxShadow: 'var(--shadow)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.1)',
               wordBreak: 'normal', 
               overflowWrap: 'break-word', 
               whiteSpace: 'normal' 

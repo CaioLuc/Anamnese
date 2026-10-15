@@ -48,37 +48,44 @@ function crc16(str) {
  * @param {string} params.chave       — Chave PIX (CPF, email, telefone ou aleatória)
  * @param {string} params.nome        — Nome do recebedor (até 25 chars, sem acentos)
  * @param {string} params.cidade      — Cidade do recebedor (até 15 chars, sem acentos)
- * @param {number} [params.valor]     — Valor da cobrança (ex: 150.00). Se omitido, fica aberto.
+ * @param {number} params.valor       — Valor da cobrança (ex: 150.00), maior que zero.
  * @param {string} [params.txid='***'] — Identificador da transação (até 25 chars)
  * @returns {string} — Payload "Copia e Cola" pronto para gerar QR Code
+ * @throws {Error} — chave inválida, nome/cidade vazios ou valor <= 0
  */
 export function generatePixPayload({ chave, nome, cidade, valor, txid = '***' }) {
-  // Sanitiza nome e cidade (sem acentos, uppercase, max length)
+  // Sanitiza nome e cidade: ASCII sem acentos e uppercase, para que .length (tlv) e charCodeAt (crc16) contem bytes
   const sanitize = (str, maxLen) =>
-    str
+    String(str || '')
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .toUpperCase()
       .replace(/[^A-Z0-9 ]/g, '')
+      .trim()
       .slice(0, maxLen);
 
   const sNome = sanitize(nome, 25);
   const sCidade = sanitize(cidade, 15);
+  if (!sNome || !sCidade) {
+    throw new Error('Nome do titular e cidade do PIX precisam ter letras ou números. Verifique nas Configurações.');
+  }
+
+  // Centavos inteiros evitam o arredondamento errado do toFixed (ex: 0.015 → "0.01")
+  const centavos = Math.round(valor * 100);
+  if (!Number.isFinite(valor) || centavos <= 0) {
+    throw new Error('O valor da cobrança PIX precisa ser maior que zero.');
+  }
 
   // Merchant Account Information (tag 26)
   // GUI do PIX (obrigatório): br.gov.bcb.pix
   // Chave (tag 01 dentro do 26)
-  const merchantAccount = tlv('00', 'br.gov.bcb.pix') + tlv('01', chave);
+  const merchantAccount = tlv('00', 'br.gov.bcb.pix') + tlv('01', normalizarChavePix(chave));
 
   let payload = '';
   payload += tlv('00', '01');                        // Payload Format Indicator
   payload += tlv('26', merchantAccount);             // Merchant Account Information
   payload += tlv('52', '0000');                      // Merchant Category Code
   payload += tlv('53', '986');                       // Transaction Currency (BRL = 986)
-
-  if (valor && valor > 0) {
-    payload += tlv('54', valor.toFixed(2));           // Transaction Amount
-  }
-
+  payload += tlv('54', (centavos / 100).toFixed(2)); // Transaction Amount
   payload += tlv('58', 'BR');                        // Country Code
   payload += tlv('59', sNome);                       // Merchant Name
   payload += tlv('60', sCidade);                     // Merchant City
@@ -104,7 +111,7 @@ export function identificarTipoChave(chave) {
   const c = chave.trim();
 
   // CPF: 11 dígitos
-  if (/^\d{11}$/.test(c.replace(/[.\-]/g, ''))) return { valid: true, tipo: 'CPF' };
+  if (/^\d{11}$/.test(c.replace(/[.-]/g, ''))) return { valid: true, tipo: 'CPF' };
 
   // CNPJ: 14 dígitos
   if (/^\d{14}$/.test(c.replace(/[.\-/]/g, ''))) return { valid: true, tipo: 'CNPJ' };
@@ -119,4 +126,25 @@ export function identificarTipoChave(chave) {
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(c)) return { valid: true, tipo: 'Aleatória' };
 
   return { valid: false, tipo: 'Desconhecido' };
+}
+
+/**
+ * Normaliza a chave PIX no formato do DICT: CPF/CNPJ só dígitos, telefone +55DDDNÚMERO,
+ * e-mail e chave aleatória sem espaços e em minúsculas.
+ * @param {string} chave
+ * @returns {string}
+ * @throws {Error} — chave inválida
+ */
+export function normalizarChavePix(chave) {
+  const { valid, tipo } = identificarTipoChave(chave);
+  const c = String(chave || '').trim();
+  const d = c.replace(/\D/g, '');
+  let n = c.toLowerCase(); // e-mail e chave aleatória
+  if (tipo === 'CPF' || tipo === 'CNPJ') n = d;
+  if (tipo === 'Telefone') n = '+55' + ((d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d);
+  // Revalida o valor final: mesmo tipo, ASCII (length = bytes) e até 77 chars (limite da tag 26)
+  if (!valid || identificarTipoChave(n).tipo !== tipo || !/^[\x21-\x7E]{1,77}$/.test(n)) {
+    throw new Error('A chave PIX configurada parece inválida. Verifique nas Configurações.');
+  }
+  return n;
 }

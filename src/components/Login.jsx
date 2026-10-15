@@ -1,20 +1,91 @@
-import { useState, useEffect } from 'react';
-import { 
-  loginFirebaseUser, 
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  loginFirebaseUser,
   cadastrarFirebaseUser,
   logoutFirebaseUser,
-  redefinirSenhaFirebase, 
-  isDispositivoConfiavel, 
-  salvarDispositivoConfiavel,
-  marcarSessao2FAVerificada,
-  gerarCodigo2FA, 
-  verificarCodigo2FA,
-  obterCodigo2FAAtivo
+  redefinirSenhaFirebase,
+  enviarCodigoMfa,
+  verificarCodigoMfa,
 } from '../services/authService';
-import { Mail, Lock, AlertCircle, ShieldCheck, CheckCircle2, KeyRound, Laptop, ArrowLeft, RefreshCw, User, Sparkles } from 'lucide-react';
+import { Mail, Lock, AlertCircle, CheckCircle2, KeyRound, ArrowLeft, RefreshCw, User, Eye, EyeOff, MailCheck, Loader2 } from 'lucide-react';
 import Button from './ui/Button';
 import logo from '../assets/logo.svg';
-import { salvarPerfilPsicologo } from '../services/patientService';
+
+const PONTOS_DA_MARCA = [
+  'Anamnese, evolução de sessões e documentos do CFP no mesmo lugar.',
+  'Dados de cada profissional isolados, com trilha de auditoria.',
+  'Acesso protegido por código enviado ao seu e-mail.',
+];
+
+// Mensagens já chegam em pt-BR das Cloud Functions; erros de rede ganham texto próprio.
+function mensagemErroMfa(err, padrao) {
+  const code = err?.code || '';
+  if (code === 'functions/unavailable' || code === 'functions/internal' || code === 'functions/deadline-exceeded') {
+    return 'Não foi possível falar com o servidor. Verifique sua conexão e tente de novo.';
+  }
+  return err?.message && !code.endsWith('/unknown') ? err.message : padrao;
+}
+
+function CampoComIcone({ icon, children, trailing }) {
+  const Icon = icon;
+  return (
+    <div className="relative">
+      <Icon size={17} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+      {children}
+      {trailing}
+    </div>
+  );
+}
+
+function CampoSenha({ id, value, onChange, autoComplete, placeholder = '••••••••', minLength }) {
+  const [visivel, setVisivel] = useState(false);
+  return (
+    <CampoComIcone
+      icon={Lock}
+      trailing={
+        <button
+          type="button"
+          onClick={() => setVisivel((v) => !v)}
+          className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-md"
+          style={{ color: 'var(--text-muted)' }}
+          aria-label={visivel ? 'Ocultar senha' : 'Mostrar senha'}
+        >
+          {visivel ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+      }
+    >
+      <input
+        id={id}
+        type={visivel ? 'text' : 'password'}
+        required
+        minLength={minLength}
+        value={value}
+        onChange={onChange}
+        autoComplete={autoComplete}
+        className="ds-input pl-10 pr-12"
+        placeholder={placeholder}
+      />
+    </CampoComIcone>
+  );
+}
+
+function Aviso({ tipo, children }) {
+  const erro = tipo === 'erro';
+  const Icon = erro ? AlertCircle : CheckCircle2;
+  return (
+    <div
+      role={erro ? 'alert' : 'status'}
+      className="mb-5 p-3.5 rounded-[var(--radius-sm)] flex items-start gap-2.5 animate-in"
+      style={{
+        backgroundColor: erro ? 'var(--status-danger-bg)' : 'var(--status-success-bg)',
+        color: erro ? 'var(--status-danger-text)' : 'var(--status-success-text)',
+      }}
+    >
+      <Icon size={18} className="shrink-0 mt-px" />
+      <p className="text-sm font-medium">{children}</p>
+    </div>
+  );
+}
 
 export default function Login({ pending2FAUser, on2FASuccess }) {
   const [email, setEmail] = useState(pending2FAUser?.email || '');
@@ -24,598 +95,402 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Estados dos fluxos ('login' | 'cadastro' | '2fa' | 'recuperar_senha')
+  // 'login' | 'cadastro' | '2fa' | 'recuperar_senha'
   const [viewState, setViewState] = useState(pending2FAUser ? '2fa' : 'login');
 
-  // Estados do 2FA
+  // 2FA: o código nunca aparece na tela; só chega por e-mail
   const [codigo2FA, setCodigo2FA] = useState('');
-  const [lembrarMaquina, setLembrarMaquina] = useState(false);
-  const [codigoExibido, setCodigoExibido] = useState('');
+  const [lembrarDispositivo, setLembrarDispositivo] = useState(false);
+  const [enviadoPara, setEnviadoPara] = useState('');
+  const [enviandoCodigo, setEnviandoCodigo] = useState(false);
+  const [reenviarEm, setReenviarEm] = useState(0);
+  const envioInicialRef = useRef(false);
 
-  // Estados do Redefinidor de Senha
   const [resetEmail, setResetEmail] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   const [isSendingReset, setIsSendingReset] = useState(false);
 
-  // Inicializa 2FA caso venha de pending2FAUser
-  useEffect(() => {
-    if (pending2FAUser?.email) {
-      setEmail(pending2FAUser.email);
-      setViewState('2fa');
-      const cod = obterCodigo2FAAtivo(pending2FAUser.email) || gerarCodigo2FA(pending2FAUser.email);
-      setCodigoExibido(cod);
+  const solicitarCodigo = useCallback(async () => {
+    setError('');
+    setEnviandoCodigo(true);
+    try {
+      const res = await enviarCodigoMfa();
+      setEnviadoPara(res.enviadoPara);
+      setReenviarEm(res.reenviarEmSegundos || 60);
+    } catch (err) {
+      if (err?.code === 'functions/resource-exhausted' && err?.details?.espera) {
+        // Código recente ainda vale: só aguarda para reenviar
+        setReenviarEm(err.details.espera);
+      } else {
+        setError(mensagemErroMfa(err, 'Não foi possível enviar o código. Tente de novo.'));
+      }
+    } finally {
+      setEnviandoCodigo(false);
     }
-  }, [pending2FAUser]);
+  }, []);
 
-  // Submissão do login inicial
+  // Login concluído, falta o 2FA: envia o código uma única vez
+  useEffect(() => {
+    if (!pending2FAUser?.email || envioInicialRef.current) return;
+    envioInicialRef.current = true;
+    solicitarCodigo();
+  }, [pending2FAUser, solicitarCodigo]);
+
+  // Contagem regressiva do reenvio
+  useEffect(() => {
+    if (reenviarEm <= 0) return undefined;
+    const t = setTimeout(() => setReenviarEm((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [reenviarEm]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
-
-    const emailLimpo = email.trim().toLowerCase();
-
     try {
-      await loginFirebaseUser(emailLimpo, password);
-
-      // Verifica se a máquina já é confiável
-      if (isDispositivoConfiavel(emailLimpo)) {
-        marcarSessao2FAVerificada(emailLimpo);
-        if (on2FASuccess) on2FASuccess();
-        return;
-      }
-
-      // Máquina não confiável: gera código e transiciona para o 2FA
-      const novoCodigo = gerarCodigo2FA(emailLimpo);
-      setCodigoExibido(novoCodigo);
-      setViewState('2fa');
+      // App.jsx assume daqui: checa a sessão 2FA e mostra a etapa do código se preciso
+      await loginFirebaseUser(email.trim().toLowerCase(), password);
     } catch (err) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('E-mail ou senha inválidos.');
+      if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(err.code)) {
+        setError('E-mail ou senha incorretos.');
       } else if (err.code === 'auth/too-many-requests') {
-        setError('Muitas tentativas. Tente novamente mais tarde.');
+        setError('Muitas tentativas. Aguarde alguns minutos e tente de novo.');
       } else {
-        setError('Erro ao fazer login. Verifique sua conexão.');
+        setError('Não foi possível entrar. Verifique sua conexão.');
       }
-    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Submissão do cadastro de nova conta (14 dias de teste)
   const handleCadastro = async (e) => {
     e.preventDefault();
     setError('');
 
     const emailLimpo = email.trim().toLowerCase();
     if (!emailLimpo) {
-      setError('Informe um endereço de e-mail válido.');
+      setError('Informe um e-mail válido.');
       return;
     }
-    if (password.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres.');
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      setError('Use uma senha com pelo menos 8 caracteres, incluindo letras e números.');
       return;
     }
     if (password !== confirmPassword) {
-      setError('As senhas digitadas não coincidem.');
+      setError('As senhas não coincidem.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await cadastrarFirebaseUser(emailLimpo, password);
-      // Salva nome inicial no perfil se preenchido
-      if (nomeCadastro && nomeCadastro.trim()) {
-        try {
-          await salvarPerfilPsicologo({ nome: nomeCadastro.trim() });
-        } catch {}
-      }
-
-      // Máquina do cadastro: marca como confiável ou gera 2FA
-      const novoCodigo = gerarCodigo2FA(emailLimpo);
-      setCodigoExibido(novoCodigo);
-      setViewState('2fa');
+      await cadastrarFirebaseUser(emailLimpo, password, nomeCadastro);
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
-        setError('Este e-mail já possui uma conta cadastrada. Faça login.');
+        setError('Este e-mail já tem conta. Use a aba Entrar.');
       } else if (err.code === 'auth/invalid-email') {
-        setError('Endereço de e-mail inválido.');
+        setError('E-mail inválido.');
       } else if (err.code === 'auth/weak-password') {
-        setError('A senha é muito fraca. Utilize letras, números e no mínimo 6 caracteres.');
+        setError('Senha fraca. Use letras, números e pelo menos 8 caracteres.');
       } else {
-        setError('Erro ao criar conta. Tente novamente mais tarde.');
+        setError('Não foi possível criar a conta. Tente mais tarde.');
       }
-    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Submissão da Verificação em Duas Etapas (2FA)
   const handleVerificar2FA = async (e) => {
     if (e) e.preventDefault();
+    if (codigo2FA.length !== 6 || isSubmitting) return;
     setError('');
     setIsSubmitting(true);
-
-    const emailAlvo = email.trim().toLowerCase();
-
     try {
-      const res = await verificarCodigo2FA(emailAlvo, codigo2FA, lembrarMaquina);
-      if (res.success) {
-        if (lembrarMaquina) {
-          salvarDispositivoConfiavel(emailAlvo);
-        }
-        marcarSessao2FAVerificada(emailAlvo);
-        if (on2FASuccess) on2FASuccess();
-      } else {
-        setError(res.error || 'Código de verificação incorreto.');
-      }
+      await verificarCodigoMfa(codigo2FA, lembrarDispositivo);
+      if (on2FASuccess) on2FASuccess();
     } catch (err) {
-      setError('Erro ao validar código. Tente novamente.');
-    } finally {
+      setError(mensagemErroMfa(err, 'Não foi possível validar o código. Tente de novo.'));
+      setCodigo2FA('');
       setIsSubmitting(false);
     }
   };
 
-  // Reenviar código 2FA
-  const handleReenviarCodigo = () => {
-    const emailAlvo = email.trim().toLowerCase();
-    const novo = gerarCodigo2FA(emailAlvo);
-    setCodigoExibido(novo);
-    setCodigo2FA('');
-    setError('');
-  };
-
-  // Cancelar 2FA e deslogar
   const handleCancelar2FA = async () => {
     await logoutFirebaseUser();
-    setViewState('login');
-    setPassword('');
-    setCodigo2FA('');
-    setError('');
   };
 
-  // Redefinir Senha
   const handleSolicitarRedefinicao = async (e) => {
     e.preventDefault();
     setError('');
     setResetSuccess('');
     setIsSendingReset(true);
-
+    // Mesma resposta exista ou não a conta, para não revelar quem é cliente
+    const confirmacao = `Se houver uma conta para ${resetEmail || email}, o link de redefinição chega em instantes. Confira também o spam.`;
     try {
       await redefinirSenhaFirebase(resetEmail || email);
-      setResetSuccess(`Link de redefinição enviado com sucesso para ${resetEmail || email}! Verifique sua caixa de entrada e spam.`);
+      setResetSuccess(confirmacao);
     } catch (err) {
-      if (err.code === 'auth/user-not-found') {
-        setError('Nenhuma conta encontrada com este e-mail.');
-      } else if (err.code === 'auth/invalid-email') {
-        setError('Formato de e-mail inválido.');
+      if (err.code === 'auth/invalid-email') {
+        setError('E-mail inválido.');
+      } else if (err.code === 'auth/user-not-found') {
+        setResetSuccess(confirmacao);
       } else {
-        setError('Falha ao enviar e-mail. Tente novamente.');
+        setError('Não foi possível enviar o e-mail. Tente de novo.');
       }
     } finally {
       setIsSendingReset(false);
     }
   };
 
+  const trocarAba = (aba) => {
+    setViewState(aba);
+    setError('');
+  };
+
   return (
-    <div 
-      className="h-full w-full flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden"
-      style={{ backgroundColor: 'var(--bg-primary)' }}
-    >
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="flex justify-center flex-col items-center">
-          {/* Logo */}
-          <div className="w-24 h-24 mb-3 flex items-center justify-center relative login-logo">
-            <div className="login-logo-glow" />
-            <img src={logo} alt="Caritas Logo" className="w-full h-full object-contain relative z-10" />
-          </div>
-          
-          <h2 className="text-center text-3xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Caritas</h2>
-          <p className="mt-1 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>Plataforma Clínica para Psicólogos e Clínicas</p>
+    <div className="min-h-full w-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
+
+      {/* Painel da marca (desktop) */}
+      <aside
+        className="hidden lg:flex lg:w-[44%] xl:w-[42%] flex-col justify-between p-12 xl:p-16 relative overflow-hidden"
+        style={{ backgroundColor: '#0B3F3C', color: '#F5F3EE' }}
+      >
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="" className="w-11 h-11" />
+          <span className="font-heading text-xl font-semibold tracking-[0.08em]">CARITAS</span>
         </div>
-      </div>
 
-      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="ds-card py-8 px-4 sm:px-10 shadow-xl" style={{ backgroundColor: 'var(--bg-card)' }}>
-          
-          {/* Feedback de Erro */}
-          {error && (
-            <div className="mb-5 p-4 rounded-xl flex items-start gap-3 animate-in fade-in" style={{ backgroundColor: 'var(--status-danger-bg)', border: '0.5px solid var(--status-danger)' }}>
-               <AlertCircle size={18} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--status-danger)' }} />
-               <p className="text-sm font-medium" style={{ color: 'var(--status-danger)' }}>{error}</p>
-            </div>
-          )}
+        <div className="max-w-md relative z-10">
+          <h1 className="text-[2.6rem] xl:text-5xl leading-[1.08] font-medium" style={{ color: '#FBFAF7' }}>
+            O prontuário que respeita o tempo da sessão.
+          </h1>
+          <ul className="mt-10 space-y-4">
+            {PONTOS_DA_MARCA.map((ponto) => (
+              <li key={ponto} className="flex gap-3 text-[15px] leading-relaxed" style={{ color: 'rgba(245,243,238,0.84)' }}>
+                <span className="mt-2.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: '#E09E72' }} />
+                {ponto}
+              </li>
+            ))}
+          </ul>
+        </div>
 
-          {/* Feedback de Sucesso no Reset */}
-          {resetSuccess && (
-            <div className="mb-5 p-4 rounded-xl flex items-start gap-3 animate-in fade-in" style={{ backgroundColor: 'var(--status-success-bg)', border: '0.5px solid var(--status-success)' }}>
-               <CheckCircle2 size={18} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--status-success)' }} />
-               <p className="text-sm font-medium" style={{ color: 'var(--status-success)' }}>{resetSuccess}</p>
-            </div>
-          )}
+        <p className="text-xs relative z-10" style={{ color: 'rgba(245,243,238,0.66)' }}>
+          Em conformidade com as Resoluções CFP 01/2009 e 06/2019 e com a LGPD.
+        </p>
 
-          {/* Abas Alternadoras (Login / Cadastro) */}
+        {/* Onda do logo como assinatura gráfica */}
+        <svg className="absolute -right-24 bottom-24 w-[520px] opacity-[0.10] pointer-events-none" viewBox="0 0 200 60" fill="none" aria-hidden="true">
+          <path d="M2 40 C 22 40, 34 12, 54 12 C 74 12, 78 52, 98 40 C 118 28, 126 4, 146 12 C 166 20, 174 36, 198 32" stroke="#F5F3EE" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+      </aside>
+
+      {/* Formulários */}
+      <main className="flex-1 flex flex-col justify-center px-5 py-10 sm:px-10">
+        <div className="w-full max-w-[400px] mx-auto">
+
+          <div className="lg:hidden flex items-center gap-2.5 mb-10">
+            <img src={logo} alt="" className="w-9 h-9" />
+            <span className="font-heading text-lg font-semibold tracking-[0.08em]" style={{ color: 'var(--text-primary)' }}>CARITAS</span>
+          </div>
+
+          {error && <Aviso tipo="erro">{error}</Aviso>}
+          {resetSuccess && <Aviso tipo="ok">{resetSuccess}</Aviso>}
+
           {(viewState === 'login' || viewState === 'cadastro') && (
-            <div className="flex border-b border-[var(--border)] mb-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setViewState('login');
-                  setError('');
-                }}
-                className={`flex-1 pb-3 text-center text-sm font-semibold transition-all border-b-2 ${
-                  viewState === 'login'
-                    ? 'border-[var(--accent)] text-[var(--accent)]'
-                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                }`}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setViewState('cadastro');
-                  setError('');
-                }}
-                className={`flex-1 pb-3 text-center text-sm font-semibold transition-all border-b-2 flex items-center justify-center gap-1.5 ${
-                  viewState === 'cadastro'
-                    ? 'border-[var(--accent)] text-[var(--accent)]'
-                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                }`}
-              >
-                <Sparkles size={14} className="text-amber-500" />
-                Criar Conta (14d grátis)
-              </button>
-            </div>
+            <>
+              <h2 className="text-[1.9rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>
+                {viewState === 'login' ? 'Bem-vinda(o) de volta' : 'Crie sua conta'}
+              </h2>
+              <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {viewState === 'login'
+                  ? 'Entre para acessar seus pacientes e sua agenda.'
+                  : '14 dias grátis, sem cartão de crédito.'}
+              </p>
+
+              <div className="ds-segmented w-full mt-7 mb-6">
+                <button type="button" aria-pressed={viewState === 'login'} className="flex-1" onClick={() => trocarAba('login')}>
+                  Entrar
+                </button>
+                <button type="button" aria-pressed={viewState === 'cadastro'} className="flex-1" onClick={() => trocarAba('cadastro')}>
+                  Criar conta
+                </button>
+              </div>
+            </>
           )}
 
-          {/* ======================================================== */}
-          {/* VISTA 1: FORMULÁRIO DE LOGIN NORMAL                      */}
-          {/* ======================================================== */}
           {viewState === 'login' && (
             <form className="space-y-4" onSubmit={handleLogin}>
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>Endereço de e-mail</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail size={16} style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="ds-input pl-10 py-2.5"
-                    placeholder="psicologo@clinica.com"
-                  />
-                </div>
+                <label htmlFor="login-email" className="ds-label">E-mail</label>
+                <CampoComIcone icon={Mail}>
+                  <input id="login-email" type="email" required autoComplete="email" value={email}
+                    onChange={(e) => setEmail(e.target.value)} className="ds-input pl-10" placeholder="voce@consultorio.com.br" />
+                </CampoComIcone>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Senha</label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="login-senha" className="ds-label">Senha</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      setResetEmail(email);
-                      setError('');
-                      setResetSuccess('');
-                      setViewState('recuperar_senha');
-                    }}
-                    className="text-xs font-medium hover:underline transition-colors"
+                    onClick={() => { setResetEmail(email); setError(''); setResetSuccess(''); setViewState('recuperar_senha'); }}
+                    className="text-xs font-semibold mb-1.5 hover:underline"
                     style={{ color: 'var(--accent)' }}
                   >
                     Esqueci minha senha
                   </button>
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock size={16} style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="ds-input pl-10 py-2.5"
-                    placeholder="••••••••"
-                  />
-                </div>
+                <CampoSenha id="login-senha" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
               </div>
 
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 text-sm font-bold shadow-md"
-                >
-                  {isSubmitting ? 'Autenticando...' : 'Entrar no Sistema'}
-                </Button>
-              </div>
-
-              <p className="text-center text-xs pt-3" style={{ color: 'var(--text-muted)' }}>
-                Protegido por Criptografia e Políticas CFP / LGPD
-              </p>
+              <Button type="submit" disabled={isSubmitting} className="w-full !min-h-[46px]">
+                {isSubmitting ? <><Loader2 size={17} className="animate-spin" /> Entrando…</> : 'Entrar'}
+              </Button>
             </form>
           )}
 
-          {/* ======================================================== */}
-          {/* VISTA: FORMULÁRIO DE CADASTRO DE NOVA CONTA              */}
-          {/* ======================================================== */}
           {viewState === 'cadastro' && (
             <form className="space-y-4" onSubmit={handleCadastro}>
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                  Nome Completo
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User size={16} style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  <input
-                    type="text"
-                    value={nomeCadastro}
-                    onChange={(e) => setNomeCadastro(e.target.value)}
-                    className="ds-input pl-10 py-2.5"
-                    placeholder="Dra. Camila Alencar"
-                  />
-                </div>
+                <label htmlFor="cad-nome" className="ds-label">Nome profissional</label>
+                <CampoComIcone icon={User}>
+                  <input id="cad-nome" type="text" autoComplete="name" value={nomeCadastro}
+                    onChange={(e) => setNomeCadastro(e.target.value)} className="ds-input pl-10" placeholder="Dra. Camila Alencar" />
+                </CampoComIcone>
               </div>
-
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                  Endereço de e-mail *
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail size={16} style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="ds-input pl-10 py-2.5"
-                    placeholder="seu.email@exemplo.com"
-                  />
-                </div>
+                <label htmlFor="cad-email" className="ds-label">E-mail</label>
+                <CampoComIcone icon={Mail}>
+                  <input id="cad-email" type="email" required autoComplete="email" value={email}
+                    onChange={(e) => setEmail(e.target.value)} className="ds-input pl-10" placeholder="voce@consultorio.com.br" />
+                </CampoComIcone>
               </div>
-
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                  Criar Senha (mínimo 6 caracteres) *
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock size={16} style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="ds-input pl-10 py-2.5"
-                    placeholder="••••••••"
-                  />
-                </div>
+                <label htmlFor="cad-senha" className="ds-label">Senha</label>
+                <CampoSenha id="cad-senha" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} />
+                <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>Mínimo de 8 caracteres, com letras e números.</p>
               </div>
-
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                  Confirmar Senha *
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock size={16} style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="ds-input pl-10 py-2.5"
-                    placeholder="••••••••"
-                  />
-                </div>
+                <label htmlFor="cad-confirma" className="ds-label">Confirme a senha</label>
+                <CampoSenha id="cad-confirma" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" minLength={8} />
               </div>
 
-              <div className="p-3 bg-emerald-500/10 rounded-lg text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-                <ShieldCheck size={16} className="shrink-0 text-emerald-500" />
-                <span>14 dias grátis sem necessidade de cartão de crédito no cadastro.</span>
-              </div>
+              <Button type="submit" disabled={isSubmitting} className="w-full !min-h-[46px]">
+                {isSubmitting ? <><Loader2 size={17} className="animate-spin" /> Criando conta…</> : 'Criar conta e começar'}
+              </Button>
 
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 text-sm font-bold shadow-md"
-                >
-                  {isSubmitting ? 'Criando Conta...' : 'Criar Conta e Iniciar Avaliação'}
-                </Button>
-              </div>
-
-              <p className="text-center text-xs pt-2" style={{ color: 'var(--text-muted)' }}>
-                Ao se cadastrar, você concorda com os termos de sigilo ético e proteção CFP / LGPD.
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                Ao criar a conta, você assume o sigilo profissional sobre os dados registrados, conforme o Código de Ética do CFP e a LGPD.
               </p>
             </form>
           )}
 
-          {/* ======================================================== */}
-          {/* VISTA 2: VERIFICAÇÃO EM DUAS ETAPAS (2FA)                */}
-          {/* ======================================================== */}
           {viewState === '2fa' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="text-center space-y-1">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-1 shadow-inner" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
-                  <ShieldCheck size={26} />
-                </div>
-                <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Verificação em 2 Etapas
-                </h3>
-                <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-secondary)' }}>
-                  Insira o código de segurança de 6 dígitos gerado para <span className="font-semibold text-slate-700 dark:text-slate-200">{email}</span>.
-                </p>
+            <div className="animate-in">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+                <MailCheck size={24} />
               </div>
+              <h2 className="text-[1.75rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>
+                Confirme que é você
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }} aria-live="polite">
+                {enviandoCodigo && !enviadoPara
+                  ? 'Enviando o código para o seu e-mail…'
+                  : <>Enviamos um código de 6 dígitos para <strong style={{ color: 'var(--text-primary)' }}>{enviadoPara || email}</strong>. Ele vale por 10 minutos.</>}
+              </p>
 
-              {/* Dica de Código Rápido (Homologação / Teste) */}
-              {codigoExibido && (
-                <div 
-                  onClick={() => setCodigo2FA(codigoExibido)}
-                  className="p-3 rounded-xl border border-dashed cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] text-center"
-                  style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--accent)' }}
-                  title="Clique para preencher automaticamente"
-                >
-                  <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    Código de teste / homologação gerado:
-                  </p>
-                  <p className="text-xl font-mono font-black tracking-widest mt-0.5" style={{ color: 'var(--accent)' }}>
-                    {codigoExibido}
-                  </p>
-                  <span className="text-[10px] font-medium opacity-75 underline" style={{ color: 'var(--text-muted)' }}>
-                    Clique para preencher
-                  </span>
-                </div>
-              )}
-
-              <form onSubmit={handleVerificar2FA} className="space-y-4">
+              <form onSubmit={handleVerificar2FA} className="mt-7 space-y-5">
                 <div>
-                  <label className="block text-xs font-semibold mb-2 text-center" style={{ color: 'var(--text-secondary)' }}>
-                    Código de 6 dígitos
-                  </label>
+                  <label htmlFor="codigo-2fa" className="ds-label">Código de verificação</label>
                   <input
+                    id="codigo-2fa"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
                     autoFocus
                     required
                     value={codigo2FA}
-                    onChange={(e) => setCodigo2FA(e.target.value.replace(/\D/g, ''))}
-                    placeholder="000000"
-                    className="ds-input text-center text-2xl tracking-[0.4em] font-mono font-bold py-3 w-full"
+                    onChange={(e) => setCodigo2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="––––––"
+                    className="ds-input text-center !text-[1.6rem] tracking-[0.5em] font-bold !min-h-[56px] tabular"
                   />
                 </div>
 
-                {/* Caixa Selecionadora: Lembrar desta máquina */}
-                <div 
-                  onClick={() => setLembrarMaquina(!lembrarMaquina)}
-                  className="flex items-start gap-3 p-3.5 rounded-xl cursor-pointer select-none transition-colors"
-                  style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
-                >
+                <label className="flex items-start gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    id="lembrar-maquina"
-                    checked={lembrarMaquina}
-                    onChange={(e) => setLembrarMaquina(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded cursor-pointer accent-indigo-600"
-                    onClick={(e) => e.stopPropagation()}
+                    checked={lembrarDispositivo}
+                    onChange={(e) => setLembrarDispositivo(e.target.checked)}
+                    className="mt-0.5 w-[18px] h-[18px] shrink-0"
                   />
-                  <div className="flex-1">
-                    <label htmlFor="lembrar-maquina" className="text-xs font-bold block cursor-pointer" style={{ color: 'var(--text-primary)' }}>
-                      Lembrar desta máquina
-                    </label>
-                    <p className="text-[11px] mt-0.5 leading-snug" style={{ color: 'var(--text-muted)' }}>
-                      Nunca mais solicitar verificação neste computador/navegador.
-                    </p>
-                  </div>
-                  <Laptop size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }} />
-                </div>
+                  <span>
+                    <span className="block text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Confiar neste dispositivo por 30 dias</span>
+                    <span className="block text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Não marque em computadores compartilhados.</span>
+                  </span>
+                </label>
 
-                <div className="pt-2 space-y-2">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || codigo2FA.length < 6}
-                    className="w-full py-3 text-sm font-bold shadow-md"
-                  >
-                    {isSubmitting ? 'Validando...' : 'Confirmar e Acessar'}
-                  </Button>
+                <Button type="submit" disabled={isSubmitting || codigo2FA.length < 6} className="w-full !min-h-[46px]">
+                  {isSubmitting ? <><Loader2 size={17} className="animate-spin" /> Verificando…</> : 'Verificar e entrar'}
+                </Button>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <button
-                      type="button"
-                      onClick={handleReenviarCodigo}
-                      className="text-xs font-medium flex items-center gap-1 hover:underline transition-colors"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      <RefreshCw size={13} /> Reenviar código
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelar2FA}
-                      className="text-xs font-medium hover:underline transition-colors"
-                      style={{ color: 'var(--status-danger)' }}
-                    >
-                      Cancelar e Sair
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* VISTA 3: REDEFINIDOR DE SENHA                            */}
-          {/* ======================================================== */}
-          {viewState === 'recuperar_senha' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="text-center space-y-1 mb-2">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-1 shadow-inner" style={{ backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)' }}>
-                  <KeyRound size={24} />
-                </div>
-                <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Redefinir Senha
-                </h3>
-                <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-secondary)' }}>
-                  Enviaremos instruções oficiais para você cadastrar uma nova senha com segurança.
-                </p>
-              </div>
-
-              <form onSubmit={handleSolicitarRedefinicao} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>E-mail cadastrado</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail size={16} style={{ color: 'var(--text-muted)' }} />
-                    </div>
-                    <input
-                      type="email"
-                      required
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      className="ds-input pl-10 py-2.5"
-                      placeholder="seu@email.com"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 space-y-2">
-                  <Button
-                    type="submit"
-                    disabled={isSendingReset}
-                    className="w-full py-3 text-sm font-bold shadow-md"
-                  >
-                    {isSendingReset ? 'Enviando...' : 'Enviar Link de Redefinição'}
-                  </Button>
-
+                <div className="flex items-center justify-between gap-3 pt-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      setViewState('login');
-                      setError('');
-                      setResetSuccess('');
-                    }}
-                    className="w-full py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 hover:underline transition-colors"
+                    onClick={solicitarCodigo}
+                    disabled={reenviarEm > 0 || enviandoCodigo}
+                    className="text-sm font-semibold flex items-center gap-1.5 min-h-[40px] disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    <RefreshCw size={14} className={enviandoCodigo ? 'animate-spin' : ''} />
+                    {reenviarEm > 0 ? `Reenviar em ${reenviarEm}s` : 'Reenviar código'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelar2FA}
+                    className="text-sm font-medium min-h-[40px] hover:underline"
                     style={{ color: 'var(--text-secondary)' }}
                   >
-                    <ArrowLeft size={14} /> Voltar para o Login
+                    Usar outra conta
                   </button>
                 </div>
               </form>
             </div>
           )}
 
+          {viewState === 'recuperar_senha' && (
+            <div className="animate-in">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: 'var(--warm-light)', color: 'var(--warm)' }}>
+                <KeyRound size={22} />
+              </div>
+              <h2 className="text-[1.75rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>Redefinir senha</h2>
+              <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Enviaremos um link para você cadastrar uma nova senha.
+              </p>
+
+              <form onSubmit={handleSolicitarRedefinicao} className="mt-7 space-y-4">
+                <div>
+                  <label htmlFor="reset-email" className="ds-label">E-mail da conta</label>
+                  <CampoComIcone icon={Mail}>
+                    <input id="reset-email" type="email" required autoComplete="email" value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)} className="ds-input pl-10" placeholder="voce@consultorio.com.br" />
+                  </CampoComIcone>
+                </div>
+
+                <Button type="submit" disabled={isSendingReset} className="w-full !min-h-[46px]">
+                  {isSendingReset ? <><Loader2 size={17} className="animate-spin" /> Enviando…</> : 'Enviar link'}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => { setViewState('login'); setError(''); setResetSuccess(''); }}
+                  className="w-full min-h-[44px] text-sm font-medium flex items-center justify-center gap-1.5 hover:underline"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <ArrowLeft size={15} /> Voltar para o login
+                </button>
+              </form>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

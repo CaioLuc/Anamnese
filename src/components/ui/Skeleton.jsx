@@ -5,7 +5,7 @@ import React from 'react';
  * Substitui spinners crus para evitar Layout Shift (CLS).
  */
 export default function Skeleton({ className = '', variant = 'text', count = 1 }) {
-  const base = "animate-pulse rounded bg-slate-200 dark:bg-slate-800";
+  const base = "animate-pulse rounded-md bg-[var(--bg-sunken)]";
 
   const variants = {
     text: "h-4 w-full",

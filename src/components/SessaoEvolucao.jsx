@@ -1,7 +1,8 @@
 import logger from '../utils/logger';
 import { useState, useEffect, useRef } from 'react';
+import { dataLocalISO } from '../utils/formatUtils';
 import { criarSessao, lerPerfilPsicologo } from '../services/patientService';
-import { PdfBuilder } from '../services/pdfUtils';
+import { gerarEvolucaoSessaoPDF } from '../services/pdfUtils';
 import { gerarResumoIA } from '../services/iaService';
 import UpgradeProModal from './UpgradeProModal';
 import Tooltip from './Tooltip';
@@ -15,7 +16,7 @@ import Select from './ui/Select';
 export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
     id_paciente: preSelectedPatient?.id || '',
-    data_sessao: new Date().toISOString().split('T')[0],
+    data_sessao: dataLocalISO(),
     status: 'Presente',
     humor: 5,
     observacoes: '',
@@ -32,8 +33,13 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   const [showDropdown, setShowDropdown] = useState(false);
   const [isGeneratingIA, setIsGeneratingIA] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [planoPsicologo, setPlanoPsicologo] = useState('basico');
+  // null = plano desconhecido (carregando ou falha na leitura)
+  const [planoPsicologo, setPlanoPsicologo] = useState(null);
+  const [profissional, setProfissional] = useState(null);
+  // Texto original das observações antes do resumo da I.A. (para desfazer)
+  const [observacoesAntesIA, setObservacoesAntesIA] = useState(null);
   const formRef = useRef(null);
+  const submittingRef = useRef(false);
   const formStartTime = useRef(Date.now());
   const { showToast } = useToast();
 
@@ -48,8 +54,16 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
   // Carregar plano do psicólogo
   useEffect(() => {
-    lerPerfilPsicologo().then(p => { if (p?.plano) setPlanoPsicologo(p.plano); }).catch(() => {});
-  }, []);
+    lerPerfilPsicologo()
+      .then(p => {
+        setPlanoPsicologo(p?.plano || 'basico');
+        if (p) setProfissional({ nome: p.nome, crp: p.crp, clinica: p.clinica, cidade: p.cidade });
+      })
+      .catch(err => {
+        logger.error(err);
+        showToast({ type: 'error', message: 'Não foi possível carregar seu plano. Recarregue a página para tentar novamente.' });
+      });
+  }, [showToast]);
 
   // If the Agenda navigates here with a pre-selected patient, apply it
   useEffect(() => {
@@ -79,6 +93,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Ctrl+S (requestSubmit) ignora o botão desabilitado: evita envio duplicado
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setStatusMessage({ type: '', text: '' });
     setIsSubmitting(true);
 
@@ -92,6 +109,9 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
       if (!formData.observacoes || formData.observacoes.trim().length < 5) {
         throw new Error('As observações gerais devem ser preenchidas detalhadamente.');
       }
+      if (formData.pago && !formData.forma_pagamento) {
+        throw new Error('Selecione a forma de pagamento.');
+      }
 
       await criarSessao(formData);
       
@@ -104,13 +124,11 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         durationMs,
         durationFormatted: `${Math.floor(durationMs / 60000)}m ${Math.floor((durationMs % 60000) / 1000)}s`,
         status: formData.status,
-        humor: formData.humor,
         obsLength,
         comportLength,
         sintomasLength,
         totalChars: obsLength + comportLength + sintomasLength,
         pago: formData.pago,
-        valor: parseFloat(String(formData.valor || '0').replace(/\./g, '').replace(',', '.')) || 0
       });
 
       showToast({ type: 'success', message: 'Evolução salva com sucesso!' });
@@ -126,6 +144,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         pago: false,
         forma_pagamento: ''
       }));
+      setObservacoesAntesIA(null);
 
       formStartTime.current = Date.now(); // Reset timer for next session
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 5000);
@@ -134,44 +153,21 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
       logger.error(err);
       setStatusMessage({ type: 'error', text: err.message || 'Erro ao registrar a evolução.' });
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   const handleExportPDF = () => {
-    if (!formData.id_paciente || !formData.observacoes || formData.observacoes.trim().length < 5) {
+    if (!formData.id_paciente || !formData.data_sessao || !formData.observacoes || formData.observacoes.trim().length < 5) {
       setStatusMessage({ type: 'error', text: 'Preencha o paciente e as observações gerais da sessão antes de exportar.' });
       return;
     }
 
     try {
-      const patient = patients.find(p => p.id === formData.id_paciente);
-      const patientName = patient ? patient.nome : 'Paciente Desconhecido';
-
-      const [year, month, day] = formData.data_sessao.split('-');
-      const formattedDate = `${day}/${month}/${year}`;
-
-      const pdf = new PdfBuilder(
-        'Evolucao de Sessao Psicologica',
-        `Paciente: ${patientName} - ${formattedDate}`
-      );
-
-      // Dados da sessão
-      pdf.addSection('Dados da Sessao');
-      pdf.addInfoBlock([
-        { label: 'Paciente', value: patientName },
-        { label: 'Data da Sessao', value: formattedDate },
-        { label: 'Status', value: formData.status },
-      ]);
-
-      // Conteúdo clínico
-      pdf.addSection('Registro Clinico');
-      pdf.addTextBlock('Observações Gerais', formData.observacoes);
-      pdf.addTextBlock('Comportamento Apresentado', formData.comportamento);
-      pdf.addTextBlock('Sintomas Relatados', formData.sintomas);
-
-      pdf.save(`Evolucao_${patientName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`);
-      trackAction('EXPORT_PDF_EVOLUTION', { patientId: formData.id_paciente, patientName, date: formattedDate });
+      const patient = patients.find(p => p.id === formData.id_paciente) || { nome: 'Paciente' };
+      gerarEvolucaoSessaoPDF(patient, formData, profissional);
+      trackAction('EXPORT_PDF_EVOLUTION', { patientId: formData.id_paciente, date: formData.data_sessao });
       
       setStatusMessage({ type: 'success', text: 'PDF exportado com sucesso!' });
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 3000);
@@ -235,7 +231,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                         key={p.id}
                         type="button"
                         onMouseDown={() => handleSelectPatient(p)}
-                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors hover:bg-brand-50 dark:hover:bg-brand-900/20"
                         style={{ color: 'var(--text-primary)' }}
                       >
                         <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>{p?.nome?.charAt(0)?.toUpperCase() || '?'}</span>
@@ -346,7 +342,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                 return (
                   <button key={val} type="button"
                     onClick={() => setFormData(prev => ({ ...prev, humor: val }))}
-                    className="w-10 h-10 rounded-lg text-sm font-bold border transition-all"
+                    className="w-11 h-11 rounded-lg text-sm font-bold border transition-all"
                     style={{
                       backgroundColor: isSelected ? color : 'var(--bg-card)',
                       color: isSelected ? '#FFFFFF' : color,
@@ -370,11 +366,14 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                 type="button"
                 disabled={isGeneratingIA || !formData.observacoes}
                 onClick={async () => {
-                  if (planoPsicologo !== 'pro' && planoPsicologo !== 'premium') {
+                  // Plano desconhecido (null): não exibe upgrade; o servidor valida o plano
+                  // Mesmos planos que a Cloud Function aceita (functions/index.js)
+                  if (planoPsicologo !== null && !['profissional', 'clinica', 'pro', 'premium'].includes(planoPsicologo)) {
                     setShowUpgradeModal(true);
                     return;
                   }
                   setIsGeneratingIA(true);
+                  const textoOriginal = formData.observacoes;
                   try {
                     const textoCompleto = [
                       formData.observacoes && `Observações: ${formData.observacoes}`,
@@ -383,6 +382,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                     ].filter(Boolean).join('\n\n');
                     const { resumo } = await gerarResumoIA('sessao', textoCompleto);
                     setFormData(prev => ({ ...prev, observacoes: resumo }));
+                    setObservacoesAntesIA(textoOriginal);
                     setStatusMessage({ type: 'success', text: 'Resumo gerado com I.A. com sucesso!' });
                     setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
                   } catch (err) {
@@ -396,7 +396,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                   }
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all disabled:opacity-40 text-white"
-                style={{ backgroundColor: 'var(--accent)' }}
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}
               >
                 {isGeneratingIA ? (
                   <>
@@ -427,11 +427,22 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
             )}
             <textarea
               value={formData.observacoes}
-              onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+              onChange={(e) => { setFormData({ ...formData, observacoes: e.target.value }); setObservacoesAntesIA(null); }}
+              disabled={isGeneratingIA}
               className="ds-input resize-y min-h-[150px] custom-scrollbar"
               placeholder="Resumo da sessão e os principais temas abordados..."
               required
             />
+            {observacoesAntesIA !== null && (
+              <button
+                type="button"
+                onClick={() => { setFormData(prev => ({ ...prev, observacoes: observacoesAntesIA })); setObservacoesAntesIA(null); }}
+                className="mt-2 text-xs font-semibold underline"
+                style={{ color: 'var(--accent)' }}
+              >
+                Desfazer resumo
+              </button>
+            )}
           </div>
 
           {/* Sessão 3: Comportamento */}

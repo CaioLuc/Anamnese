@@ -45,6 +45,7 @@ export function ToastProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook do próprio contexto
 export function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) {

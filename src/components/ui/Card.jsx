@@ -17,7 +17,7 @@ export function CardHeader({ children, className = '' }) {
     <div 
       className={`px-5 py-4 ${className}`}
       style={{ 
-        borderBottom: '0.5px solid var(--border)',
+        borderBottom: '1px solid var(--border)',
         backgroundColor: 'var(--bg-secondary)'
       }}
     >

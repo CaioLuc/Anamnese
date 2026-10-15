@@ -46,7 +46,7 @@ const INITIAL_STATE = {
   // Seção 2: Desenvolvimento e Escolar
   gestacao_planejada: false,
   gestacao_notas: '',
-  tipo_parto: 'Natural',
+  tipo_parto: '',
   testes_nascimento: false,
   testes_notas: '',
   internacao_nascimento: false,
@@ -91,6 +91,64 @@ const INITIAL_STATE = {
   observacoes_gerais: ''
 };
 
+// ==========================================
+// COMPONENTES DE UI (escopo de módulo: declarados dentro do form, remontavam a cada tecla e perdiam o foco)
+// ==========================================
+function Switch({ label, name, checked, onChange }) {
+  return (
+    <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border transition-all group hover:border-brand-500/30" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <span className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{label}</span>
+      <div className="relative">
+        <input type="checkbox" name={name} checked={checked} onChange={onChange} className="sr-only" />
+        <div className="block w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: checked ? 'var(--accent)' : 'var(--border)' }}></div>
+        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm ${checked ? 'transform translate-x-4' : ''}`}></div>
+      </div>
+    </label>
+  );
+}
+
+function SectionHeader({ title, desc, step }) {
+  return (
+    <div className="flex items-center gap-4 mb-6 pt-8 first:pt-0">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
+         {step}
+      </div>
+      <div>
+        <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+        {desc && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{desc}</p>}
+      </div>
+    </div>
+  );
+}
+
+function TextArea({ name, value, onChange, label, tip, rows = 3, placeholder, danger }) {
+  const isFilled = (value || '').trim().length > 0;
+  return (
+  <div>
+    {tip ? (
+      <Tooltip text={tip} showIcon>
+        <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+           {label}
+           {!isFilled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Campo não preenchido"></span>}
+        </label>
+      </Tooltip>
+    ) : (
+      <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+         {label}
+         {!isFilled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Campo não preenchido"></span>}
+      </label>
+    )}
+    <div className="relative">
+      <textarea
+        name={name} value={value || ''} onChange={onChange} rows={rows}
+        placeholder={placeholder}
+        className={`ds-input w-full resize-y ${danger ? 'border-red-500/50' : !isFilled ? 'border-amber-400/30' : ''}`}
+      />
+    </div>
+  </div>
+  );
+}
+
 export default function AnamneseAdolescenteForm({ patient, onSaved, initialData }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
@@ -101,8 +159,12 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
     const { showToast } = useToast();
     const [autoSaveStatus, setAutoSaveStatus] = useState('');
     const [hasDraft, setHasDraft] = useState(false);
-    const autoSaveTimerRef = useRef(null);
+    const [saved, setSaved] = useState(false);
+    const submitLockRef = useRef(false);
+    const pendingDraftRef = useRef(null);
+    const draftErrorShownRef = useRef(false);
 
+    // Rascunhos ficam no sessionStorage: existem só nesta aba e são apagados no logout.
     const draftKey = `caritas_anamnese_adolesc_draft_${patient?.id || 'unknown'}`;
 
     // Completion tracking
@@ -122,47 +184,68 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
     useEffect(() => {
       if (initialData) return;
       try {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed?.data && Object.values(parsed.data).some(v => v !== '' && v !== false && v !== 0)) {
+        const stored = sessionStorage.getItem(draftKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.data && Object.values(parsed.data).some(v => v !== '' && v !== false && v !== 0 && v !== 'adolescente')) {
             setHasDraft(true);
           }
         }
-      } catch (_) {}
+      } catch { /* storage indisponível: segue sem rascunho */ }
     }, [draftKey, initialData]);
 
-    // Auto-save debounce (H1)
-    const scheduleAutoSave = useCallback((data) => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = setTimeout(() => {
-        try {
-          const hasContent = Object.values(data).some(v => v !== '' && v !== false && v !== 0 && v !== 'adolescente');
-          if (!hasContent) return;
-          setAutoSaveStatus('saving');
-          localStorage.setItem(draftKey, JSON.stringify({ data, savedAt: new Date().toISOString() }));
-          setTimeout(() => {
-            setAutoSaveStatus('saved');
-            setTimeout(() => setAutoSaveStatus(''), 3000);
-          }, 300);
-        } catch (_) {}
-      }, 2000);
+    // Grava o rascunho na hora; retorna false se o storage falhar (cota, modo privado)
+    const writeDraft = useCallback((data) => {
+      pendingDraftRef.current = null;
+      try {
+        sessionStorage.setItem(draftKey, JSON.stringify({ data, savedAt: new Date().toISOString() }));
+        return true;
+      } catch (err) {
+        logger.error(err);
+        return false;
+      }
     }, [draftKey]);
 
+    // Auto-save debounce (H1) — pausado enquanto o banner de rascunho está aberto e após salvar
     useEffect(() => {
-      if (!initialData) scheduleAutoSave(formData);
-      return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-    }, [formData, scheduleAutoSave, initialData]);
+      pendingDraftRef.current = null;
+      if (initialData || hasDraft || saved) return;
+      if (!Object.values(formData).some(v => v !== '' && v !== false && v !== 0 && v !== 'adolescente')) return;
+      pendingDraftRef.current = formData;
+      const timer = setTimeout(() => {
+        setAutoSaveStatus('saving');
+        if (!writeDraft(formData)) {
+          setAutoSaveStatus('error');
+          if (!draftErrorShownRef.current) {
+            draftErrorShownRef.current = true;
+            showToast({ type: 'error', message: 'Não foi possível salvar o rascunho automático neste navegador.' });
+          }
+          return;
+        }
+        setTimeout(() => {
+          setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus(''), 3000);
+        }, 300);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }, [formData, initialData, hasDraft, saved, writeDraft, showToast]);
+
+    // Ao desmontar ou sair da página, grava na hora o que o debounce ainda não salvou
+    useEffect(() => {
+      const flush = () => { if (pendingDraftRef.current) writeDraft(pendingDraftRef.current); };
+      window.addEventListener('pagehide', flush);
+      return () => { window.removeEventListener('pagehide', flush); flush(); };
+    }, [writeDraft]);
 
     const restoreDraft = () => {
       try {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) { setFormData(prev => ({ ...prev, ...JSON.parse(saved).data })); showToast({ type: 'success', message: 'Rascunho restaurado!' }); }
-      } catch (_) { showToast({ type: 'error', message: 'Erro ao restaurar.' }); }
+        const stored = sessionStorage.getItem(draftKey);
+        if (stored) { setFormData(prev => ({ ...prev, ...JSON.parse(stored).data })); showToast({ type: 'success', message: 'Rascunho restaurado!' }); }
+      } catch { showToast({ type: 'error', message: 'Erro ao restaurar.' }); }
       setHasDraft(false);
     };
-    const dismissDraft = () => { try { localStorage.removeItem(draftKey); } catch (_) {} setHasDraft(false); };
-    const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch (_) {} };
+    const dismissDraft = () => { try { sessionStorage.removeItem(draftKey); } catch { /* storage indisponível */ } setHasDraft(false); };
+    const clearDraft = () => { try { sessionStorage.removeItem(draftKey); } catch { /* storage indisponível */ } };
 
     useEffect(() => {
         if (initialData) setFormData(prev => ({ ...prev, ...initialData }));
@@ -170,6 +253,8 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
 
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
+      // Começar a digitar com o aviso aberto = começar do zero; o autosave volta a proteger o texto novo
+      if (hasDraft) setHasDraft(false);
       setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
@@ -181,6 +266,15 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
 
     const handleSubmit = async (e) => {
       e.preventDefault();
+      // Trava síncrona: Ctrl+S (requestSubmit) ignora o botão desabilitado
+      if (submitLockRef.current) return;
+      if (!Object.keys(INITIAL_STATE).some(k => k !== 'tipo' && typeof formData[k] === 'string' && formData[k].trim())) {
+        showToast({ type: 'error', message: 'Preencha ao menos o motivo da consulta antes de salvar.' });
+        scrollToStep(3);
+        return;
+      }
+      submitLockRef.current = true;
+      let created = false;
       setIsSubmitting(true);
       setStatusMessage({ type: '', text: '' });
       try {
@@ -190,6 +284,8 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
             clearDraft();
         } else {
             await criarAnamnese({ id_paciente: patient.id, ...formData });
+            created = true;
+            setSaved(true);
             showToast({ type: 'success', message: 'Anamnese infanto-juvenil salva com sucesso!' });
             clearDraft();
         }
@@ -208,59 +304,10 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
         logger.error(err);
         showToast({ type: 'error', message: 'Erro ao salvar a Anamnese.' });
       } finally {
+        // Após criar, mantém a trava até o pai fechar o form (evita anamnese duplicada)
+        if (!created) submitLockRef.current = false;
         setIsSubmitting(false);
       }
-    };
-
-    const Switch = ({ label, name, checked }) => (
-      <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border transition-all group hover:border-blue-500/30" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <span className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{label}</span>
-        <div className="relative">
-          <input type="checkbox" name={name} checked={checked} onChange={handleChange} className="sr-only" />
-          <div className="block w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: checked ? 'var(--accent)' : 'var(--border)' }}></div>
-          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm ${checked ? 'transform translate-x-4' : ''}`}></div>
-        </div>
-      </label>
-    );
-
-    const SectionHeader = ({ title, desc, step }) => (
-        <div className="flex items-center gap-4 mb-6 pt-8 first:pt-0">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
-             {step}
-          </div>
-          <div>
-            <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-            {desc && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{desc}</p>}
-          </div>
-        </div>
-    );
-
-    const TextArea = ({ name, label, tip, rows = 3, placeholder, danger }) => {
-      const isFilled = (formData[name] || '').trim().length > 0;
-      return (
-      <div>
-        {tip ? (
-          <Tooltip text={tip} showIcon>
-            <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-               {label}
-               {!isFilled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Campo não preenchido"></span>}
-            </label>
-          </Tooltip>
-        ) : (
-          <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-             {label}
-             {!isFilled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Campo não preenchido"></span>}
-          </label>
-        )}
-        <div className="relative">
-          <textarea
-            name={name} value={formData[name] || ''} onChange={handleChange} rows={rows}
-            placeholder={placeholder}
-            className={`ds-input w-full resize-y ${danger ? 'border-red-500/50' : !isFilled ? 'border-amber-400/30' : ''}`}
-          />
-        </div>
-      </div>
-      );
     };
 
     const sectionClass = "ds-card p-6 scroll-mt-24";
@@ -286,7 +333,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
                   <svg className="w-5 h-5 shrink-0" style={{ color: 'var(--status-warning)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-sm font-medium" style={{ color: 'var(--status-warning-text)' }}>Existe um rascunho salvo automaticamente para este paciente.</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--status-warning-text)' }}>Existe um rascunho salvo automaticamente para este paciente. Se começar a digitar, ele será descartado.</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button type="button" onClick={dismissDraft} className="ds-btn ds-btn-ghost px-3 py-1.5 text-xs">Descartar</button>
@@ -296,7 +343,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
             )}
             
             <div className="border rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--accent-light)', borderColor: 'var(--border)' }}>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md" style={{ backgroundColor: 'var(--accent)' }}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center  font-bold text-lg shrink-0 shadow-md" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
                 {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
@@ -312,11 +359,13 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
                 </div>
                 {autoSaveStatus && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all duration-300 shrink-0" style={{
-                    backgroundColor: autoSaveStatus === 'saving' ? 'var(--bg-primary)' : 'var(--status-success-bg)',
-                    color: autoSaveStatus === 'saving' ? 'var(--text-muted)' : 'var(--status-success-text)'
+                    backgroundColor: autoSaveStatus === 'saving' ? 'var(--bg-primary)' : autoSaveStatus === 'error' ? 'var(--status-danger-bg)' : 'var(--status-success-bg)',
+                    color: autoSaveStatus === 'saving' ? 'var(--text-muted)' : autoSaveStatus === 'error' ? 'var(--status-danger-text)' : 'var(--status-success-text)'
                   }}>
                     {autoSaveStatus === 'saving' ? (
                       <><svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Salvando...</>
+                    ) : autoSaveStatus === 'error' ? (
+                      <>Rascunho não salvo</>
                     ) : (
                       <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Salvo</>
                     )}
@@ -331,7 +380,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
                   type="button"
                   key={idx}
                   onClick={() => scrollToStep(idx)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold whitespace-nowrap rounded-xl transition-all border"
+                  className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] sm:min-h-0 text-[11px] font-bold whitespace-nowrap rounded-xl transition-all border"
                   style={{
                     backgroundColor: currentStep === idx ? 'var(--accent)' : 'var(--bg-card)',
                     color: currentStep === idx ? '#FFFFFF' : 'var(--text-secondary)',
@@ -347,13 +396,13 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
             <section id="adolesc-step-0" className={sectionClass}>
                 <SectionHeader step="0" title="Histórico Prévio" desc="Relacionamentos anteriores com serviços de Saúde Mental." />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Switch label="Já consultou um psicólogo anteriormente?" name="psicologo_previo" checked={formData.psicologo_previo} />
-                    <Switch label="Já consultou um psiquiatra anteriormente?" name="psiquiatra_previo" checked={formData.psiquiatra_previo} />
+                    <Switch label="Já consultou um psicólogo anteriormente?" name="psicologo_previo" checked={formData.psicologo_previo} onChange={handleChange} />
+                    <Switch label="Já consultou um psiquiatra anteriormente?" name="psiquiatra_previo" checked={formData.psiquiatra_previo} onChange={handleChange} />
                 </div>
                 {formData.psiquiatra_previo && (
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 p-4 rounded-xl border animate-in fade-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--accent-light)', borderColor: 'var(--border)' }}>
-                      <Switch label="Se sim, foi em ambulatório?" name="foi_ambulatorio" checked={formData.foi_ambulatorio} />
-                      <Switch label="Se sim, houve internamento?" name="houve_internamento" checked={formData.houve_internamento} />
+                      <Switch label="Se sim, foi em ambulatório?" name="foi_ambulatorio" checked={formData.foi_ambulatorio} onChange={handleChange} />
+                      <Switch label="Se sim, houve internamento?" name="houve_internamento" checked={formData.houve_internamento} onChange={handleChange} />
                    </div>
                 )}
             </section>
@@ -393,7 +442,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 p-4 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                         <div>
                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Qtd. Irmãos</label>
                            <input type="number" name="qtd_irmaos" value={formData.qtd_irmaos} onChange={handleChange} className="ds-input" />
@@ -407,7 +456,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
                            <input type="number" name="irmaos_feminino" value={formData.irmaos_feminino} onChange={handleChange} className="ds-input" />
                         </div>
                     </div>
-                    <TextArea name="observacoes_familiares" label="Observações Familiares" tip="Guarda ampliada, convivência com padrastos, irmãos meios, situação de abrigamento, violência doméstica, etc." placeholder="Detalhes adicionais..." />
+                    <TextArea name="observacoes_familiares" value={formData.observacoes_familiares} onChange={handleChange} label="Observações Familiares" tip="Guarda ampliada, convivência com padrastos, irmãos meios, situação de abrigamento, violência doméstica, etc." placeholder="Detalhes adicionais..." />
                 </div>
             </section>
 
@@ -415,7 +464,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
                 <SectionHeader step="2" title="Desenvolvimento e Escolaridade" desc="Gestação, desenvolvimento motor, linguagem e vida acadêmica." />
                 <div className="space-y-5">
                     <div className="flex flex-col sm:flex-row gap-3">
-                       <div className="flex-1"><Switch label="Gestação planejada?" name="gestacao_planejada" checked={formData.gestacao_planejada} /></div>
+                       <div className="flex-1"><Switch label="Gestação planejada?" name="gestacao_planejada" checked={formData.gestacao_planejada} onChange={handleChange} /></div>
                        <div className="flex-1"><input type="text" name="gestacao_notas" value={formData.gestacao_notas} onChange={handleChange} placeholder="Como foi a gestação?" className="ds-input" /></div>
                     </div>
 
@@ -431,70 +480,70 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
 
                     <div className="grid grid-cols-1 gap-3 p-4 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                         <div className="flex flex-col sm:flex-row gap-3">
-                           <div className="flex-1"><Switch label="Testes do nascimento?" name="testes_nascimento" checked={formData.testes_nascimento} /></div>
+                           <div className="flex-1"><Switch label="Testes do nascimento?" name="testes_nascimento" checked={formData.testes_nascimento} onChange={handleChange} /></div>
                            <div className="flex-1"><input type="text" name="testes_notas" value={formData.testes_notas} onChange={handleChange} placeholder="Alterações?" className="ds-input" /></div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3">
-                           <div className="flex-1"><Switch label="Internação após nascer?" name="internacao_nascimento" checked={formData.internacao_nascimento} /></div>
+                           <div className="flex-1"><Switch label="Internação após nascer?" name="internacao_nascimento" checked={formData.internacao_nascimento} onChange={handleChange} /></div>
                            <div className="flex-1"><input type="text" name="internacao_notas" value={formData.internacao_notas} onChange={handleChange} placeholder="Motivo e tempo" className="ds-input" /></div>
                         </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
-                       <div className="flex-1"><Switch label="A criança mamou?" name="mamou" checked={formData.mamou} /></div>
+                       <div className="flex-1"><Switch label="A criança mamou?" name="mamou" checked={formData.mamou} onChange={handleChange} /></div>
                        <div className="flex-1"><input type="text" name="tempo_amamentacao" value={formData.tempo_amamentacao} onChange={handleChange} placeholder="Tempo de amamentação / desmame" className="ds-input" /></div>
                     </div>
                     
-                    <TextArea name="desenvolvimento_motor" label="Desenvolvimento motor" tip="Quando começou a sentar, engatinhar, andar." rows={2} />
-                    <TextArea name="atraso_fala" label="Desenvolvimento de linguagem" tip="Primeiras palavras, frases completas, dificuldade de articulação." rows={2} />
+                    <TextArea name="desenvolvimento_motor" value={formData.desenvolvimento_motor} onChange={handleChange} label="Desenvolvimento motor" tip="Quando começou a sentar, engatinhar, andar." rows={2} />
+                    <TextArea name="atraso_fala" value={formData.atraso_fala} onChange={handleChange} label="Desenvolvimento de linguagem" tip="Primeiras palavras, frases completas, dificuldade de articulação." rows={2} />
 
                     <div className="flex flex-col sm:flex-row gap-3 p-4 border rounded-xl" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                       <div className="sm:w-72"><Switch label="Seletividade alimentar?" name="seletividade_alimentar" checked={formData.seletividade_alimentar} /></div>
+                       <div className="sm:w-72"><Switch label="Seletividade alimentar?" name="seletividade_alimentar" checked={formData.seletividade_alimentar} onChange={handleChange} /></div>
                        <div className="flex-1"><input type="text" name="seletividade_notas" value={formData.seletividade_notas} onChange={handleChange} placeholder="Texturas, cores, sabores que evita..." className="ds-input" /></div>
                     </div>
 
                     <div className="h-px w-full" style={{ backgroundColor: 'var(--border)' }}></div>
 
-                    <TextArea name="interacao_brincadeiras" label="Socialização" tip="Como interage com outras crianças? Prefere brincar sozinho ou em grupo?" rows={2} />
+                    <TextArea name="interacao_brincadeiras" value={formData.interacao_brincadeiras} onChange={handleChange} label="Socialização" tip="Como interage com outras crianças? Prefere brincar sozinho ou em grupo?" rows={2} />
                     
                     <div className="flex flex-col sm:flex-row gap-3">
-                       <div className="sm:w-72"><Switch label="Dificuldade escolar?" name="dificuldade_escolar" checked={formData.dificuldade_escolar} /></div>
+                       <div className="sm:w-72"><Switch label="Dificuldade escolar?" name="dificuldade_escolar" checked={formData.dificuldade_escolar} onChange={handleChange} /></div>
                        <div className="flex-1"><input type="text" name="dificuldade_escolar_notas" value={formData.dificuldade_escolar_notas} onChange={handleChange} placeholder="Quais matérias ou situações?" className="ds-input" /></div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
-                       <div className="sm:w-72"><Switch label="Mudou de escola?" name="mudanca_escola" checked={formData.mudanca_escola} /></div>
+                       <div className="sm:w-72"><Switch label="Mudou de escola?" name="mudanca_escola" checked={formData.mudanca_escola} onChange={handleChange} /></div>
                        <div className="flex-1"><input type="text" name="mudanca_escola_notas" value={formData.mudanca_escola_notas} onChange={handleChange} placeholder="Motivos das mudanças..." className="ds-input" /></div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
-                       <div className="sm:w-72"><Switch label="Sofrer bullying?" name="bullying" checked={formData.bullying} /></div>
+                       <div className="sm:w-72"><Switch label="Sofrer bullying?" name="bullying" checked={formData.bullying} onChange={handleChange} /></div>
                        <div className="flex-1"><input type="text" name="bullying_notas" value={formData.bullying_notas} onChange={handleChange} placeholder="Descreva: onde, quando, como reagiu..." className="ds-input" /></div>
                     </div>
-                    <TextArea name="tempo_telas" label="Uso de telas" tip="Quantas horas por dia? Quais conteúdos consome?" rows={2} placeholder="Descreva a exposição a telas..." />
+                    <TextArea name="tempo_telas" value={formData.tempo_telas} onChange={handleChange} label="Uso de telas" tip="Quantas horas por dia? Quais conteúdos consome?" rows={2} placeholder="Descreva a exposição a telas..." />
                 </div>
             </section>
 
             <section id="adolesc-step-3" className={sectionClass}>
                 <SectionHeader step="3" title="Motivo da Consulta e Dinâmicas" desc="Razões pela busca e contexto sócio-familiar." />
                 <div className="space-y-4">
-                    <TextArea name="motivo_consulta" label="Motivo da procura" tip="Queixa principal nas palavras do responsável e do adolescente." rows={4} />
-                    <TextArea name="historico_queixa" label="Histórico da queixa" tip="Desde quando apresenta a queixa? Houve piora?" rows={3} />
-                    <TextArea name="dinamica_familiar" label="Dinâmica Familiar" tip="Quem mora na casa, rotina familiar, vínculos." rows={3} />
-                    <TextArea name="dinamica_amorosa" label="Vida Relacional / Amorosa" rows={2} placeholder="Para adolescentes: relacionamentos, identidade, sexualidade..." />
+                    <TextArea name="motivo_consulta" value={formData.motivo_consulta} onChange={handleChange} label="Motivo da procura" tip="Queixa principal nas palavras do responsável e do adolescente." rows={4} />
+                    <TextArea name="historico_queixa" value={formData.historico_queixa} onChange={handleChange} label="Histórico da queixa" tip="Desde quando apresenta a queixa? Houve piora?" rows={3} />
+                    <TextArea name="dinamica_familiar" value={formData.dinamica_familiar} onChange={handleChange} label="Dinâmica Familiar" tip="Quem mora na casa, rotina familiar, vínculos." rows={3} />
+                    <TextArea name="dinamica_amorosa" value={formData.dinamica_amorosa} onChange={handleChange} label="Vida Relacional / Amorosa" rows={2} placeholder="Para adolescentes: relacionamentos, identidade, sexualidade..." />
                 </div>
             </section>
 
-            <section id="step-4" className={sectionClass} style={{ borderLeft: '4px solid var(--accent)' }}>
+            <section id="adolesc-step-4" className={sectionClass} style={{ borderLeft: '4px solid var(--accent)' }}>
                 <SectionHeader step="4" title="Hábitos e Rotina" desc="Padrões de sono, alimentação, exercício e lazer." />
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <TextArea name="rotina_sono" label="Qualidade do Sono" tip="Dorme sozinho? Tem pesadelos? Dificuldade para dormir?" rows={2} placeholder="Como é o sono da criança/adolescente?" />
-                      <TextArea name="alimentacao_habitos" label="Alimentação" tip="Come bem? Recusa alimentos? Tem compulsão?" rows={2} placeholder="Descreva os hábitos alimentares..." />
+                      <TextArea name="rotina_sono" value={formData.rotina_sono} onChange={handleChange} label="Qualidade do Sono" tip="Dorme sozinho? Tem pesadelos? Dificuldade para dormir?" rows={2} placeholder="Como é o sono da criança/adolescente?" />
+                      <TextArea name="alimentacao_habitos" value={formData.alimentacao_habitos} onChange={handleChange} label="Alimentação" tip="Come bem? Recusa alimentos? Tem compulsão?" rows={2} placeholder="Descreva os hábitos alimentares..." />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <TextArea name="exercicio_fisico" label="Atividade Física" rows={2} placeholder="Pratica esporte?" />
-                      <TextArea name="lazer_hobbies" label="Lazer e Hobbies" rows={2} placeholder="Do que gosta de brincar?" />
+                      <TextArea name="exercicio_fisico" value={formData.exercicio_fisico} onChange={handleChange} label="Atividade Física" rows={2} placeholder="Pratica esporte?" />
+                      <TextArea name="lazer_hobbies" value={formData.lazer_hobbies} onChange={handleChange} label="Lazer e Hobbies" rows={2} placeholder="Do que gosta de brincar?" />
                     </div>
                 </div>
             </section>
@@ -502,13 +551,13 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
             <section id="adolesc-step-5" className={sectionClass}>
                 <SectionHeader step="5" title="Quadro Clínico" desc="Sintomas, doenças e histórico médico." />
                 <div className="space-y-4">
-                    <TextArea name="sintomas_apresentados" label="Sintomas Apresentados" tip="Sintomas físicos e emocionais: agitação, irritabilidade, choro fácil, isolamento, etc." rows={3} danger />
-                    <TextArea name="fatores_agravantes" label="Fatores agravantes" rows={2} danger />
-                    <TextArea name="transtornos_anteriores" label="Histórico de Transtornos" tip="Diagnósticos prévios. Ex: TDAH, TEA, depressão." rows={2} danger />
+                    <TextArea name="sintomas_apresentados" value={formData.sintomas_apresentados} onChange={handleChange} label="Sintomas Apresentados" tip="Sintomas físicos e emocionais: agitação, irritabilidade, choro fácil, isolamento, etc." rows={3} danger />
+                    <TextArea name="fatores_agravantes" value={formData.fatores_agravantes} onChange={handleChange} label="Fatores agravantes" rows={2} danger />
+                    <TextArea name="transtornos_anteriores" value={formData.transtornos_anteriores} onChange={handleChange} label="Histórico de Transtornos" tip="Diagnósticos prévios. Ex: TDAH, TEA, depressão." rows={2} danger />
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <TextArea name="doencas_importantes" label="Doenças Importantes" rows={2} danger placeholder="Crônicas, cirurgias, alergias..." />
-                        <TextArea name="medicamentos" label="Medicação Atual" rows={2} danger placeholder="Nome, dosagem..." />
+                        <TextArea name="doencas_importantes" value={formData.doencas_importantes} onChange={handleChange} label="Doenças Importantes" rows={2} danger placeholder="Crônicas, cirurgias, alergias..." />
+                        <TextArea name="medicamentos" value={formData.medicamentos} onChange={handleChange} label="Medicação Atual" rows={2} danger placeholder="Nome, dosagem..." />
                     </div>
 
                     <div className="p-5 rounded-xl mt-4 border" style={{ backgroundColor: 'var(--status-danger-bg)', borderColor: 'var(--status-danger)' }}>
@@ -524,8 +573,8 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
              <section id="adolesc-step-6" className={sectionClass}>
                 <SectionHeader step="6" title="Finalização" desc="Expectativas do responsável e parecer profissional." />
                 <div className="space-y-4">
-                  <TextArea name="expectativa_responsavel" label="Expectativas do responsável" tip="Quais resultados esperam? O adolescente sabe por que está ali?" rows={3} placeholder="Expectativas da família..." />
-                  <TextArea name="observacoes_gerais" label="Observações do Profissional" rows={5} placeholder="Impressões clínicas, hipóteses diagnósticas..." />
+                  <TextArea name="expectativa_responsavel" value={formData.expectativa_responsavel} onChange={handleChange} label="Expectativas do responsável" tip="Quais resultados esperam? O adolescente sabe por que está ali?" rows={3} placeholder="Expectativas da família..." />
+                  <TextArea name="observacoes_gerais" value={formData.observacoes_gerais} onChange={handleChange} label="Observações do Profissional" rows={5} placeholder="Impressões clínicas, hipóteses diagnósticas..." />
                 </div>
             </section>
 
@@ -538,7 +587,7 @@ export default function AnamneseAdolescenteForm({ patient, onSaved, initialData 
               </div>
               <button 
                 type="submit" 
-                disabled={isSubmitting}
+                disabled={isSubmitting || saved}
                 className="ds-btn ds-btn-primary px-8 py-3.5 ml-auto text-sm font-bold shadow-lg"
               >
                 {isSubmitting ? 'Salvando...' : initialData?.id ? 'Atualizar Ficha' : 'Assinar e Concluir Anamnese'}

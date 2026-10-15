@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, serverTimestamp, deleteField, runTransaction, query, where, writeBatch } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
 import { trackAction } from './logService';
 import logger from '../utils/logger';
@@ -56,12 +56,13 @@ export async function lerPerfilPsicologo() {
     const ref = getPsicologoRef();
     const snap = await getDoc(ref);
     if (snap.exists()) {
-      return { id: snap.id, ...snap.data() };
+      return { ...snap.data(), id: snap.id };
     }
-    return null;
+    return null; // null = perfil inexistente (primeiro login)
   } catch (error) {
+    // Não retornar null aqui: o App trataria como primeiro login e recriaria o perfil como trial
     logger.error("Erro ao ler perfil:", error);
-    return null;
+    throw error;
   }
 }
 
@@ -111,7 +112,7 @@ export async function criarPaciente(pacienteData) {
 export async function lerPacientes() {
   try {
     const qSnapshot = await getDocs(getPacientesRef());
-    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = qSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     // Apenas pacientes que NÃO estão na lixeira
     return docs.filter(p => !p.deletedAt);
   } catch (error) {
@@ -120,16 +121,21 @@ export async function lerPacientes() {
   }
 }
 
-// Busca paciente pelo CPF (normalizado, só dígitos)
+// Busca paciente pelo CPF (normalizado, só dígitos).
+// Inclui pacientes na lixeira (retornados com `deletedAt`) para o chamador avisar "existe na lixeira";
+// ativos têm prioridade. Anonimizados são ignorados.
 export async function buscarPacientePorCPF(cpf) {
   try {
     const cpfLimpo = cpf.replace(/\D/g, '');
     if (!cpfLimpo) return null;
-    const todos = await lerPacientes();
-    return todos.find(p => p.cpf && p.cpf.replace(/\D/g, '') === cpfLimpo) || null;
+    const qSnapshot = await getDocs(getPacientesRef());
+    const encontrados = qSnapshot.docs
+      .map(d => ({ ...d.data(), id: d.id }))
+      .filter(p => !p.anonimizado && p.cpf && String(p.cpf).replace(/\D/g, '') === cpfLimpo);
+    return encontrados.find(p => !p.deletedAt) || encontrados[0] || null;
   } catch (error) {
     logger.error("Erro ao buscar paciente por CPF:", error);
-    return null;
+    throw error;
   }
 }
 
@@ -137,7 +143,7 @@ export async function lerPaciente(id) {
   try {
     const docSnap = await getDoc(getPacienteDoc(id));
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+      return { ...docSnap.data(), id: docSnap.id };
     }
     return null;
   } catch (error) {
@@ -161,6 +167,8 @@ export async function deletarPaciente(id) {
     // SOFT DELETE: Mover para lixeira
     await updateDoc(getPacienteDoc(id), { deletedAt: serverTimestamp() });
     trackAction('DELETE_PATIENT', { patientId: id });
+    invalidarCacheSessoes();
+    invalidarCacheAnamneses();
   } catch (error) {
     logger.error("Erro ao mover paciente para lixeira:", error);
     throw error;
@@ -168,60 +176,78 @@ export async function deletarPaciente(id) {
 }
 
 // ==========================================
-// FUNÇÕES DA LIXEIRA (GARBAGE COLLECTOR)
+// FUNÇÕES DA LIXEIRA (ANONIMIZAÇÃO — LGPD + CFP nº 01/2009)
 // ==========================================
 
+// Campos de identificação gravados no doc do paciente (AddPatientModal / Agenda);
+// email e endereco por precaução em cadastros legados. deleteField em campo ausente é no-op.
+const CAMPOS_IDENTIFICACAO = ['cpf', 'telefone', 'data_nascimento', 'email', 'endereco'];
+const MAX_ESCRITAS_POR_COMMIT = 400;
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+// deletedAt sem toMillis = serverTimestamp ainda pendente (acabou de ir para a lixeira)
+function expirouNaLixeira(p, diasRetencao, agora) {
+  return !!p?.deletedAt?.toMillis && !p.anonimizado && agora - p.deletedAt.toMillis() >= diasRetencao * DIA_MS;
+}
+
+/**
+ * Após `diasRetencao` dias na lixeira o paciente é ANONIMIZADO, nunca excluído:
+ * remove os dados de identificação do doc do paciente e preserva anamneses e sessões
+ * (guarda do prontuário por 5 anos — Resolução CFP nº 01/2009). Lança erro em caso de falha.
+ */
 export async function limparLixeiraPacientes(diasRetencao = 7) {
   try {
+    const agora = Date.now();
     const qSnapshot = await getDocs(getPacientesRef());
-    const todos = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const lixeira = todos.filter(p => p.deletedAt);
+    const expirados = qSnapshot.docs.filter(d => expirouNaLixeira(d.data(), diasRetencao, agora)).map(d => d.ref);
 
-    const agora = new Date();
-    const batch = writeBatch(db);
-    let itemsNoBatch = 0;
-
-    for (const pac of lixeira) {
-      const deletedDate = pac.deletedAt?.toDate ? pac.deletedAt.toDate() : new Date();
-      const diasNaLixeira = (agora - deletedDate) / (1000 * 60 * 60 * 24);
-
-      if (diasNaLixeira >= diasRetencao) {
-        // Exclusão Definitiva (Hard Delete)
-        // 1. Deleta anamneses vinculadas (subcoleção)
-        const snapAnam = await getDocs(getAnamnesesRef(pac.id));
-        snapAnam.forEach(d => { batch.delete(d.ref); itemsNoBatch++; });
-
-        // 2. Deleta sessões vinculadas (subcoleção)
-        const snapSess = await getDocs(getSessoesRef(pac.id));
-        snapSess.forEach(d => { batch.delete(d.ref); itemsNoBatch++; });
-
-        // 3. Deleta o paciente
-        batch.delete(getPacienteDoc(pac.id));
-        itemsNoBatch++;
+    for (let i = 0; i < expirados.length; i += MAX_ESCRITAS_POR_COMMIT) {
+      const lote = expirados.slice(i, i + MAX_ESCRITAS_POR_COMMIT);
+      // Relê cada paciente na transação: se foi restaurado durante o loop, não anonimiza
+      const anonimizados = await runTransaction(db, async (tx) => {
+        const snaps = await Promise.all(lote.map(ref => tx.get(ref)));
+        const alvos = snaps.filter(s => s.exists() && expirouNaLixeira(s.data(), diasRetencao, agora));
+        alvos.forEach(s => tx.update(s.ref, {
+          ...Object.fromEntries(CAMPOS_IDENTIFICACAO.map(c => [c, deleteField()])),
+          nome: 'Paciente anonimizado',
+          anonimizado: true,
+          anonimizadoEm: serverTimestamp(),
+        }));
+        return alvos.map(s => s.id);
+      });
+      // Agendamentos guardam nome/CPF/telefone do paciente: também saem
+      for (const patientId of anonimizados) {
+        const ags = await getDocs(query(collection(getPsicologoRef(), 'agendamentos'), where('id_paciente', '==', patientId)));
+        if (!ags.empty) {
+          const batch = writeBatch(db);
+          ags.docs.forEach(a => batch.update(a.ref, {
+            nome_paciente: 'Paciente anonimizado',
+            cpf_paciente: deleteField(),
+            telefone_paciente: deleteField(),
+          }));
+          await batch.commit();
+        }
+        trackAction('PATIENT_ANONYMIZED', { patientId });
       }
     }
-
-    if (itemsNoBatch > 0) {
-      await batch.commit();
-      logger.log(`Lixeira limpa: ${itemsNoBatch} documentos deletados definitivamente.`);
-    }
   } catch (error) {
-    logger.error("Erro ao limpar lixeira de pacientes:", error);
+    logger.error("Erro ao anonimizar pacientes expirados da lixeira:", error);
+    throw error;
   }
 }
 
 /**
- * Lê pacientes que estão na lixeira (soft-deleted).
- * Retorna com campo `diasRestantes` indicando quanto tempo falta para exclusão definitiva.
+ * Lê pacientes que estão na lixeira (soft-deleted e ainda não anonimizados).
+ * Retorna com campo `diasRestantes` indicando quanto tempo falta para a anonimização.
  */
 export async function lerPacientesDeletados(diasRetencao = 7) {
   try {
     const qSnapshot = await getDocs(getPacientesRef());
-    const todos = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const todos = qSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     const agora = new Date();
 
     return todos
-      .filter(p => p.deletedAt)
+      .filter(p => p.deletedAt && !p.anonimizado)
       .map(p => {
         const deletedDate = p.deletedAt?.toDate ? p.deletedAt.toDate() : new Date();
         const diasNaLixeira = (agora - deletedDate) / (1000 * 60 * 60 * 24);
@@ -231,18 +257,26 @@ export async function lerPacientesDeletados(diasRetencao = 7) {
       .sort((a, b) => a.diasRestantes - b.diasRestantes);
   } catch (error) {
     logger.error("Erro ao ler pacientes deletados:", error);
-    return [];
+    throw error;
   }
 }
 
 /**
  * Restaura um paciente da lixeira removendo o campo deletedAt.
+ * Recusa pacientes já anonimizados (identificação removida de forma irreversível).
  */
 export async function restaurarPaciente(id) {
   try {
-    const { deleteField } = await import('firebase/firestore');
-    await updateDoc(getPacienteDoc(id), { deletedAt: deleteField() });
+    const ref = getPacienteDoc(id);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error("Paciente não encontrado.");
+      if (snap.data().anonimizado) throw new Error("Paciente anonimizado não pode ser restaurado.");
+      tx.update(ref, { deletedAt: deleteField() });
+    });
     trackAction('RESTORE_PATIENT', { patientId: id });
+    invalidarCacheSessoes();
+    invalidarCacheAnamneses();
   } catch (error) {
     logger.error("Erro ao restaurar paciente:", error);
     throw error;
@@ -261,6 +295,7 @@ export async function criarAnamnese(anamneseData) {
       createdAt: serverTimestamp()
     });
     trackAction('CREATE_ANAMNESIS', { patientId: id_paciente, anamneseId: docRef.id });
+    invalidarCacheAnamneses();
     return docRef.id;
   } catch (error) {
     logger.error("Erro ao criar anamnese:", error);
@@ -271,7 +306,7 @@ export async function criarAnamnese(anamneseData) {
 export async function lerAnamnesesDoPaciente(id_paciente) {
   try {
     const qSnapshot = await getDocs(getAnamnesesRef(id_paciente));
-    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = qSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     return docs.sort((a, b) => {
       const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
       const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
@@ -289,7 +324,7 @@ export async function lerAnamnese(id, id_paciente) {
     const docRef = doc(getAnamnesesRef(id_paciente), id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+      return { ...docSnap.data(), id: docSnap.id };
     }
     return null;
   } catch (error) {
@@ -303,6 +338,7 @@ export async function atualizarAnamnese(id, id_paciente, dadosAtualizados) {
     const docRef = doc(getAnamnesesRef(id_paciente), id);
     await updateDoc(docRef, dadosAtualizados);
     trackAction('UPDATE_ANAMNESIS', { patientId: id_paciente, anamneseId: id });
+    invalidarCacheAnamneses();
   } catch (error) {
     logger.error("Erro ao atualizar anamnese:", error);
     throw error;
@@ -314,6 +350,7 @@ export async function deletarAnamnese(id, id_paciente) {
     const docRef = doc(getAnamnesesRef(id_paciente), id);
     await deleteDoc(docRef);
     trackAction('DELETE_ANAMNESIS', { patientId: id_paciente, anamneseId: id });
+    invalidarCacheAnamneses();
   } catch (error) {
     logger.error("Erro ao deletar anamnese:", error);
     throw error;
@@ -360,7 +397,7 @@ export async function criarSessao(sessaoData) {
 export async function lerSessoesDoPaciente(id_paciente) {
   try {
     const qSnapshot = await getDocs(getSessoesRef(id_paciente));
-    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = qSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     return docs.sort((a, b) => {
       const dateA = a.data_sessao ? new Date(a.data_sessao) : (a.createdAt?.toDate() || new Date(0));
       const dateB = b.data_sessao ? new Date(b.data_sessao) : (b.createdAt?.toDate() || new Date(0));
@@ -475,7 +512,7 @@ export async function lerQuestionarios() {
   try {
     if (!auth.currentUser) return [];
     const snapshot = await getDocs(getQuestionariosRef());
-    const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
     return docs.sort((a, b) => {
       const dA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
       const dB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
@@ -483,7 +520,7 @@ export async function lerQuestionarios() {
     });
   } catch (error) {
     logger.error("Erro ao ler questionários:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -491,7 +528,7 @@ export async function lerQuestionario(id) {
   try {
     const docRef = doc(getQuestionariosRef(), id);
     const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
+    if (docSnap.exists()) return { ...docSnap.data(), id: docSnap.id };
     return null;
   } catch (error) {
     logger.error("Erro ao ler questionário:", error);
@@ -553,7 +590,7 @@ export async function criarClinica(clinicaData) {
 export async function lerClinicas() {
   try {
     const qSnapshot = await getDocs(getClinicasRef());
-    const docs = qSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = qSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     return docs.sort((a, b) => a.nome.localeCompare(b.nome));
   } catch (error) {
     logger.error("Erro ao ler clínicas:", error);

@@ -11,21 +11,22 @@ import ConfirmDialog from './ConfirmDialog';
 import QuestionarioBuilder from './QuestionarioBuilder';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
+import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, FileText, Copy, Edit2, Trash2, LayoutList, GripHorizontal, User, GraduationCap, ClipboardList } from 'lucide-react';
 
 const renderQuestionarioIcon = (icone, isPadrao) => {
-  if (icone === 'user') return <User size={24} className="text-indigo-500" />;
-  if (icone === 'graduation-cap') return <GraduationCap size={24} className="text-purple-500" />;
-  if (icone === 'clipboard') return <ClipboardList size={24} className="text-cyan-500" />;
-  return isPadrao ? <FileText size={24} className="text-indigo-500" /> : <Edit2 size={24} className="text-slate-400" />;
+  if (icone === 'user') return <User size={24} className="text-brand-500" />;
+  if (icone === 'graduation-cap') return <GraduationCap size={24} className="text-brand-500" />;
+  if (icone === 'clipboard') return <ClipboardList size={24} className="text-brand-500" />;
+  return isPadrao ? <FileText size={24} className="text-brand-500" /> : <Edit2 size={24} className="text-slate-400" />;
 };
 
-function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao }) {
+function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao, duplicandoId }) {
   const totalCampos = (template.campos || []).filter(c => c.tipo !== 'section').length;
   const totalSecoes = (template.campos || []).filter(c => c.tipo === 'section').length;
 
   return (
-    <div className="ds-card p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-500/50 group" style={{ backgroundColor: 'var(--bg-card)' }}>
+    <div className="ds-card p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:border-brand-300 dark:hover:border-brand-500/50 group" style={{ backgroundColor: 'var(--bg-card)' }}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 transition-colors">
@@ -57,7 +58,7 @@ function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao }) {
         </span>
       </div>
 
-      <div className="flex gap-2 pt-3 mt-auto" style={{ borderTop: '0.5px solid var(--border)' }}>
+      <div className="flex gap-2 pt-3 mt-auto" style={{ borderTop: '1px solid var(--border)' }}>
         {!isPadrao && onEditar && (
           <Button
             variant="ghost"
@@ -74,9 +75,10 @@ function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao }) {
           size="sm"
           className="flex-1"
           onClick={() => onDuplicar(template)}
+          disabled={!!duplicandoId}
         >
           <Copy size={14} />
-          Duplicar
+          {duplicandoId === template.id ? 'Duplicando...' : 'Duplicar'}
         </Button>
         {!isPadrao && onDeletar && (
           <Button
@@ -100,14 +102,21 @@ export default function Questionarios() {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [busca, setBusca] = useState('');
+  const [erroCarregamento, setErroCarregamento] = useState(false);
+  const [duplicandoId, setDuplicandoId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { showToast } = useToast();
 
   const carregarTemplates = async () => {
     setIsLoading(true);
+    setErroCarregamento(false);
     try {
       const docs = await lerQuestionarios();
       setCustomTemplates(docs);
     } catch (e) {
       logger.error(e);
+      setErroCarregamento(true);
+      showToast({ type: 'error', message: 'Não foi possível carregar os questionários.' });
     } finally {
       setIsLoading(false);
     }
@@ -126,10 +135,12 @@ export default function Questionarios() {
   };
 
   const handleDuplicar = async (template) => {
+    if (duplicandoId) return;
+    setDuplicandoId(template.id);
     try {
       if (template.tipo === 'padrao') {
         // Duplica template padrão para custom
-        const { id, ...dados } = template;
+        const { id: _id, ...dados } = template;
         await criarQuestionario({
           ...dados,
           nome: `${template.nome} (cópia)`,
@@ -139,20 +150,30 @@ export default function Questionarios() {
       } else {
         await duplicarQuestionario(template.id);
       }
+      showToast({ type: 'success', message: 'Questionário duplicado.' });
       carregarTemplates();
     } catch (e) {
       logger.error(e);
+      showToast({ type: 'error', message: 'Não foi possível duplicar o questionário.' });
+    } finally {
+      setDuplicandoId(null);
     }
   };
 
   const handleDeletar = async () => {
-    if (!confirmDelete) return;
+    // ConfirmDialog não aceita "disabled": o guard evita exclusão duplicada no duplo clique.
+    if (!confirmDelete || isDeleting) return;
+    setIsDeleting(true);
     try {
       await deletarQuestionario(confirmDelete.id);
       setConfirmDelete(null);
+      showToast({ type: 'success', message: 'Questionário excluído.' });
       carregarTemplates();
     } catch (e) {
       logger.error(e);
+      showToast({ type: 'error', message: 'Não foi possível excluir o questionário.' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -220,6 +241,14 @@ export default function Questionarios() {
       <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
         {isLoading ? (
           <Spinner />
+        ) : erroCarregamento ? (
+          <div role="alert" className="flex flex-col items-center justify-center h-60 text-center">
+            <FileText size={48} className="mb-3 opacity-20" style={{ color: 'var(--text-primary)' }} />
+            <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>Não foi possível carregar seus questionários</p>
+            <Button variant="secondary" size="sm" className="mt-3" onClick={carregarTemplates}>
+              Tentar novamente
+            </Button>
+          </div>
         ) : todosFiltrados.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-60 text-center">
             <FileText size={48} className="mb-3 opacity-20" style={{ color: 'var(--text-primary)' }} />
@@ -238,6 +267,7 @@ export default function Questionarios() {
                     template={t}
                     isPadrao={true}
                     onDuplicar={handleDuplicar}
+                    duplicandoId={duplicandoId}
                   />
                 ))}
               </div>
@@ -256,6 +286,7 @@ export default function Questionarios() {
                       onEditar={handleEditar}
                       onDuplicar={handleDuplicar}
                       onDeletar={setConfirmDelete}
+                      duplicandoId={duplicandoId}
                     />
                   ))}
                 </div>
@@ -272,6 +303,7 @@ export default function Questionarios() {
         title="Excluir Questionário"
         message={`Tem certeza que deseja excluir o questionário "${confirmDelete?.nome}"? Esta ação não pode ser desfeita.`}
         variant="danger"
+        confirmText={isDeleting ? 'Excluindo...' : undefined}
       />
     </div>
   );

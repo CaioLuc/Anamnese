@@ -3,8 +3,8 @@ import { useState } from 'react';
 // Campo: Separador de Seção
 function SectionField({ campo }) {
   return (
-    <div className="pt-4 pb-2 border-b border-indigo-200 dark:border-indigo-500/30 mb-2">
-      <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+    <div className="pt-4 pb-2 border-b border-brand-200 dark:border-brand-500/30 mb-2">
+      <h3 className="text-sm font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest">
         {campo.label}
       </h3>
     </div>
@@ -13,7 +13,7 @@ function SectionField({ campo }) {
 
 // Campo: Texto simples ou textarea
 function TextField({ campo, value, onChange, tipo }) {
-  const base = "w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none";
+  const base = "w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors resize-none";
   return (
     <div>
       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -54,10 +54,10 @@ function RadioField({ campo, value, onChange }) {
             key={opcao}
             type="button"
             onClick={() => onChange(value === opcao ? '' : opcao)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+            className={`px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-sm font-medium border transition-all ${
               value === opcao
-                ? 'bg-indigo-500 border-indigo-500 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-indigo-500'
+                ? 'bg-brand-500 border-brand-500 text-white shadow-md'
+                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-brand-400 dark:hover:border-brand-500'
             }`}
           >
             {opcao}
@@ -86,10 +86,10 @@ function CheckboxField({ campo, value, onChange }) {
             key={opcao}
             type="button"
             onClick={() => toggle(opcao)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-sm font-medium border transition-all flex items-center gap-1.5 ${
               selected.includes(opcao)
-                ? 'bg-indigo-500 border-indigo-500 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-indigo-500'
+                ? 'bg-brand-500 border-brand-500 text-white shadow-md'
+                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-brand-400 dark:hover:border-brand-500'
             }`}
           >
             {selected.includes(opcao) && (
@@ -113,7 +113,7 @@ function SelectField({ campo, value, onChange }) {
         {campo.label} {campo.obrigatorio && <span className="text-red-500">*</span>}
       </label>
       <select
-        className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+        className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors"
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         required={campo.obrigatorio}
@@ -129,9 +129,10 @@ function SelectField({ campo, value, onChange }) {
 
 // Campo: Escala numérica
 function ScaleField({ campo, value, onChange }) {
-  const min = campo.min || 1;
-  const max = campo.max || 10;
-  const nums = Array.from({ length: max - min + 1 }, (_, i) => i + min);
+  const min = campo.min ?? 1;
+  const max = campo.max ?? 10;
+  // Teto de 21 botões, mesmo para templates antigos salvos fora da faixa
+  const nums = Array.from({ length: Math.max(0, Math.min(max - min + 1, 21)) }, (_, i) => i + min);
   return (
     <div>
       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -145,16 +146,16 @@ function ScaleField({ campo, value, onChange }) {
             onClick={() => onChange(value === n ? null : n)}
             className={`w-9 h-9 rounded-lg text-sm font-bold border transition-all ${
               value === n
-                ? 'bg-indigo-500 border-indigo-500 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-indigo-400'
+                ? 'bg-brand-500 border-brand-500 text-white shadow-md'
+                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-brand-400'
             }`}
           >
             {n}
           </button>
         ))}
       </div>
-      {value && (
-        <p className="text-xs text-indigo-500 mt-1">Selecionado: {value}</p>
+      {value != null && (
+        <p className="text-xs text-brand-500 mt-1">Selecionado: {value}</p>
       )}
     </div>
   );
@@ -167,9 +168,14 @@ function ScaleField({ campo, value, onChange }) {
  *   respostas: { [campo.id]: valor }
  *   onChange: (novasRespostas) => void
  *   readOnly: boolean (para visualização)
+ *
+ * Em modo edição, `respostas` só é lido na montagem; para trocar o conjunto
+ * de respostas, o pai deve remontar o componente (ex.: key={anamnese.id}).
  */
 export default function QuestionarioFiller({ template, respostas = {}, onChange, readOnly = false }) {
   const [valores, setValores] = useState(respostas);
+  // Leitura reflete sempre a prop atual; o estado local existe só para não apagar edições em curso
+  const exibidos = readOnly ? respostas : valores;
 
   const handleChange = (campoId, valor) => {
     if (readOnly) return;
@@ -191,7 +197,7 @@ export default function QuestionarioFiller({ template, respostas = {}, onChange,
   return (
     <div className="space-y-6">
       {campos.map((campo) => {
-        const val = valores[campo.id];
+        const val = exibidos[campo.id];
 
         // Modo leitura — visualização das respostas
         if (readOnly) {

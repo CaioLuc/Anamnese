@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, limit, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
 import { trackAction, obterLogsLocais } from './logService';
 import logger from '../utils/logger';
@@ -115,7 +115,7 @@ export async function getMetricasPsicologo(uid) {
         const anamnesesCol = collection(db, 'psicologos', uid, 'pacientes', pacDoc.id, 'anamneses');
         const anamnesesSnap = await getDocs(anamnesesCol);
         totalAnamneses += anamnesesSnap.size;
-      } catch (e) {
+      } catch {
         // Erro individual por paciente, não impede os outros
       }
     }
@@ -236,7 +236,7 @@ export async function lerAvisoGlobal() {
     const snap = await getDoc(avisoRef);
     if (snap.exists()) return snap.data();
     return { mensagem: '', ativo: false };
-  } catch (error) {
+  } catch {
     return { mensagem: '', ativo: false };
   }
 }
@@ -271,29 +271,6 @@ export async function obterLogsAuditoria(maxResults = 250) {
   } catch (error) {
     logger.error("Erro ao obter logs de auditoria do Firestore, utilizando fallback local:", error);
     return obterLogsLocais();
-  }
-}
-
-export async function limparLogsAntigos(dias = 30) {
-  try {
-    const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - dias);
-
-    const logsCol = collection(db, 'action_logs');
-    // We cannot easily delete by batch without writing more logic, 
-    // but a simple loop works fine for reasonable retention limits
-    const q = query(logsCol, where('createdAt', '<', dataLimite), limit(500));
-    const snapshot = await getDocs(q);
-    
-    let deletados = 0;
-    for (const d of snapshot.docs) {
-      await deleteDoc(d.ref);
-      deletados++;
-    }
-    return deletados;
-  } catch (error) {
-    logger.error("Erro ao limpar logs:", error);
-    throw error;
   }
 }
 

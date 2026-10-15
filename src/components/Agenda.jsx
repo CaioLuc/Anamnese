@@ -1,10 +1,11 @@
 import logger from '../utils/logger';
 import { useState, useEffect, useCallback } from 'react';
 import {
-  criarAgendamento, lerAgendamentos,
+  criarAgendamento, criarAgendamentosEmLote, lerAgendamentos,
   atualizarAgendamento, deletarAgendamento, lerConfigAgenda
 } from '../services/agendaService';
 import { buscarPacientePorCPF, criarPaciente } from '../services/patientService';
+import { dataLocalISO, linkWhatsApp } from '../utils/formatUtils';
 import ConfirmDialog from './ConfirmDialog';
 import ConfigAgenda from './ConfigAgenda';
 import { useToast } from '../contexts/ToastContext';
@@ -54,6 +55,9 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
   const [recurringWeekday, setRecurringWeekday] = useState(3); // 0=Dom, 3=Qua
   const [recurringCount, setRecurringCount] = useState(4);
   const [recurringStartDate, setRecurringStartDate] = useState('');
+  // Input guarda o valor bruto; limite 2–52 aplicado no blur e no envio
+  const repeticoes = Math.min(52, Math.max(2, Number(recurringCount) || 2));
+  const { showToast } = useToast();
 
   const loadAgendamentos = useCallback(async () => {
     setIsLoading(true);
@@ -62,10 +66,12 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       setAgendamentos(data);
     } catch (e) {
       logger.error(e);
+      // Sem aviso, a agenda pareceria livre
+      showToast({ type: 'error', message: 'Não foi possível carregar os agendamentos. Verifique sua conexão e recarregue a página.' });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => { loadAgendamentos(); }, [loadAgendamentos]);
 
@@ -79,11 +85,13 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
   };
 
   const prevMonth = () => {
+    setSelectedDay(null);
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
     else setCurrentMonth(m => m - 1);
   };
 
   const nextMonth = () => {
+    setSelectedDay(null);
     if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
     else setCurrentMonth(m => m + 1);
   };
@@ -101,13 +109,14 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
     setIsRecurring(false);
     setRecurringWeekday(3);
     setRecurringCount(4);
-    setRecurringStartDate(dateStr || new Date().toISOString().split('T')[0]);
+    setRecurringStartDate(dateStr || dataLocalISO());
     setShowModal(true);
   };
 
   const openEdit = (ag) => {
     setForm({
-      id_paciente: ag.id_paciente,
+      // Agendamento público não tem id_paciente; undefined quebraria o updateDoc
+      id_paciente: ag.id_paciente || '',
       nome_paciente: ag.nome_paciente || '',
       data: ag.data,
       hora: ag.hora,
@@ -128,8 +137,29 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.id_paciente) {
+    const original = editingId ? agendamentos.find(a => a.id === editingId) : null;
+    // Agendamento via link público pode não ter paciente vinculado: permite mudar status mesmo assim
+    if (!form.id_paciente && original?.origem !== 'publico') {
       showToast({ type: 'warning', message: 'Selecione um paciente da lista antes de agendar.' });
+      return;
+    }
+    const datas = !editingId && isRecurring
+      ? calcularDatasRecorrentes(recurringStartDate, recurringWeekday, repeticoes)
+      : [form.data];
+    if (datas.length === 0) {
+      showToast({ type: 'warning', message: 'Nenhuma data encontrada. Verifique a data inicial e o dia da semana.' });
+      return;
+    }
+    // Conflito: outro agendamento ativo que se sobrepõe no mesmo dia (mesma regra da agenda pública)
+    const minutos = (h) => { const [hh, mm] = String(h || '').split(':').map(Number); return hh * 60 + mm; };
+    const ini = minutos(form.hora);
+    const fim = ini + (Number(form.duracao_min) || 50);
+    const conflito = form.status !== 'cancelado' && datas.find(d => agendamentos.some(a =>
+      a.id !== editingId && a.status !== 'cancelado' && a.data === d &&
+      minutos(a.hora) < fim && minutos(a.hora) + (Number(a.duracao_min) || 50) > ini
+    ));
+    if (conflito) {
+      showToast({ type: 'error', message: `Já existe um agendamento em ${conflito.split('-').reverse().join('/')} às ${form.hora}.` });
       return;
     }
     setIsSubmitting(true);
@@ -137,27 +167,15 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       if (editingId) {
         await atualizarAgendamento(editingId, form);
       } else if (isRecurring) {
-        // Calculate all dates for recurring appointments
-        const dates = calcularDatasRecorrentes(recurringStartDate, recurringWeekday, recurringCount);
-        if (dates.length === 0) {
-          showToast({ type: 'warning', message: 'Nenhuma data encontrada. Verifique a data inicial e o dia da semana.' });
-          setIsSubmitting(false);
-          return;
-        }
-        // Create all appointments in parallel
-        await Promise.all(
-          dates.map(dateStr =>
-            criarAgendamento({ ...form, data: dateStr })
-          )
-        );
-        showToast({ type: 'success', message: `${dates.length} agendamentos criados com sucesso!` });
+        // Batch atômico: uma falha não deixa parte da série gravada
+        await criarAgendamentosEmLote(datas.map(data => ({ ...form, data })));
+        showToast({ type: 'success', message: `${datas.length} agendamentos criados com sucesso!` });
       } else {
         await criarAgendamento(form);
       }
       setShowModal(false);
-      await loadAgendamentos();
       // Auto-select the saved day so it appears immediately in the side panel
-      const targetDate = isRecurring ? recurringStartDate : form.data;
+      const targetDate = datas[0];
       if (targetDate) {
         const [year, month, day] = targetDate.split('-').map(Number);
         if (year === currentYear && month === currentMonth + 1) {
@@ -172,16 +190,23 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       showToast({ type: 'error', message: msg });
     } finally {
       setIsSubmitting(false);
+      // Recarrega sempre: após falha a lista reflete o que foi gravado e um retry não duplica
+      await loadAgendamentos();
     }
   };
 
   const handleDelete = async () => {
-    await deletarAgendamento(confirmDelete.id);
-    setConfirmDelete({ isOpen: false, id: null });
-    await loadAgendamentos();
+    try {
+      await deletarAgendamento(confirmDelete.id);
+      showToast({ type: 'success', message: 'Agendamento excluído.' });
+      await loadAgendamentos();
+    } catch (err) {
+      logger.error('Erro ao excluir agendamento:', err);
+      showToast({ type: 'error', message: 'Não foi possível excluir o agendamento. Tente novamente.' });
+    } finally {
+      setConfirmDelete({ isOpen: false, id: null });
+    }
   };
-
-  const { showToast } = useToast();
 
   const filteredPatients = patients.filter(p =>
     p.nome?.toLowerCase().includes(patientSearch.toLowerCase())
@@ -212,8 +237,9 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
   // Preview of recurring dates
   const recurringPreview = isRecurring
-    ? calcularDatasRecorrentes(recurringStartDate, recurringWeekday, recurringCount)
+    ? calcularDatasRecorrentes(recurringStartDate, recurringWeekday, repeticoes)
     : [];
+  const hoje = dataLocalISO();
 
   if (showConfig) {
     return <ConfigAgenda onClose={() => setShowConfig(false)} />;
@@ -297,7 +323,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                 >
                   <span 
                     className={`w-6 h-6 flex items-center justify-center rounded-full mb-1`}
-                    style={isToday ? { backgroundColor: 'var(--accent)', color: '#FFFFFF' } : {}}
+                    style={isToday ? { backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' } : {}}
                   >
                     {day}
                   </span>
@@ -317,7 +343,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4" style={{ borderTop: '0.5px solid var(--border)' }}>
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
             {[
                 ['var(--status-info)','Agendado'],
                 ['var(--status-success)','Realizado'],
@@ -368,11 +394,12 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
               {selectedDayAgendamentos.map(ag => {
                 const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.agendado;
+                const wa = linkWhatsApp(ag.telefone_paciente, `Olá ${ag.nome_paciente || ''}! Sua sessão está marcada para ${ag.data?.split('-').reverse().join('/')} às ${ag.hora}. Confirma?`);
                 return (
                   <div 
                     key={ag.id} 
                     className="rounded-xl p-4 transition-all"
-                    style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}
+                    style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -381,7 +408,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                         {ag.telefone_paciente && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Tel: {ag.telefone_paciente}</p>}
                         {ag.observacoes && <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>{ag.observacoes}</p>}
                         {ag.origem === 'publico' && (
-                            <span className="inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info)', border: '0.5px solid var(--status-info)' }}>
+                            <span className="inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info)', border: '1px solid var(--status-info)' }}>
                                 Via Link Público
                             </span>
                         )}
@@ -390,7 +417,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                         <Badge variant={sc.color}>{sc.label}</Badge>
                         
                         <div className="flex gap-1.5 mt-2 items-center">
-                          {ag.status !== 'realizado' && ag.status !== 'cancelado' && (
+                          {ag.status !== 'realizado' && ag.status !== 'cancelado' && ag.data <= hoje && (
                             <button
                               onClick={async () => {
                                 try {
@@ -405,16 +432,21 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                                   // Se veio do link público e tem CPF, buscar por CPF
                                   if (!patient && ag.cpf_paciente) {
                                     patient = await buscarPacientePorCPF(ag.cpf_paciente);
+                                    if (patient?.deletedAt) {
+                                      showToast({ type: 'error', message: 'Este CPF pertence a um paciente na Lixeira. Restaure-o em Lixeira antes de atender.' });
+                                      return;
+                                    }
                                   }
 
                                   // Se não encontrou: criar paciente novo automaticamente
-                                  if (!patient && ag.origem === 'publico') {
+                                  // (nunca quando o agendamento já apontava para um paciente: ele pode ter sido anonimizado)
+                                  if (!patient && ag.origem === 'publico' && !ag.id_paciente) {
                                     // Carregar config para pegar o valor da consulta
                                     let valorSessao = '';
                                     try {
                                       const config = await lerConfigAgenda();
                                       if (config?.valor_consulta) valorSessao = config.valor_consulta;
-                                    } catch (_) {}
+                                    } catch { /* sem valor padrão: segue vazio */ }
 
                                     const novoId = await criarPaciente({
                                       nome: ag.nome_paciente || 'Paciente',
@@ -439,31 +471,37 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                                     if (onRefreshPatients) await onRefreshPatients();
                                   }
 
+                                  // Sem paciente não há prontuário: não marcar como realizado
+                                  if (!patient) {
+                                    showToast({ type: 'error', message: 'Paciente não encontrado. Edite o agendamento e vincule um paciente antes de atender.' });
+                                    return;
+                                  }
+
                                   // 2. Atualizar status do agendamento
                                   await atualizarAgendamento(ag.id, { ...ag, status: 'realizado' });
                                   await loadAgendamentos();
 
                                   // 3. Redirecionar
-                                  if (onAtender && patient) onAtender(patient);
+                                  if (onAtender) onAtender(patient);
                                 } catch (e) {
                                   logger.error("Erro ao iniciar atendimento:", e);
                                   showToast({ type: 'error', message: 'Não foi possível iniciar o atendimento. Verifique sua conexão e tente novamente.' });
                                 }
                               }}
-                              className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
-                              style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '0.5px solid var(--accent)' }}
+                              className="px-2 py-1 min-h-[44px] sm:min-h-0 text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
+                              style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
                               title="Iniciar Sessão"
                             >
                               Atender
                             </button>
                           )}
-                          {ag.telefone_paciente && (
+                          {wa && (
                             <a
-                              href={`https://wa.me/${ag.telefone_paciente.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${ag.nome_paciente || ''}! Sua sessão está marcada para ${ag.data?.split('-').reverse().join('/')} às ${ag.hora}. Confirma?`)}`}
+                              href={wa}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 rounded transition-colors"
-                              style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success)', border: '0.5px solid var(--status-success)' }}
+                              className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded transition-colors"
+                              style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success)', border: '1px solid var(--status-success)' }}
                               title="Enviar WhatsApp"
                             >
                               <MessageCircle size={14} />
@@ -471,7 +509,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                           )}
                           <button 
                             onClick={() => openEdit(ag)} 
-                            className="p-1.5 rounded transition-colors"
+                            className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded transition-colors"
                             style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
                             title="Editar"
                           >
@@ -479,7 +517,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                           </button>
                           <button 
                             onClick={() => setConfirmDelete({ isOpen: true, id: ag.id })} 
-                            className="p-1.5 rounded transition-colors"
+                            className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded transition-colors"
                             style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
                             title="Excluir"
                           >
@@ -499,7 +537,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       {/* Modal: Create/Edit */}
       {showModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{ backgroundColor: 'var(--overlay)' }}>
-          <div className="ds-card w-full max-w-lg p-6 animate-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <div className="ds-card w-full max-w-lg max-h-[90dvh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--bg-card)' }}>
             <h2 className="text-lg font-heading font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>
               {editingId ? 'Editar Agendamento' : 'Novo Agendamento'}
             </h2>
@@ -511,7 +549,12 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                 <input
                   type="text"
                   value={patientSearch}
-                  onChange={e => { setPatientSearch(e.target.value); setShowPatientDropdown(true); }}
+                  onChange={e => {
+                    setPatientSearch(e.target.value);
+                    // Texto digitado deixa de corresponder ao paciente selecionado
+                    setForm(prev => ({ ...prev, id_paciente: '' }));
+                    setShowPatientDropdown(true);
+                  }}
                   onFocus={() => setShowPatientDropdown(true)}
                   onBlur={() => setTimeout(() => setShowPatientDropdown(false), 200)}
                   placeholder="Buscar paciente..."
@@ -520,7 +563,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                 {showPatientDropdown && filteredPatients.length > 0 && (
                   <div 
                     className="absolute z-[160] w-full mt-1 rounded-xl shadow-lg overflow-hidden max-h-40 overflow-y-auto custom-scrollbar"
-                    style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}
+                    style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
                   >
                     {filteredPatients.map(p => (
                       <button key={p.id} type="button" onClick={() => handleSelectPatient(p)}
@@ -582,7 +625,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
               {/* Recurring toggle - only for new appointments */}
               {!editingId && (
-                <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <div
                       onClick={() => setIsRecurring(!isRecurring)}
@@ -602,7 +645,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
                   {isRecurring && (
                     <div className="space-y-3 pt-1">
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                           <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Dia da Semana</label>
                           <select
@@ -622,7 +665,8 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                             min="2"
                             max="52"
                             value={recurringCount}
-                            onChange={e => setRecurringCount(Math.min(52, Math.max(2, Number(e.target.value))))}
+                            onChange={e => setRecurringCount(e.target.value)}
+                            onBlur={() => setRecurringCount(repeticoes)}
                             className="ds-input"
                           />
                         </div>
@@ -639,7 +683,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
                       {/* Preview */}
                       {recurringPreview.length > 0 && (
-                        <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-primary)', border: '0.5px solid var(--border)' }}>
+                        <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
                           <p className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent)' }}>
                             <CalendarIcon size={14} /> {recurringPreview.length} agendamentos serão criados:
                           </p>

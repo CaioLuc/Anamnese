@@ -2,7 +2,7 @@ import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { resolverSlug, lerConfigAgendaPublica, lerAgendamentosDoDia, criarAgendamentoPublico } from '../services/agendaService';
-import { formatCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
+import { formatCPF, validarCPF, formatTelefone, dataLocalISO } from '../utils/formatUtils';
 import Button from './ui/Button';
 import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
@@ -36,19 +36,25 @@ function gerarSlots(config, agendamentosOcupados, dataStr) {
   const intInicio = diaConfig.intervalo_inicio ? toMin(diaConfig.intervalo_inicio) : null;
   const intFim = diaConfig.intervalo_fim ? toMin(diaConfig.intervalo_fim) : null;
 
-  // Horários já ocupados
-  const ocupados = new Set(agendamentosOcupados.map(a => a.hora));
+  // Horários já ocupados como intervalos [ini, fim) em minutos, para testar sobreposição
+  const ocupados = agendamentosOcupados
+    .filter(a => a.hora)
+    .map(a => ({ ini: toMin(a.hora), fim: toMin(a.hora) + (Number(a.duracao_min) || duracao) }));
+
+  // Hoje: descartar horários que já começaram
+  const agora = new Date();
+  const minAgora = dataStr === dataLocalISO() ? agora.getHours() * 60 + agora.getMinutes() : -1;
 
   for (let t = inicio; t + duracao <= fim; t += duracao) {
-    const horaStr = fromMin(t);
+    if (t <= minAgora) continue;
     // Pular se cai no intervalo
     if (intInicio !== null && intFim !== null) {
       if (t < intFim && t + duracao > intInicio) continue;
     }
-    // Pular se já ocupado
-    if (ocupados.has(horaStr)) continue;
+    // Pular se sobrepõe algum agendamento existente
+    if (ocupados.some(o => t < o.fim && t + duracao > o.ini)) continue;
 
-    slots.push(horaStr);
+    slots.push(fromMin(t));
   }
 
   return slots;
@@ -70,6 +76,8 @@ export default function AgendaPublica() {
   const [selectedDate, setSelectedDate] = useState('');
   const [slots, setSlots] = useState([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState('');
+  const [tentativaSlots, setTentativaSlots] = useState(0);
 
   // Booking form
   const [selectedSlot, setSelectedSlot] = useState('');
@@ -91,7 +99,7 @@ export default function AgendaPublica() {
   for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    dateOptions.push(d.toISOString().slice(0, 10));
+    dateOptions.push(dataLocalISO(d));
   }
 
   // Load psychologist config
@@ -124,22 +132,28 @@ export default function AgendaPublica() {
   // Load slots when date changes
   useEffect(() => {
     if (!selectedDate || !uid || !config) return;
+    // Ignora respostas de datas anteriores que cheguem fora de ordem
+    let ativo = true;
     async function loadSlots() {
       setIsLoadingSlots(true);
       setSelectedSlot('');
+      setSlotsError('');
       try {
         const ocupados = await lerAgendamentosDoDia(uid, selectedDate);
-        const available = gerarSlots(config, ocupados, selectedDate);
-        setSlots(available);
+        if (!ativo) return;
+        setSlots(gerarSlots(config, ocupados, selectedDate));
       } catch (e) {
+        if (!ativo) return;
         logger.error(e);
         setSlots([]);
+        setSlotsError('Não foi possível carregar os horários. Verifique sua conexão.');
       } finally {
-        setIsLoadingSlots(false);
+        if (ativo) setIsLoadingSlots(false);
       }
     }
     loadSlots();
-  }, [selectedDate, uid, config]);
+    return () => { ativo = false; };
+  }, [selectedDate, uid, config, tentativaSlots]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -151,7 +165,10 @@ export default function AgendaPublica() {
     if (!formNome.trim()) errors.nome = 'Informe seu nome completo.';
     if (!formCPF.trim() || formCPF.replace(/\D/g, '').length < 11) errors.cpf = 'Informe um CPF válido (11 dígitos).';
     else if (!validarCPF(formCPF)) errors.cpf = 'CPF inválido. Verifique os dígitos.';
+    const telDigitos = formTelefone.replace(/\D/g, '').length;
     if (!formTelefone.trim()) errors.telefone = 'Informe um telefone para contato.';
+    else if (telDigitos < 10 || telDigitos > 11) errors.telefone = 'Informe o telefone com DDD (10 ou 11 dígitos).';
+    if (formObs.trim().length > 500) errors.obs = 'A observação deve ter no máximo 500 caracteres.';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     // Anti-spam: honeypot check
@@ -166,6 +183,14 @@ export default function AgendaPublica() {
 
     setIsSubmitting(true);
     try {
+      // Revalida a disponibilidade logo antes de gravar (outra pessoa pode ter reservado)
+      const ocupadosAgora = await lerAgendamentosDoDia(uid, selectedDate);
+      const livres = gerarSlots(config, ocupadosAgora, selectedDate);
+      if (!livres.includes(selectedSlot)) {
+        setSlots(livres);
+        setSubmitError(`O horário das ${selectedSlot} não está mais disponível. Escolha outro horário.`);
+        return;
+      }
       await criarAgendamentoPublico(uid, {
         data: selectedDate,
         hora: selectedSlot,
@@ -243,11 +268,11 @@ export default function AgendaPublica() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <div style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '0.5px solid var(--border)' }}>
+      <div style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-2xl mx-auto px-6 py-6 text-center">
           <div 
             className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center text-2xl font-bold" 
-            style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF', boxShadow: 'var(--shadow)' }}
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)', boxShadow: 'var(--shadow)' }}
           >
             {config.nome_publico?.charAt(0)?.toUpperCase() || 'P'}
           </div>
@@ -308,6 +333,11 @@ export default function AgendaPublica() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
+              </div>
+            ) : slotsError ? (
+              <div className="text-center py-6 space-y-3">
+                <p className="text-sm" role="alert" style={{ color: 'var(--status-danger)' }}>{slotsError}</p>
+                <Button onClick={() => setTentativaSlots(n => n + 1)}>Tentar novamente</Button>
               </div>
             ) : slots.length === 0 ? (
               <p className="text-sm text-center py-6" style={{ color: 'var(--text-secondary)' }}>Nenhum horário disponível neste dia.</p>
@@ -374,16 +404,19 @@ export default function AgendaPublica() {
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Observação (opcional)</label>
               <textarea rows={2} value={formObs}
-                onChange={e => setFormObs(e.target.value)}
+                onChange={e => { setFormObs(e.target.value); setFormErrors(prev => ({...prev, obs: ''})); }}
+                maxLength={500}
                 placeholder="Algo que gostaria de compartilhar antes da sessão..."
-                className="ds-input resize-none" />
+                className={`ds-input resize-none ${formErrors.obs ? 'border-red-400' : ''}`} />
+              {formErrors.obs && <p className="text-xs text-red-400 mt-1">{formErrors.obs}</p>}
             </div>
 
-            {/* Honeypot anti-spam — invisible to humans */}
+            {/* Honeypot anti-spam — invisível para humanos; nome neutro para o autopreenchimento não o preencher */}
             <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}>
-              <label htmlFor="website">Website</label>
+              <label htmlFor="campo_extra_x">Deixe este campo em branco</label>
               <input
-                id="website"
+                id="campo_extra_x"
+                name="campo_extra_x"
                 type="text"
                 tabIndex={-1}
                 autoComplete="off"
@@ -392,12 +425,16 @@ export default function AgendaPublica() {
               />
             </div>
 
+            <p className="text-[11px] text-center" style={{ color: 'var(--text-muted)' }}>
+              Seus dados são usados apenas para o agendamento e ficam visíveis somente para o(a) profissional, conforme a LGPD.
+            </p>
+
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? 'Enviando...' : 'Solicitar Agendamento'}
             </Button>
 
             {submitError && (
-              <div className="p-3 rounded-xl text-sm text-center" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '0.5px solid var(--status-danger)' }}>
+              <div className="p-3 rounded-xl text-sm text-center" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '1px solid var(--status-danger)' }}>
                 {submitError}
               </div>
             )}

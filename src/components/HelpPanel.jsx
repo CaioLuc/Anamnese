@@ -5,9 +5,9 @@ import { Rocket, Settings, UserCheck, Keyboard, HelpCircle } from 'lucide-react'
 const renderCategoryIcon = (iconKey) => {
   switch (iconKey) {
     case 'rocket':
-      return <Rocket className="w-5 h-5 text-indigo-500" />;
+      return <Rocket className="w-5 h-5 text-brand-500" />;
     case 'settings':
-      return <Settings className="w-5 h-5 text-cyan-500" />;
+      return <Settings className="w-5 h-5 text-brand-500" />;
     case 'user':
       return <UserCheck className="w-5 h-5 text-emerald-500" />;
     case 'keyboard':
@@ -29,13 +29,9 @@ export default function HelpPanel({ isOpen, onClose }) {
   const panelRef = useRef(null);
 
   // Focar na busca ao abrir
+  // O Layout monta o painel só quando aberto: busca e item expandido já nascem limpos
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => searchRef.current?.focus(), 200);
-    } else {
-      setSearchTerm('');
-      setExpandedItem(null);
-    }
+    if (isOpen) setTimeout(() => searchRef.current?.focus(), 200);
   }, [isOpen]);
 
   // Fechar com Escape
@@ -80,7 +76,7 @@ export default function HelpPanel({ isOpen, onClose }) {
         <div className="flex items-center justify-between p-6 shrink-0" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-light)' }}>
-              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -197,7 +193,7 @@ export default function HelpPanel({ isOpen, onClose }) {
                             onClick={() => toggleItem(key)}
                             className="w-full text-left px-4 py-3 flex items-center gap-2 transition-colors"
                           >
-                            <svg className={`w-3.5 h-3.5 text-indigo-400 shrink-0 transition-transform ${expandedItem === key ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className={`w-3.5 h-3.5 text-brand-400 shrink-0 transition-transform ${expandedItem === key ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                             <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.question}</p>

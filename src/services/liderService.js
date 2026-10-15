@@ -6,7 +6,6 @@ export const MAX_PACIENTES_POR_PSICOLOGO = 20;
 
 export const STORAGE_KEY_EQUIPE = 'caritas_lider_equipe';
 export const STORAGE_KEY_TRIAGEM = 'caritas_lider_triagem';
-export const STORAGE_KEY_MODO_LIDER = 'caritas_modo_lider';
 
 /**
  * Retorna o limite de pacientes contratado para o psicólogo (padrão 20 ou customizado pela clínica)
@@ -89,28 +88,15 @@ export function limparStorageLider() {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY_EQUIPE);
       localStorage.removeItem(STORAGE_KEY_TRIAGEM);
-      localStorage.removeItem(STORAGE_KEY_MODO_LIDER);
     }
   } catch {
     // storage cleanup fallback
   }
   delete memoryStore[STORAGE_KEY_EQUIPE];
   delete memoryStore[STORAGE_KEY_TRIAGEM];
-  delete memoryStore[STORAGE_KEY_MODO_LIDER];
 }
 
-/**
- * Verifica se o modo Líder Clínico está ativo (para teste/auditoria e permissão)
- */
-export function isModoLiderAtivo() {
-  const stored = getStorageItem(STORAGE_KEY_MODO_LIDER);
-  if (stored === null) return true; // Ativo por padrão no ambiente de teste/auditoria
-  return stored === 'true';
-}
-
-export function setModoLiderAtivo(ativo) {
-  setStorageItem(STORAGE_KEY_MODO_LIDER, String(ativo));
-}
+// O papel de Líder Clínico vem do plano assinado (perfil.plano === 'clinica'), ver App.jsx.
 
 // Equipe inicial demonstrativa para teste/desenvolvimento
 const EQUIPE_INICIAL = [

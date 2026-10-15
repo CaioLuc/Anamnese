@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatCPF, cleanCPF, validarCPF, formatTelefone, parseDate, formatCurrency, formatDuration } from '../utils/formatUtils';
+import { formatCPF, cleanCPF, validarCPF, formatTelefone, parseDate, formatCurrency, formatDuration, dataLocalISO, telefoneInternacionalBR, linkWhatsApp } from '../utils/formatUtils';
 
 describe('formatCPF', () => {
   it('should format a raw CPF string with dots and dash', () => {
@@ -145,5 +145,24 @@ describe('formatDuration', () => {
   it('should return 0 min for zero or negative values', () => {
     expect(formatDuration(0)).toBe('0 min');
     expect(formatDuration(-10)).toBe('0 min');
+  });
+});
+
+describe('dataLocalISO / telefoneInternacionalBR / linkWhatsApp', () => {
+  it('usa a data local, não a UTC', () => {
+    expect(dataLocalISO(new Date(2026, 9, 15, 23, 30))).toBe('2026-10-15');
+    expect(dataLocalISO(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+
+  it('prefixa o DDI 55 só quando falta', () => {
+    expect(telefoneInternacionalBR('(21) 99999-0000')).toBe('5521999990000');
+    expect(telefoneInternacionalBR('(55) 99999-9999')).toBe('5555999999999');
+    expect(telefoneInternacionalBR('+55 21 99999-0000')).toBe('5521999990000');
+    expect(telefoneInternacionalBR('9999-0000')).toBe('');
+  });
+
+  it('não gera link sem telefone válido', () => {
+    expect(linkWhatsApp('', 'oi')).toBe('');
+    expect(linkWhatsApp('21999990000', 'Olá!')).toBe('https://wa.me/5521999990000?text=Ol%C3%A1!');
   });
 });

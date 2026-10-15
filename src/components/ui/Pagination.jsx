@@ -37,7 +37,7 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
   return (
     <div 
       className="flex items-center justify-between px-4 py-3 sm:px-6"
-      style={{ borderTop: '0.5px solid var(--border)' }}
+      style={{ borderTop: '1px solid var(--border)' }}
     >
       {/* Mobile: simple prev/next */}
       <div className="flex justify-between flex-1 sm:hidden">
@@ -72,17 +72,17 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
               onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
               className="relative inline-flex items-center rounded-l-md px-2 py-2 focus:z-20 disabled:opacity-50 transition-colors duration-150"
-              style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)', color: 'var(--text-secondary)' }}
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
             >
               <span className="sr-only">Anterior</span>
               <ChevronLeft size={18} />
             </button>
-            {getVisiblePages().map((item, idx) =>
+            {getVisiblePages().map((item) =>
               item.type === 'ellipsis' ? (
                 <span 
                   key={`e-${item.value}`} 
                   className="relative inline-flex items-center px-4 py-2 text-sm font-semibold"
-                  style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)', color: 'var(--text-secondary)' }}
+                  style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
                 >
                   ...
                 </span>
@@ -92,7 +92,7 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
                   onClick={() => onPageChange(item.value)}
                   className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold transition-colors duration-150`}
                   style={{
-                    border: '0.5px solid var(--border)',
+                    border: '1px solid var(--border)',
                     backgroundColor: currentPage === item.value ? 'var(--accent)' : 'var(--bg-card)',
                     color: currentPage === item.value ? '#FFFFFF' : 'var(--text-primary)',
                     zIndex: currentPage === item.value ? 10 : 1,
@@ -106,7 +106,7 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
               onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
               className="relative inline-flex items-center rounded-r-md px-2 py-2 focus:z-20 disabled:opacity-50 transition-colors duration-150"
-              style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)', color: 'var(--text-secondary)' }}
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
             >
               <span className="sr-only">Próximo</span>
               <ChevronRight size={18} />

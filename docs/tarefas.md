@@ -4,6 +4,18 @@ Documento com melhorias sugeridas, problemas identificados e TODOs encontrados n
 
 ---
 
+## Pendências abertas pela revisão de 15/10/2026
+
+- [ ] **Pagamento real (Asaas) no servidor** — hoje o cliente grava `plano`/`statusPagamento` sozinho; as regras permitem que o dono edite esses campos. Mover cobrança e ativação para Cloud Function + webhook e bloquear essas chaves nas regras.
+- [ ] **Agendamento público via Cloud Function** — validação de horário/conflito em transação, rate limit e App Check (hoje a regra só valida formato).
+- [ ] **Criptografia AES-GCM dos campos clínicos** (AGENTS.md §2.3) — ainda em texto puro no Firestore.
+- [ ] **Auditoria com IP no servidor** (`audit_logs`, LGPD art. 37) — hoje `action_logs` é gravado pelo cliente, sem IP.
+- [ ] **Exclusão física de anamnese/sessão** (`deletarAnamnese`, `deletarSessao`) — avaliar soft delete por causa da guarda de 5 anos.
+- [ ] **PIX da assinatura** — chave `caritas-pagamentos@asaas.com.br` é fictícia; trocar pela cobrança gerada no Asaas.
+- [ ] **TTL do Firestore** em `mfa_sessoes.expiraEm` e `mfa_dispositivos.expiraEm`.
+
+---
+
 ## TODOs e Comentários Encontrados no Código
 
 ### ✅ API Deprecated — `firebaseConfig.js`

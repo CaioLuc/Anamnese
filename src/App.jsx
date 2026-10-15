@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-ro
 import Layout from './components/Layout';
 import Login from './components/Login';
 import ContaBloqueada from './components/ContaBloqueada';
-import { subscribeToAuthChanges, logoutFirebaseUser, isDispositivoConfiavel, isSessao2FAVerificada } from './services/authService';
+import { subscribeToAuthChanges, logoutFirebaseUser, isSessaoMfaValida, liberarPorDispositivoConfiavel } from './services/authService';
 import DashboardSummary from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import SessaoEvolucao from './components/SessaoEvolucao';
@@ -23,7 +23,8 @@ const AssinaturaPendente = lazy(() => import('./components/AssinaturaPendente'))
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
 import { trackAction } from './services/logService';
-import { verificarStatusAssinatura } from './services/paymentService';
+import { verificarStatusAssinatura, DIAS_TRIAL_PADRAO } from './services/paymentService';
+import { dataLocalISO } from './utils/formatUtils';
 
 // Mapeamento de path de URL → id interno de navegação
 const PATH_MAP = {
@@ -86,36 +87,19 @@ function AppMain() {
     }
   };
 
-  // Auth state & 2FA
+  // Auth state & 2FA ('verificando' | 'pendente' | 'ok')
   const [user, setUser] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [is2FAVerified, setIs2FAVerified] = useState(false);
-  
+  const [mfaStatus, setMfaStatus] = useState('verificando');
+  const is2FAVerified = mfaStatus === 'ok';
+
   // Admin/Plano state
   const [isAdmin, setIsAdmin] = useState(false);
   const [perfilPsicologo, setPerfilPsicologo] = useState(null);
   const [isCheckingRole, setIsCheckingRole] = useState(false);
-  const [isLider, setIsLider] = useState(() => {
-    try {
-      const saved = localStorage.getItem('caritas_modo_lider');
-      return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
-
-  const handleToggleModoLider = () => {
-    setIsLider((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('caritas_modo_lider', String(next));
-      } catch {}
-      if (!next && currentPath === 'lider') {
-        navigate('/dashboard');
-      }
-      return next;
-    });
-  };
+  const [erroPerfil, setErroPerfil] = useState(false);
+  // Líder Clínico = quem assinou o Plano Clínica & Equipe (definido na assinatura)
+  const isLider = perfilPsicologo?.plano === 'clinica';
 
   const fetchPatients = async () => {
     setIsLoadingPatients(true);
@@ -132,6 +116,7 @@ function AppMain() {
   const carregarDadosUsuario = useCallback(async (currentUser) => {
     if (!currentUser) return;
     setIsCheckingRole(true);
+    setErroPerfil(false);
     try {
       // Verificar se é admin
       const isAdm = isAdminEmail(currentUser.email);
@@ -149,13 +134,13 @@ function AppMain() {
       if (!perfil) {
         // Primeiro login: criar perfil com plano básico e 14 dias de teste gratuito
         const trialAte = new Date();
-        trialAte.setDate(trialAte.getDate() + 14);
+        trialAte.setDate(trialAte.getDate() + DIAS_TRIAL_PADRAO);
         await salvarPerfilPsicologo({
           email: currentUser.email,
           nome: currentUser.displayName || '',
           plano: 'basico',
           statusPagamento: 'trial',
-          trialAte: trialAte.toISOString().split('T')[0],
+          trialAte: dataLocalISO(trialAte),
           ativo: true,
           max_locais: 1,
         });
@@ -168,41 +153,51 @@ function AppMain() {
 
       // Carregar dados do psicólogo
       await fetchPatients();
-      limparLixeiraPacientes(7);
+      limparLixeiraPacientes(7).catch((err) => logger.error('Falha ao anonimizar lixeira:', err));
     } catch (err) {
       logger.error("Erro no fluxo de autenticação/perfil:", err);
+      // Sem perfil não dá para checar bloqueio/assinatura: não abre o app "no escuro"
+      setErroPerfil(true);
     } finally {
       setIsCheckingRole(false);
     }
   }, []);
 
   const handle2FASuccess = async () => {
-    setIs2FAVerified(true);
+    setMfaStatus('ok');
     if (user) {
       await carregarDadosUsuario(user);
     }
   };
 
+  const ultimoUidRef = useRef(null);
   useEffect(() => {
     const unsubscribeAuth = subscribeToAuthChanges(async (currentUser) => {
+      ultimoUidRef.current = currentUser?.uid || null;
       setUser(currentUser);
-      setIsAuthChecking(false);
 
       if (currentUser) {
-        const trusted = isDispositivoConfiavel(currentUser.email);
-        const sessionOk = isSessao2FAVerificada(currentUser.email);
-        if (trusted || sessionOk) {
-          setIs2FAVerified(true);
-          await carregarDadosUsuario(currentUser);
-        } else {
-          setIs2FAVerified(false);
+        setMfaStatus('verificando');
+        let liberado = false;
+        try {
+          // shortcut: só em `npm run dev` com VITE_PULAR_2FA=true (.env.local) enquanto as Functions não estão publicadas; o build de produção remove este atalho
+          liberado = (import.meta.env.DEV && import.meta.env.VITE_PULAR_2FA === 'true')
+            || await isSessaoMfaValida(currentUser) || await liberarPorDispositivoConfiavel(currentUser);
+        } catch (err) {
+          logger.warn('Falha ao checar 2FA; pedindo código.', err);
         }
+        // Outro login aconteceu durante a checagem: o resultado é dele, não deste
+        if (ultimoUidRef.current !== currentUser.uid) return;
+        setMfaStatus(liberado ? 'ok' : 'pendente');
+        setIsAuthChecking(false);
+        if (liberado) await carregarDadosUsuario(currentUser);
       } else {
         // Logout: limpar tudo
         setIsAdmin(false);
         setPerfilPsicologo(null);
         setPatients([]);
-        setIs2FAVerified(false);
+        setMfaStatus('verificando');
+        setIsAuthChecking(false);
       }
     });
 
@@ -231,7 +226,7 @@ function AppMain() {
       if (user) {
         logger.info('Auto-logout: 10 minutos de inatividade.');
         trackAction('AUTO_LOGOUT', { reason: 'inactivity', timeoutMs: IDLE_TIMEOUT_MS });
-        await logoutFirebaseUser();
+        await logoutFirebaseUser('inatividade');
       }
     }, IDLE_TIMEOUT_MS);
   }, [user]);
@@ -274,7 +269,7 @@ function AppMain() {
   const renderContent = () => {
     switch (currentPath) {
       case 'dashboard':
-        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} />;
+        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} perfil={perfilPsicologo} />;
       case 'pacientes':
         return <Pacientes 
                  patients={patients} 
@@ -303,7 +298,7 @@ function AppMain() {
         return <PerfilEPlano onProfileUpdated={() => carregarDadosUsuario(user)} />;
       case 'lider':
         if (!isLider) {
-          return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} />;
+          return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} perfil={perfilPsicologo} />;
         }
         return <LiderClinicoDashboard />;
       case 'questionarios':
@@ -313,12 +308,12 @@ function AppMain() {
       case 'lixeira':
         return <Lixeira onPatientRestored={fetchPatients} />;
       default:
-        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} />;
+        return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} perfil={perfilPsicologo} />;
     }
   };
 
   // 1. Loading auth
-  if (isAuthChecking || isCheckingRole) {
+  if (isAuthChecking || isCheckingRole || (user && mfaStatus === 'verificando')) {
     return (
       <div className="flex h-screen overflow-hidden items-center justify-center flex-col gap-3" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <svg className="w-10 h-10 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
@@ -350,6 +345,22 @@ function AppMain() {
         }>
           <AdminPanel />
         </Suspense>
+      </div>
+    );
+  }
+
+  // 3b. Perfil não carregou (rede/permissão)
+  if (erroPerfil) {
+    return (
+      <div className="flex h-screen items-center justify-center p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="ds-card max-w-sm w-full p-6 text-center">
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Não foi possível carregar sua conta</h1>
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Verifique sua conexão e tente de novo. Seus dados continuam seguros.</p>
+          <div className="mt-5 flex flex-col gap-2">
+            <button className="ds-btn ds-btn-primary" onClick={() => carregarDadosUsuario(user)}>Tentar novamente</button>
+            <button className="ds-btn ds-btn-ghost" onClick={() => logoutFirebaseUser()}>Sair</button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -393,7 +404,7 @@ function AppMain() {
         fullHeight={currentPath === 'questionarios'} 
         patients={patients}
         isLider={isLider}
-        onToggleModoLider={handleToggleModoLider}
+        perfil={perfilPsicologo}
       >
         <Suspense fallback={
           <div className="flex h-full items-center justify-center">

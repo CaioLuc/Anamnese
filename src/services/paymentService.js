@@ -1,7 +1,8 @@
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig';
 import { trackAction } from './logService';
-import logger from '../utils/logger';
+import { parseDate, dataLocalISO } from '../utils/formatUtils';
+import { generatePixPayload } from '../utils/pixUtils';
 
 // ==========================================
 // CATÁLOGO DE PLANOS CARITAS
@@ -70,10 +71,11 @@ export const DIAS_TRIAL_PADRAO = 14;
 // ==========================================
 export function detectarBandeiraCartao(numero = '') {
   const limpo = String(numero).replace(/\D/g, '');
+  // Elo antes de Visa: prefixos 4011/4389/4514/4576 também começam com 4
+  if (/^(4011|4389|4514|4576|5041|5066|5090|6277|6362|6363|650|651|655)/.test(limpo)) return 'Elo';
   if (/^4/.test(limpo)) return 'Visa';
   if (/^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[01]|2720)/.test(limpo)) return 'Mastercard';
   if (/^3[47]/.test(limpo)) return 'Amex';
-  if (/^(4011|4389|4514|4576|5041|5066|5090|6277|6362|6363|650|651|655)/.test(limpo)) return 'Elo';
   if (/^(6011|65|64[4-9])/.test(limpo)) return 'Discover';
   if (/^3841[046]/.test(limpo)) return 'Hipercard';
   return 'Cartão';
@@ -130,7 +132,8 @@ export function verificarStatusAssinatura(perfil) {
 
   // 1. Checagem de Período Trial (Novo Cadastro)
   if (perfil.statusPagamento === 'trial' || (!perfil.statusPagamento && perfil.trialAte)) {
-    const dataTrial = perfil.trialAte ? new Date(perfil.trialAte) : null;
+    // 'YYYY-MM-DD' lido como data local (new Date('YYYY-MM-DD') seria meia-noite UTC)
+    const dataTrial = parseDate(perfil.trialAte);
     if (dataTrial) {
       dataTrial.setHours(23, 59, 59, 999);
       const diffMs = dataTrial.getTime() - hoje.getTime();
@@ -154,6 +157,15 @@ export function verificarStatusAssinatura(perfil) {
         };
       }
     }
+
+    // Trial sem data válida não pode liberar acesso indefinidamente
+    return {
+      emDia: false,
+      status: 'trial_expirado',
+      diasRestantesTrial: 0,
+      proximoVencimento: null,
+      motivo: 'Seu período de teste gratuito encerrou. Cadastre um plano para continuar atendendo.',
+    };
   }
 
   // 2. Status explicitamente marcado como Inadimplente ou Cancelado
@@ -176,8 +188,8 @@ export function verificarStatusAssinatura(perfil) {
   }
 
   // 3. Checagem de Data de Vencimento com Tolerância de Carência (3 dias)
-  if (perfil.proximoVencimento) {
-    const dataVenc = new Date(perfil.proximoVencimento);
+  const dataVenc = parseDate(perfil.proximoVencimento);
+  if (dataVenc) {
     dataVenc.setHours(0, 0, 0, 0);
 
     const dataLimiteComCarencia = new Date(dataVenc);
@@ -229,8 +241,7 @@ export async function cadastrarCartaoEAtivarPlano({
   numeroCartao,
   nomeTitular,
   validade,
-  cvv,
-  cpfCnpj,
+  // shortcut: pagamento simulado no cliente; cvv e cpfCnpj só serão usados quando houver integração com o Asaas
   planoId = 'profissional',
 }) {
   const planoEscolhido = PLANOS_CARITAS[planoId] || PLANOS_CARITAS.basico;
@@ -239,7 +250,7 @@ export async function cadastrarCartaoEAtivarPlano({
 
   // Validações básicas de cartão
   const numLimpo = String(numeroCartao).replace(/\D/g, '');
-  if (numLimpo.length < 13) {
+  if (numLimpo.length < 13 || !validarNumeroCartao(numLimpo)) {
     throw new Error('Número de cartão de crédito inválido.');
   }
 
@@ -259,7 +270,7 @@ export async function cadastrarCartaoEAtivarPlano({
   const dataHoje = new Date();
   const proximaCobranca = new Date(dataHoje);
   proximaCobranca.setDate(proximaCobranca.getDate() + 30);
-  const proximoVencimentoIso = proximaCobranca.toISOString().split('T')[0];
+  const proximoVencimentoIso = dataLocalISO(proximaCobranca);
 
   const faturaId = `FAT-${Date.now().toString(36).toUpperCase()}`;
 
@@ -313,10 +324,17 @@ export async function cadastrarCartaoEAtivarPlano({
 // ==========================================
 // GERAÇÃO DE PIX MENSAL (ASAAS)
 // ==========================================
-export function gerarDadosPixMensal(planoId = 'profissional', psicologoEmail = '') {
+export function gerarDadosPixMensal(planoId = 'profissional') {
   const plano = PLANOS_CARITAS[planoId] || PLANOS_CARITAS.basico;
   const txid = `CARITAS${Date.now().toString(36).toUpperCase()}`.slice(0, 25);
-  const copiaECola = `00020126580014br.gov.bcb.pix0136caritas-pagamentos@asaas.com.br520400005303986540${plano.preco.toFixed(2)}5802BR5916CARITAS SAUDE ME6009SAO PAULO62070503***6304${txid.slice(-4)}`;
+  // BR Code válido (TLV + CRC16) gerado pelo utilitário oficial do projeto
+  const copiaECola = generatePixPayload({
+    chave: 'caritas-pagamentos@asaas.com.br',
+    nome: 'CARITAS',
+    cidade: 'SAO PAULO',
+    valor: plano.preco,
+    txid,
+  });
 
   return {
     txid,
@@ -333,7 +351,7 @@ export function gerarDadosPixMensal(planoId = 'profissional', psicologoEmail = '
 export async function confirmarPagamentoManual(uid, dias = 30) {
   const proxima = new Date();
   proxima.setDate(proxima.getDate() + dias);
-  const proximoVencimentoIso = proxima.toISOString().split('T')[0];
+  const proximoVencimentoIso = dataLocalISO(proxima);
 
   const psicRef = doc(db, 'psicologos', uid);
   await updateDoc(psicRef, {
@@ -351,11 +369,19 @@ export async function confirmarPagamentoManual(uid, dias = 30) {
 // ==========================================
 export async function alternarIsencaoPsicologo(uid, isIsento) {
   const psicRef = doc(db, 'psicologos', uid);
-  await updateDoc(psicRef, {
-    isIsento: !!isIsento,
-    statusPagamento: isIsento ? 'isento' : 'ativo',
-    updatedAt: serverTimestamp(),
-  });
+  const payload = { isIsento: !!isIsento, updatedAt: serverTimestamp() };
+  if (isIsento) {
+    payload.statusPagamento = 'isento';
+  } else {
+    const snap = await getDoc(psicRef);
+    const atual = snap.exists() ? snap.data() : {};
+    // Remover a isenção não concede acesso pago: só volta a 'ativo' com vencimento ainda válido
+    if (atual.statusPagamento === 'isento') {
+      const venc = parseDate(atual.proximoVencimento);
+      payload.statusPagamento = venc && dataLocalISO(venc) >= dataLocalISO() ? 'ativo' : 'inadimplente';
+    }
+  }
+  await updateDoc(psicRef, payload);
 
   await trackAction('ADMIN_TOGGLE_EXEMPTION', { targetUid: uid, isIsento: !!isIsento });
   return true;

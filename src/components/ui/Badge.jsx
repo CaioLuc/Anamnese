@@ -10,7 +10,7 @@ export default function Badge({ children, variant = 'neutral', size = 'sm', clas
     success: 'ds-badge-success',
     danger: 'ds-badge-danger',
     warning: 'ds-badge-warning',
-    info: '', // fallback to default ds-badge colors
+    info: '',
     neutral: '', // fallback to default ds-badge colors
   };
 
@@ -18,16 +18,16 @@ export default function Badge({ children, variant = 'neutral', size = 'sm', clas
     neutral: {
       backgroundColor: 'var(--bg-secondary)',
       color: 'var(--text-secondary)',
-      border: '0.5px solid var(--border)'
+      border: '1px solid var(--border)'
     }
   };
 
   const sizes = {
-    sm: 'text-[10px] px-2 py-0.5',
+    sm: 'text-[11px] px-2 py-0.5',
     md: 'text-xs px-2.5 py-1',
   };
 
-  const customStyle = variant === 'neutral' ? styles.neutral : {};
+  const customStyle = variant === 'neutral' ? styles.neutral : variant === 'info' ? { backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info-text)' } : {};
 
   return (
     <span 

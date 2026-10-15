@@ -1,9 +1,10 @@
 import logger from '../utils/logger';
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese, deletarAnamnese, atualizarSessao, lerQuestionario } from '../services/patientService';
+import { lerAnamnesesDoPaciente, lerSessoesDoPaciente, deletarSessao, criarAnamnese, atualizarAnamnese, deletarAnamnese, atualizarSessao, lerQuestionario, lerPerfilPsicologo } from '../services/patientService';
 const AnamneseForm = lazy(() => import('./AnamneseForm'));
 const AnamneseAdolescenteForm = lazy(() => import('./AnamneseAdolescenteForm'));
-import { PdfBuilder, calcularIdade, formatDateBR } from '../services/pdfUtils';
+import { gerarAnamnesePDF, gerarEvolucaoSessaoPDF, gerarProntuarioCompletoPDF, calcularIdade } from '../services/pdfUtils';
+import { FileDown, Pencil, X, IdCard, Cake, Phone, Wallet } from 'lucide-react';
 import DocumentosTab from './prontuario/DocumentosTab';
 import ConfirmDialog from './ConfirmDialog';
 import MoodChart from './MoodChart';
@@ -65,13 +66,13 @@ function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
   );
 }
 
-export default function PatientProfileModal({ isOpen, onClose, patient, initialTab = 'evolucoes', onPatientUpdated, onEditRequest }) {
+export default function PatientProfileModal({ isOpen, onClose, patient, initialTab = 'evolucoes', onEditRequest }) {
   const [activeTab, setActiveTab] = useState('evolucoes');
   const [sessoes, setSessoes] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedFormType, setSelectedFormType] = useState(null);
-  const [selectedAnamneseId, setSelectedAnamneseId] = useState(null);
+  // Modelos fixos (adulto/adolescente) só abrem em modo edição; novas anamneses usam questionários
+  const [selectedFormType] = useState(null);
   const [confirmDeleteAnamnese, setConfirmDeleteAnamnese] = useState({ isOpen: false, anamnese: null });
   const [editingSessao, setEditingSessao] = useState(null); // { id, observacoes, comportamento, sintomas }
   const [isSavingSessao, setIsSavingSessao] = useState(false);
@@ -84,6 +85,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   const [anamneseSaveError, setAnamneseSaveError] = useState('');
   const [isEditingAnamnese, setIsEditingAnamnese] = useState(false);
   const { showToast } = useToast();
+  const [profissional, setProfissional] = useState(null);
 
   // Fechar com Escape (H7)
   useEscapeKey(isOpen, onClose);
@@ -92,9 +94,34 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
     if (isOpen && patient) {
       loadHistory();
       setActiveTab(initialTab);
-      trackAction('VIEW_PATIENT_PROFILE', { patientId: patient.id, patientName: patient.nome, tab: initialTab || 'evolucoes' });
+      trackAction('VIEW_PATIENT_PROFILE', { patientId: patient.id, tab: initialTab || 'evolucoes' });
     }
-  }, [isOpen, patient, initialTab]);
+    // Depende só do id: re-render do pai não deve recarregar nem duplicar auditoria
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, patient?.id, initialTab]);
+
+  // Dados do profissional para cabeçalho/assinatura dos PDFs e documentos CFP
+  useEffect(() => {
+    if (!isOpen) return;
+    lerPerfilPsicologo()
+      .then((perfil) => perfil && setProfissional({ nome: perfil.nome, crp: perfil.crp, cpf: perfil.cpf, clinica: perfil.clinica, cidade: perfil.cidade }))
+      .catch((err) => {
+        logger.warn('Perfil do profissional indisponível para PDFs:', err);
+        showToast({ type: 'warning', message: 'Não foi possível carregar seu perfil: PDFs sairão sem nome e CRP.' });
+      });
+  }, [isOpen, showToast]);
+
+  const ABAS = [
+    { id: 'evolucoes', label: 'Sessões' },
+    { id: 'anamnese', label: 'Anamnese' },
+    { id: 'documentos', label: 'Documentos CFP' },
+  ];
+
+  // Abrir a ficha ou os documentos também é acesso ao prontuário (LGPD art. 37)
+  const trocarAba = (id) => {
+    if (id !== activeTab && id !== 'evolucoes') trackAction('VIEW_PATIENT_TAB', { patientId: patient.id, tab: id });
+    setActiveTab(id);
+  };
 
   const loadHistory = async () => {
     setIsLoading(true);
@@ -157,11 +184,12 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
     if (!editingSessao) return;
     setIsSavingSessao(true);
     try {
+      // Firestore rejeita undefined: campos ausentes viram ''
       await atualizarSessao(editingSessao.id, patient.id, {
-        observacoes: editingSessao.observacoes,
-        comportamento: editingSessao.comportamento,
-        sintomas: editingSessao.sintomas,
-        evolucao_notas: editingSessao.evolucao_notas,
+        observacoes: editingSessao.observacoes ?? '',
+        comportamento: editingSessao.comportamento ?? '',
+        sintomas: editingSessao.sintomas ?? '',
+        evolucao_notas: editingSessao.evolucao_notas ?? '',
       });
       setEditingSessao(null);
       loadHistory();
@@ -177,304 +205,92 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   if (!isOpen || !patient) return null;
 
   const currentAnamnese = anamneses[0] || null;
-  const dobStr = (patient.data_nascimento || '').includes('T') ? patient.data_nascimento : (patient.data_nascimento || '') + 'T12:00:00';
-  const age = patient.data_nascimento ? new Date().getFullYear() - new Date(dobStr).getFullYear() : null;
+  const idade = patient.data_nascimento ? calcularIdade(patient.data_nascimento) : null;
 
-  // ====== FUNÇÕES DE PDF ======
-  const gerarPdfAnamnese = () => {
-     if (anamneses.length === 0) return;
-     const ana = anamneses[0];
-     let viewMode = ana.tipo === 'adolescente' ? 'Infanto-Juvenil' : (ana.tipo === 'dinamico' ? ana.questionario_nome || 'Personalizada' : 'Adulto');
-     const pdf = new PdfBuilder(
-       `Anamnese Psicologica - ${viewMode}`,
-       `Paciente: ${patient.nome}`
-     );
-
-     // --- Identificação do Paciente ---
-     pdf.addSection('Identificacao do Paciente');
-     pdf.addInfoBlock([
-       { label: 'Nome Completo', value: patient.nome },
-       { label: 'Idade', value: calcularIdade(patient.data_nascimento) },
-       { label: 'Data de Nascimento', value: formatDateBR(patient.data_nascimento) },
-       { label: 'CPF', value: formatCPF(patient.cpf) || 'Não informado' },
-       { label: 'Telefone', value: patient.telefone || 'Não informado' },
-     ]);
-
-     if (ana.tipo === 'dinamico') {
-       // === Anamnese Dinâmica ===
-       if (ana.template_snapshot && ana.template_snapshot.campos) {
-         pdf.addSection('Respostas da Anamnese');
-         ana.template_snapshot.campos.forEach((campo, idx) => {
-           const resposta = ana.respostas?.[campo.id] || ana.respostas?.[idx];
-           const valor = Array.isArray(resposta) ? resposta.join(', ') : (resposta || 'N/D');
-           pdf.addField(campo.label || campo.titulo || `Pergunta ${idx + 1}`, String(valor));
-         });
-       }
-     } else {
-       // === Anamnese Estruturada (Adulto / Adolescente) ===
-       
-       // Dados Familiares
-       pdf.addSection('Dados Familiares');
-       pdf.addInline('Pai', `${ana.nome_pai || 'N/I'} (${ana.idade_pai || '?'} anos - ${ana.profissao_pai || 'N/I'})`);
-       pdf.addInline('Mãe', `${ana.nome_mae || 'N/I'} (${ana.idade_mae || '?'} anos - ${ana.profissao_mae || 'N/I'})`);
-       pdf.addInline('Irmãos', `${ana.qtd_irmaos || 0} (${ana.irmaos_masculino || 0}M / ${ana.irmaos_feminino || 0}F)`);
-       if (ana.observacoes_familiares) pdf.addField('Observações Familiares', ana.observacoes_familiares);
-
-       // Desenvolvimento (se adolescente)
-       if (ana.tipo === 'adolescente') {
-         pdf.addSection('Desenvolvimento e Escola');
-         pdf.addInfoBlock([
-           { label: 'Gestação Planejada', value: ana.gestacao_planejada ? 'Sim' : 'Não' },
-           { label: 'Tipo de Parto', value: ana.tipo_parto || 'N/I' },
-           { label: 'Amamentação', value: ana.mamou ? `Sim (${ana.tempo_amamentacao || ''})` : 'Não' },
-         ]);
-         if (ana.gestacao_notas) pdf.addField('Notas da Gestação', ana.gestacao_notas);
-         pdf.addField('Desenvolvimento Motor', ana.desenvolvimento_motor);
-         pdf.addField('Fala / Linguagem', ana.atraso_fala);
-         pdf.addField('Interação / Brincadeiras', ana.interacao_brincadeiras);
-         if (ana.dificuldade_escolar) pdf.addField('Dificuldade Escolar', ana.dificuldade_escolar_notas);
-         if (ana.seletividade_alimentar) pdf.addField('Seletividade Alimentar', ana.seletividade_notas);
-       }
-
-       // Motivo e Dinâmicas
-       pdf.addSection('Motivo da Consulta');
-       pdf.addTextBlock('Motivo Principal', ana.motivo_consulta);
-       pdf.addTextBlock('Histórico da Queixa', ana.historico_queixa);
-       pdf.addTextBlock('Dinâmica Familiar', ana.dinamica_familiar);
-
-       // Quadro Clínico
-       pdf.addSection('Quadro Clínico e Histórico');
-       pdf.addTextBlock('Sintomas Apresentados', ana.sintomas_apresentados);
-       pdf.addTextBlock('Fatores Agravantes', ana.fatores_agravantes);
-       if (ana.tentativa_suicidio) pdf.addAlert(ana.tentativa_suicidio);
-       pdf.addInfoBlock([
-         { label: 'Psicólogo Prévio', value: ana.psicologo_previo ? 'Sim' : 'Não' },
-         { label: 'Psiquiatra Prévio', value: ana.psiquiatra_previo ? 'Sim' : 'Não' },
-       ]);
-
-       // Parecer
-       pdf.addSection('Parecer Profissional');
-       pdf.addTextBlock('Observações Gerais', ana.observacoes_gerais);
-     }
-
-     pdf.save(`Anamnese_${patient.nome.replace(/\s+/g,'_')}.pdf`);
-     trackAction('EXPORT_PDF_ANAMNESIS', { patientId: patient.id, patientName: patient.nome, anamneseType: anamneses[0]?.tipo || 'adulto' });
-  };
-
-  const gerarPdfSessao = (sessao) => {
-    const dataFormatada = sessao.data_sessao 
-      ? formatDateBR(sessao.data_sessao)
-      : new Date(sessao.createdAt?.toDate() || Date.now()).toLocaleDateString('pt-BR');
-
-    const pdf = new PdfBuilder(
-      'Evolucao de Sessao Psicologica',
-      `Paciente: ${patient.nome} - ${dataFormatada}`
-    );
-
-    // Dados da sessão
-    pdf.addSection('Dados da Sessao');
-    pdf.addInfoBlock([
-      { label: 'Paciente', value: patient.nome },
-      { label: 'Data da Sessão', value: dataFormatada },
-      { label: 'Status', value: sessao.status || 'Não Definido' },
-    ]);
-
-    // Conteúdo
-    pdf.addSection('Registro Clinico');
-    pdf.addTextBlock('Observações / Notas', sessao.observacoes || sessao.evolucao_notas);
-    pdf.addTextBlock('Comportamento Apresentado', sessao.comportamento);
-    pdf.addTextBlock('Sintomas Relatados', sessao.sintomas);
-
-    const dataNomeArquivo = sessao.data_sessao 
-      ? sessao.data_sessao.split('-').reverse().join('-') 
-      : new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
-    pdf.save(`Sessao_${patient.nome.replace(/\s+/g,'_')}_${dataNomeArquivo}.pdf`);
-    trackAction('EXPORT_PDF_SESSION', { patientId: patient.id, patientName: patient.nome, sessionDate: sessao.data_sessao });
-  };
-
-  const handleExportCompleteRecord = () => {
-    showToast({ type: 'info', message: 'Gerando prontuário completo, aguarde...' });
-    
+  // ====== PDFs ======
+  const exportarPdf = (gerar, acao, extra = {}) => {
     try {
-      const pdf = new PdfBuilder(
-        'Prontuário Clínico Completo',
-        `Paciente: ${patient.nome}`
-      );
-
-      // Dados Básicos do Paciente
-      pdf.addSection('Dados do Paciente');
-      const birthDate = patient.data_nascimento ? new Date(patient.data_nascimento) : null;
-      let ageText = 'N/I';
-      if (birthDate) {
-        const ageDifMs = Date.now() - birthDate.getTime();
-        const ageDate = new Date(ageDifMs);
-        ageText = Math.abs(ageDate.getUTCFullYear() - 1970) + ' anos';
-      }
-
-      pdf.addInfoBlock([
-        { label: 'Nome', value: patient.nome },
-        { label: 'CPF', value: formatCPF(patient.cpf) || 'N/I' },
-        { label: 'Idade', value: ageText },
-        { label: 'Telefone', value: patient.telefone || 'N/I' },
-      ]);
-
-      // Anamnese (Se existir)
-      if (anamneses.length > 0) {
-        const ana = anamneses[0];
-        pdf.addSection('Anamnese (Resumo)');
-        
-        if (ana.tipo === 'dinamico' && ana.template_snapshot) {
-          ana.template_snapshot.campos.forEach((campo, idx) => {
-            const resposta = ana.respostas?.[campo.id] || ana.respostas?.[idx];
-            const valor = Array.isArray(resposta) ? resposta.join(', ') : (resposta || 'N/D');
-            pdf.addField(campo.label || campo.titulo || `Pergunta ${idx + 1}`, String(valor));
-          });
-        } else {
-          pdf.addTextBlock('Motivo da Consulta', ana.motivo_consulta);
-          pdf.addTextBlock('Sintomas Apresentados', ana.sintomas_apresentados);
-          pdf.addTextBlock('Parecer Profissional', ana.observacoes_gerais);
-        }
-      }
-
-      // Sessões (Ordenadas da mais antiga para mais recente)
-      if (sessoes.length > 0) {
-        pdf.addSection('Evoluções (Sessões)');
-        const sessoesOrdenadas = [...sessoes].sort((a, b) => {
-          const d1 = a.data_sessao ? new Date(a.data_sessao) : new Date(a.createdAt?.toDate?.() || 0);
-          const d2 = b.data_sessao ? new Date(b.data_sessao) : new Date(b.createdAt?.toDate?.() || 0);
-          return d1 - d2;
-        });
-
-        sessoesOrdenadas.forEach((sessao, index) => {
-          const dataS = sessao.data_sessao 
-            ? formatDateBR(sessao.data_sessao)
-            : new Date(sessao.createdAt?.toDate() || Date.now()).toLocaleDateString('pt-BR');
-            
-          pdf.addInline(`Sessão ${index + 1}`, `${dataS} - Status: ${sessao.status || 'N/D'}`);
-          if (sessao.observacoes || sessao.evolucao_notas) {
-            pdf.addField('Observações', sessao.observacoes || sessao.evolucao_notas);
-          }
-          if (sessao.comportamento) {
-            pdf.addField('Comportamento', sessao.comportamento);
-          }
-          if (sessao.sintomas) {
-            pdf.addField('Sintomas', sessao.sintomas);
-          }
-        });
-      } else {
-        pdf.addSection('Evoluções');
-        pdf.addField('Aviso', 'Nenhuma sessão registrada para este paciente.');
-      }
-
-      const dataStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-      pdf.save(`Prontuario_Completo_${patient.nome.replace(/\s+/g,'_')}_${dataStr}.pdf`);
-      trackAction('EXPORT_PDF_COMPLETE_RECORD', { patientId: patient.id, patientName: patient.nome, totalSessoes: sessoes.length });
+      gerar();
+      trackAction(acao, { patientId: patient.id, ...extra });
     } catch (err) {
       logger.error(err);
-      showToast({ type: 'error', message: 'Erro ao gerar o prontuário completo.' });
+      showToast({ type: 'error', message: 'Não foi possível gerar o PDF. Tente novamente.' });
     }
   };
 
+  const gerarPdfAnamnese = () => {
+    if (!currentAnamnese) return;
+    exportarPdf(() => gerarAnamnesePDF(patient, currentAnamnese, profissional), 'EXPORT_PDF_ANAMNESIS', { anamneseType: currentAnamnese.tipo || 'adulto' });
+  };
+
+  const gerarPdfSessao = (sessao) =>
+    exportarPdf(() => gerarEvolucaoSessaoPDF(patient, sessao, profissional), 'EXPORT_PDF_SESSION', { sessionId: sessao.id });
+
+  const handleExportCompleteRecord = () =>
+    exportarPdf(() => gerarProntuarioCompletoPDF(patient, anamneses, sessoes, profissional), 'EXPORT_PDF_COMPLETE_RECORD', { totalSessoes: sessoes.length });
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      
-      <div className="relative w-full max-w-6xl h-[90vh] ds-card flex flex-col overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderRadius: '16px' }}>
-        
-        {/* Header Profissional do Prontuário */}
-        <div className="p-6 flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row flex-shrink-0" style={{ backgroundColor: 'var(--bg-primary)', borderBottom: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 p-0.5 shadow-lg">
-                <div className="w-full h-full rounded-[15px] flex items-center justify-center text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-indigo-400 to-cyan-400" style={{ backgroundColor: 'var(--bg-card)' }}>
-                  {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-             </div>
-             <div>
-               <h2 className="text-2xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>{patient.nome}</h2>
-               <div className="flex flex-wrap items-center gap-2 mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" /></svg>
-                   CPF: {formatCPF(patient.cpf) || 'Não info.'}
-                 </span>
-                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                   {age} anos
-                 </span>
-                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                   {patient.telefone || 'Sem contato'}
-                 </span>
-                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium" style={{ backgroundColor: 'var(--status-success-bg)', border: '1px solid var(--status-success)', color: 'var(--status-success-text)' }}>
-                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                   {patient.valor_sessao ? `R$ ${parseFloat(patient.valor_sessao).toFixed(2).replace('.', ',')}` : 'Valor ñ def.'}
-                 </span>
-               </div>
-             </div>
+    <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center sm:p-6">
+      <div className="absolute inset-0" style={{ backgroundColor: 'var(--overlay)' }} onClick={onClose} aria-hidden="true" />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Prontuário de ${patient.nome}`}
+        className="relative w-full max-w-6xl h-full sm:h-[90vh] ds-card flex flex-col overflow-hidden animate-in !rounded-none sm:!rounded-[var(--radius)]"
+      >
+        {/* Cabeçalho do prontuário */}
+        <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-4 flex items-start justify-between gap-3 shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-xl font-heading font-semibold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }} aria-hidden="true">
+              {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{patient.nome}</h2>
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 mt-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                {patient.cpf && <span className="inline-flex items-center gap-1.5"><IdCard size={14} aria-hidden="true" />{formatCPF(patient.cpf)}</span>}
+                {idade && <span className="inline-flex items-center gap-1.5"><Cake size={14} aria-hidden="true" />{idade}</span>}
+                {patient.telefone && <span className="inline-flex items-center gap-1.5"><Phone size={14} aria-hidden="true" />{patient.telefone}</span>}
+                {patient.valor_sessao && (
+                  <span className="inline-flex items-center gap-1.5 tabular"><Wallet size={14} aria-hidden="true" />R$ {parseFloat(patient.valor_sessao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} por sessão</span>
+                )}
+              </div>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-2 self-start -mr-2">
-              <button
-               onClick={handleExportCompleteRecord}
-               className="p-2 rounded-xl transition-colors"
-               style={{ color: 'var(--text-muted)' }}
-               title="Exportar Prontuário Completo (PDF)"
-             >
-               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-             </button>
-              <button
-               onClick={() => onEditRequest && onEditRequest(patient)}
-               className="p-2 rounded-xl transition-colors"
-               style={{ color: 'var(--text-muted)' }}
-               title="Editar Paciente"
-             >
-               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-             </button>
-              <button 
-               onClick={onClose}
-               className="p-2 rounded-xl transition-colors"
-               style={{ color: 'var(--text-muted)' }}
-               title="Fechar Prontuário"
-             >
-               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-               </svg>
-             </button>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={handleExportCompleteRecord} disabled={isLoading} className="ds-btn ds-btn-secondary hidden md:inline-flex" title="Baixar o prontuário completo em PDF">
+              <FileDown size={16} /> Prontuário em PDF
+            </button>
+            <button onClick={handleExportCompleteRecord} disabled={isLoading} className="ds-btn ds-btn-ghost !px-2.5 md:hidden" aria-label="Baixar o prontuário completo em PDF">
+              <FileDown size={19} />
+            </button>
+            <button onClick={() => onEditRequest && onEditRequest(patient)} className="ds-btn ds-btn-ghost !px-2.5" aria-label="Editar dados do paciente" title="Editar dados do paciente">
+              <Pencil size={18} />
+            </button>
+            <button onClick={onClose} className="ds-btn ds-btn-ghost !px-2.5" aria-label="Fechar prontuário" title="Fechar (Esc)">
+              <X size={20} />
+            </button>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 px-6 pt-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
-          <button
-            onClick={() => setActiveTab('evolucoes')}
-            className="px-4 py-3 text-sm font-medium border-b-2 transition-all"
-            style={{
-              borderColor: activeTab === 'evolucoes' ? 'var(--accent)' : 'transparent',
-              color: activeTab === 'evolucoes' ? 'var(--accent)' : 'var(--text-muted)'
-            }}
-          >
-            Acompanhamento (Sessões)
-          </button>
-          <button
-            onClick={() => setActiveTab('anamnese')}
-            className="px-4 py-3 text-sm font-medium border-b-2 transition-all"
-            style={{
-              borderColor: activeTab === 'anamnese' ? 'var(--accent)' : 'transparent',
-              color: activeTab === 'anamnese' ? 'var(--accent)' : 'var(--text-muted)'
-            }}
-          >
-            Ficha de Anamnese
-          </button>
-          <button
-            onClick={() => setActiveTab('documentos')}
-            className="px-4 py-3 text-sm font-medium border-b-2 transition-all"
-            style={{
-              borderColor: activeTab === 'documentos' ? 'var(--accent)' : 'transparent',
-              color: activeTab === 'documentos' ? 'var(--accent)' : 'var(--text-muted)'
-            }}
-          >
-            Documentos (CFP)
-          </button>
+        {/* Abas */}
+        <div className="flex gap-1 px-3 sm:px-6 shrink-0 overflow-x-auto" role="tablist" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+          {ABAS.map((aba) => (
+            <button
+              key={aba.id}
+              role="tab"
+              aria-selected={activeTab === aba.id}
+              onClick={() => trocarAba(aba.id)}
+              className="px-3 sm:px-4 min-h-[46px] text-sm font-semibold border-b-2 whitespace-nowrap transition-colors"
+              style={{
+                borderColor: activeTab === aba.id ? 'var(--accent)' : 'transparent',
+                color: activeTab === aba.id ? 'var(--text-primary)' : 'var(--text-muted)',
+              }}
+            >
+              {aba.label}
+            </button>
+          ))}
         </div>
 
         {/* Body Content */}
@@ -682,7 +498,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                  </div>
   
                                  <div className="ds-card p-5 rounded-xl space-y-3">
-                                    <h4 className="text-indigo-400 font-semibold mb-2">Estrutura Familiar</h4>
+                                    <h4 className="text-brand-400 font-semibold mb-2">Estrutura Familiar</h4>
                                     <p className="break-words"><span style={{ color: 'var(--text-secondary)' }}>Pai:</span> {anamneses[0].nome_pai} ({anamneses[0].idade_pai} anos - {anamneses[0].profissao_pai})</p>
                                     <p className="break-words"><span style={{ color: 'var(--text-secondary)' }}>Mãe:</span> {anamneses[0].nome_mae} ({anamneses[0].idade_mae} anos - {anamneses[0].profissao_mae})</p>
                                     <p className="break-words"><span style={{ color: 'var(--text-secondary)' }}>Irmãos:</span> {anamneses[0].qtd_irmaos} ({anamneses[0].irmaos_masculino}H / {anamneses[0].irmaos_feminino}M)</p>
@@ -691,8 +507,8 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   
                                  {/* Especifico: Desenvolvimento (Adolescente) */}
                                  {anamneses[0].tipo === 'adolescente' && (
-                                     <div className="bg-cyan-500/5 border border-cyan-500/20 p-5 rounded-xl space-y-4">
-                                        <h4 className="text-cyan-400 font-semibold mb-2">Desenvolvimento Infanto-Juvenil e Escola</h4>
+                                     <div className="bg-brand-500/5 border border-brand-500/20 p-5 rounded-xl space-y-4">
+                                        <h4 className="text-brand-400 font-semibold mb-2">Desenvolvimento Infanto-Juvenil e Escola</h4>
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
                                             <div><span style={{ color: 'var(--text-secondary)' }} className="text-xs block">Gestação Planejada:</span><span className="font-medium">{anamneses[0].gestacao_planejada ? 'Sim' : 'Não'}</span></div>
@@ -723,7 +539,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                    <div className="ds-card p-5 rounded-xl">
-                                      <h4 className="text-indigo-400 font-semibold mb-2">Motivo da Consulta e Dinâmicas</h4>
+                                      <h4 className="text-brand-400 font-semibold mb-2">Motivo da Consulta e Dinâmicas</h4>
                                       <p className="whitespace-pre-wrap break-words"><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs mt-2">Motivo:</strong>{anamneses[0].motivo_consulta}</p>
                                       <p className="mt-2 whitespace-pre-wrap text-sm break-words" style={{ color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs">Histórico:</strong>{anamneses[0].historico_queixa}</p>
                                       <p className="mt-2 whitespace-pre-wrap text-sm break-words" style={{ color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs">Dinâmica Familiar:</strong>{anamneses[0].dinamica_familiar}</p>
@@ -752,8 +568,8 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                       ) : (!selectedFormType && !selectedTemplate && !isEditingAnamnese) ? (
                           <div className="w-full h-full flex items-center justify-center p-6">
                               <div className="max-w-md w-full text-center">
-                                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
-                                    <svg className="w-10 h-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-brand-500/10 flex items-center justify-center">
+                                    <svg className="w-10 h-10 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
                                   </div>
@@ -859,7 +675,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                           <DynamicAnamneseEditor anamnese={anamneses[0]} onSaved={() => { setIsEditingAnamnese(false); loadHistory(); }} onCancel={() => setIsEditingAnamnese(false)} />
                       ) : (!isEditingAnamnese && anamneses[0]?.tipo === 'dinamico') ? (
                           <div className="space-y-4 overflow-hidden">
-                            <h4 className="text-indigo-500 font-bold mb-3">Respostas da Anamnese</h4>
+                            <h4 className="text-brand-500 font-bold mb-3">Respostas da Anamnese</h4>
                             {anamneses[0].template_snapshot?.campos?.map((campo, idx) => {
                               const resp = anamneses[0].respostas?.[campo.id] || anamneses[0].respostas?.[idx];
                               const valor = Array.isArray(resp) ? resp.join(', ') : (resp || 'N/D');
@@ -884,7 +700,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                 </ErrorBoundary>
               )}
               {activeTab === 'documentos' && (
-                <DocumentosTab patient={patient} sessoes={sessoes} />
+                <DocumentosTab patient={patient} sessoes={sessoes} psicologo={profissional || {}} />
               )}
             </>
           )}

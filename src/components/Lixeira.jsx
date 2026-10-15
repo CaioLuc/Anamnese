@@ -10,6 +10,7 @@ import { Trash2, RotateCcw, AlertTriangle, Info } from 'lucide-react';
 /**
  * Lixeira — Tela de recuperação de pacientes deletados.
  * Exibe pacientes com soft-delete nos últimos 7 dias, permitindo restauração.
+ * Após o prazo, os dados de identificação são anonimizados e o prontuário é mantido por 5 anos (CFP nº 01/2009).
  */
 export default function Lixeira({ onPatientRestored }) {
   const [deletados, setDeletados] = useState([]);
@@ -77,7 +78,7 @@ export default function Lixeira({ onPatientRestored }) {
           Lixeira
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Pacientes excluídos nos últimos 7 dias. Após esse prazo, serão removidos permanentemente.
+          Pacientes excluídos ficam aqui por 7 dias. Depois disso, os dados de identificação são anonimizados e o prontuário é guardado por 5 anos (Resolução CFP nº 01/2009).
         </p>
       </div>
 
@@ -104,7 +105,7 @@ export default function Lixeira({ onPatientRestored }) {
             return (
               <div
                 key={pac.id}
-                className={`group flex items-center justify-between p-4 rounded-2xl transition-all`}
+                className={`group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-2xl transition-all`}
                 style={{
                     backgroundColor: isRestoring ? 'var(--bg-primary)' : 'var(--bg-card)',
                     border: `1px solid ${isRestoring ? 'var(--accent)' : 'var(--border)'}`,
@@ -129,7 +130,7 @@ export default function Lixeira({ onPatientRestored }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex flex-wrap items-center gap-3 shrink-0 pl-16 sm:pl-0">
                   {/* Badge de urgência */}
                   <Badge variant={getUrgencyColor(pac.diasRestantes)}>
                     {pac.diasRestantes <= 0 ? 'Expirando' : `${pac.diasRestantes}d restante${pac.diasRestantes > 1 ? 's' : ''}`}
@@ -153,7 +154,7 @@ export default function Lixeira({ onPatientRestored }) {
           <div className="mt-6 p-4 rounded-2xl flex items-start gap-3" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
             <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--status-warning)' }} />
             <p className="text-xs leading-relaxed" style={{ color: 'var(--status-warning)' }}>
-              <strong>Nota:</strong> Pacientes permanecem na lixeira por até 7 dias. Após esse período, todos os dados (anamneses, sessões e evolução) serão excluídos permanentemente e não poderão ser recuperados.
+              <strong>Nota:</strong> Pacientes permanecem na lixeira por até 7 dias. Após esse período, os dados de identificação (nome, CPF, telefone e data de nascimento) são anonimizados e o paciente não poderá mais ser restaurado. O prontuário (anamneses, sessões e evolução) é mantido por 5 anos, conforme a Resolução CFP nº 01/2009.
             </p>
           </div>
         </div>

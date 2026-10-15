@@ -7,6 +7,7 @@ import {
   gerarDadosPixMensal,
   DIAS_CARENCIA_BLOQUEIO
 } from '../services/paymentService';
+import { dataLocalISO } from '../utils/formatUtils';
 
 // Mock dependencies to avoid real Firebase calls
 vi.mock('../services/firebaseConfig', () => ({
@@ -65,7 +66,7 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
 
       const perfilTrial = {
         statusPagamento: 'trial',
-        trialAte: dataFutura.toISOString().split('T')[0],
+        trialAte: dataLocalISO(dataFutura),
       };
 
       const res = verificarStatusAssinatura(perfilTrial);
@@ -80,7 +81,7 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
 
       const perfilTrialExpirado = {
         statusPagamento: 'trial',
-        trialAte: dataPassada.toISOString().split('T')[0],
+        trialAte: dataLocalISO(dataPassada),
       };
 
       const res = verificarStatusAssinatura(perfilTrialExpirado);
@@ -104,7 +105,7 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
 
       const perfilCarencia = {
         statusPagamento: 'ativo',
-        proximoVencimento: dataVencidaRecente.toISOString().split('T')[0],
+        proximoVencimento: dataLocalISO(dataVencidaRecente),
       };
 
       const res = verificarStatusAssinatura(perfilCarencia);
@@ -118,7 +119,7 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
 
       const perfilVencido = {
         statusPagamento: 'ativo',
-        proximoVencimento: dataMuitoVencida.toISOString().split('T')[0],
+        proximoVencimento: dataLocalISO(dataMuitoVencida),
       };
 
       const res = verificarStatusAssinatura(perfilVencido);
@@ -132,7 +133,7 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
 
       const perfilAtivo = {
         statusPagamento: 'ativo',
-        proximoVencimento: dataFutura.toISOString().split('T')[0],
+        proximoVencimento: dataLocalISO(dataFutura),
       };
 
       const res = verificarStatusAssinatura(perfilAtivo);
@@ -145,7 +146,7 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
     it('deve gerar payload PIX com cópia e cola e valor do plano correspondente', () => {
       const pixPro = gerarDadosPixMensal('profissional', 'psicologo@email.com');
       expect(pixPro.valor).toBe(139.90);
-      expect(pixPro.copiaECola).toContain('00020126580014br.gov.bcb.pix');
+      expect(pixPro.copiaECola).toContain('00020126530014br.gov.bcb.pix0131caritas-pagamentos@asaas.com.br');
       expect(pixPro.txid).toBeDefined();
     });
   });

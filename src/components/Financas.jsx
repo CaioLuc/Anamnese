@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { lerTodasSessoes, atualizarSessao } from '../services/patientService';
+import { lerTodasSessoes, atualizarSessao, lerPerfilPsicologo } from '../services/patientService';
 import { lerConfigAgenda, salvarConfigAgenda } from '../services/agendaService';
+import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
+import { db, auth } from '../services/firebaseConfig';
+import { useToast } from '../contexts/ToastContext';
 import { gerarRelatorioFinanceiroPDF, gerarReciboPDF, gerarRelatorioPendenciasPDF } from '../services/pdfUtils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { trackAction } from '../services/logService';
@@ -87,11 +90,11 @@ function FinCard({ label, value, subtext, type, icon }) {
         <div className="p-1.5 sm:p-2 rounded-xl" style={{ backgroundColor: c.bg, color: c.main }}>{icon}</div>
       </div>
       <div 
-        className="text-2xl xl:text-3xl font-black tracking-tight truncate" 
+        className="text-lg sm:text-2xl xl:text-3xl font-black tracking-tight break-words"
         style={{ color: c.main }}
         title={typeof value === 'number' ? `R$ ${formatCurrency(value)}` : value}
       >
-        {typeof value === 'number' ? <><span className="text-base xl:text-xl mr-0.5">R$</span>{formatCurrency(value)}</> : value}
+        {typeof value === 'number' ? <><span className="text-xs sm:text-base xl:text-xl mr-0.5">R$</span>{formatCurrency(value)}</> : value}
       </div>
       {subtext && <p className="text-[10px] sm:text-[11px] -mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{subtext}</p>}
     </div>
@@ -114,11 +117,14 @@ export default function Financas({ patients, isLoadingPatients }) {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [pixConfig, setPixConfig] = useState(null);
+  const [profissional, setProfissional] = useState(null);
   const [pixSessao, setPixSessao] = useState(null); // sessao object to bill via PIX
   const [showPixConfig, setShowPixConfig] = useState(false);
   const [pixForm, setPixForm] = useState({ pix_chave: '', pix_titular: '', pix_cidade: '' });
   const [savingPix, setSavingPix] = useState(false);
   const [pixSaved, setPixSaved] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const { showToast } = useToast();
 
   const getSessaoValor = useCallback((s) => {
     let valStr = s.valor;
@@ -150,12 +156,15 @@ export default function Financas({ patients, isLoadingPatients }) {
 
   const loadFinancas = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const data = await lerTodasSessoes();
       const activeIds = new Set(patients.map(p => p.id));
       setSessoes(data.filter(s => activeIds.has(s.id_paciente)));
     } catch (e) {
       logger.error(e);
+      setLoadError(true);
+      showToast({ type: 'error', message: 'Erro ao carregar as sessões financeiras.' });
     } finally {
       setIsLoading(false);
     }
@@ -165,32 +174,48 @@ export default function Financas({ patients, isLoadingPatients }) {
   useEffect(() => {
     async function loadPixConfig() {
       try {
-        const config = await lerConfigAgenda();
-        if (config) {
-          const pc = {
-            pix_chave: config.pix_chave || '',
-            pix_titular: config.pix_titular || '',
-            pix_cidade: config.pix_cidade || '',
-          };
-          setPixConfig(pc);
-          setPixForm(pc);
-        }
+        const uid = auth.currentUser?.uid;
+        if (!uid) throw new Error('Usuário não autenticado.');
+        // config/pix é privado; config/agenda (público) só como fallback para dados legados
+        const pixSnap = await getDoc(doc(db, 'psicologos', uid, 'config', 'pix'));
+        const config = pixSnap.exists() ? pixSnap.data() : await lerConfigAgenda();
+        // Sem configuração = campos vazios (o modal pede para configurar em vez de ficar "carregando")
+        const pc = {
+          pix_chave: config?.pix_chave || '',
+          pix_titular: config?.pix_titular || '',
+          pix_cidade: config?.pix_cidade || '',
+        };
+        setPixConfig(pc);
+        setPixForm(pc);
       } catch (e) {
         logger.error('Erro ao carregar config PIX:', e);
+        setPixConfig({ pix_chave: '', pix_titular: '', pix_cidade: '' });
       }
     }
     loadPixConfig();
+    // Nome e CRP no cabeçalho e na assinatura dos PDFs
+    lerPerfilPsicologo()
+      .then((p) => p && setProfissional({ nome: p.nome, crp: p.crp, cpf: p.cpf, clinica: p.clinica, cidade: p.cidade }))
+      .catch((e) => {
+        logger.warn('Perfil indisponível para PDFs:', e);
+        showToast({ type: 'warning', message: 'Não foi possível carregar seu perfil: recibos sairão sem nome e CRP. Recarregue a página.' });
+      });
   }, []);
 
   const handleSavePixConfig = async () => {
     setSavingPix(true);
     try {
-      await salvarConfigAgenda({
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error('Usuário não autenticado.');
+      const dados = {
         pix_chave: pixForm.pix_chave.trim(),
         pix_titular: pixForm.pix_titular.trim(),
         pix_cidade: pixForm.pix_cidade.trim(),
-      });
-      setPixConfig({ ...pixForm });
+      };
+      await setDoc(doc(db, 'psicologos', uid, 'config', 'pix'), dados, { merge: true });
+      // Remove os dados PIX do config/agenda, que é lido pela página pública de agendamento
+      await salvarConfigAgenda({ pix_chave: deleteField(), pix_titular: deleteField(), pix_cidade: deleteField() });
+      setPixConfig(dados);
       setPixSaved(true);
       setTimeout(() => setPixSaved(false), 3000);
     } catch (e) {
@@ -203,17 +228,18 @@ export default function Financas({ patients, isLoadingPatients }) {
 
   const handleTogglePago = async (sessao, formaOverride) => {
     setUpdatingId(sessao.id);
+    const novoStatus = formaOverride !== undefined ? true : !sessao.pago;
+    const att = { pago: novoStatus };
+    if (novoStatus) {
+      att.forma_pagamento = formaOverride || sessao.forma_pagamento || 'Pix';
+    } else {
+      att.forma_pagamento = '';
+    }
+    const anterior = { pago: sessao.pago, forma_pagamento: sessao.forma_pagamento };
+    // Atualização otimista; revertida no catch se o Firestore falhar
+    setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, ...att } : s));
     try {
-      const novoStatus = formaOverride !== undefined ? true : !sessao.pago;
-      const att = { pago: novoStatus };
-      if (novoStatus) {
-        att.forma_pagamento = formaOverride || sessao.forma_pagamento || 'Pix';
-      } else {
-        att.forma_pagamento = '';
-      }
-      
       await atualizarSessao(sessao.id, sessao.id_paciente, att);
-      setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, ...att } : s));
       trackAction('TOGGLE_PAYMENT', { 
         sessionId: sessao.id, patientId: sessao.id_paciente, 
         pago: novoStatus, forma: att.forma_pagamento || '', 
@@ -222,6 +248,8 @@ export default function Financas({ patients, isLoadingPatients }) {
       setEditingPayment(null);
     } catch (err) {
       logger.error('Erro ao atualizar pagamento:', err);
+      setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, ...anterior } : s));
+      showToast({ type: 'error', message: 'Não foi possível atualizar o pagamento. Tente novamente.' });
     } finally {
       setUpdatingId(null);
     }
@@ -229,11 +257,15 @@ export default function Financas({ patients, isLoadingPatients }) {
 
   const handleChangeForma = async (sessao, novaForma) => {
     setUpdatingId(sessao.id);
+    const formaAnterior = sessao.forma_pagamento;
+    // Atualização otimista; revertida no catch se o Firestore falhar
+    setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, forma_pagamento: novaForma } : s));
     try {
       await atualizarSessao(sessao.id, sessao.id_paciente, { forma_pagamento: novaForma });
-      setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, forma_pagamento: novaForma } : s));
     } catch (err) {
       logger.error('Erro ao alterar forma de pagamento:', err);
+      setSessoes(prev => prev.map(s => s.id === sessao.id ? { ...s, forma_pagamento: formaAnterior } : s));
+      showToast({ type: 'error', message: 'Não foi possível alterar a forma de pagamento. Tente novamente.' });
     } finally {
       setUpdatingId(null);
     }
@@ -291,19 +323,23 @@ export default function Financas({ patients, isLoadingPatients }) {
 
   // KPIs
   const stats = useMemo(() => {
-    const total = sessoesPeriodo.reduce((acc, s) => acc + getSessaoValor(s), 0);
+    // Somas em centavos inteiros para evitar erro de ponto flutuante; divide por 100 só no fim
+    const centavos = (s) => Math.round(getSessaoValor(s) * 100);
+    const somar = (lista) => lista.reduce((acc, s) => acc + centavos(s), 0);
     const pagas = sessoesPeriodo.filter(s => s.pago);
     const pendentes = sessoesPeriodo.filter(s => !s.pago);
-    const recebido = pagas.reduce((acc, s) => acc + getSessaoValor(s), 0);
-    const pendente = pendentes.reduce((acc, s) => acc + getSessaoValor(s), 0);
+    const totalCentavos = somar(sessoesPeriodo);
+    const total = totalCentavos / 100;
+    const recebido = somar(pagas) / 100;
+    const pendente = somar(pendentes) / 100;
     const sessoesSemValor = sessoesPeriodo.filter(s => getSessaoValor(s) === 0);
-    const ticketMedio = sessoesPeriodo.length > 0 ? total / sessoesPeriodo.length : 0;
-    
-    // Payment methods breakdown
+    const ticketMedio = sessoesPeriodo.length > 0 ? Math.round(totalCentavos / sessoesPeriodo.length) / 100 : 0;
+
+    // Payment methods breakdown (em centavos; convertido no pieData)
     const formasMap = {};
     pagas.forEach(s => {
       const f = s.forma_pagamento || 'Não informado';
-      formasMap[f] = (formasMap[f] || 0) + getSessaoValor(s);
+      formasMap[f] = (formasMap[f] || 0) + centavos(s);
     });
 
     // Per-patient breakdown
@@ -325,33 +361,35 @@ export default function Financas({ patients, isLoadingPatients }) {
   // Chart: payment methods pie
   const PIE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
   const pieData = useMemo(() => {
-    return Object.entries(stats.formasMap).map(([name, value]) => ({ name, value }));
+    return Object.entries(stats.formasMap).map(([name, value]) => ({ name, value: value / 100 }));
   }, [stats.formasMap]);
 
   // Chart: bar data
   const barData = useMemo(() => [
-    { name: 'Recebido', valor: stats.recebido, fill: '#10b981' },
-    { name: 'Pendente', valor: stats.pendente, fill: '#ef4444' },
+    { name: 'Recebido', valor: stats.recebido, fill: 'var(--status-success)' },
+    { name: 'Pendente', valor: stats.pendente, fill: 'var(--status-danger)' },
   ], [stats]);
 
   const handleExportPDF = () => {
     const label = PERIODOS.find(p => p.id === periodo)?.label || periodo;
-    gerarRelatorioFinanceiroPDF(sessoesPeriodo, patients, label, { 
-      previsaoTotal: stats.total, valorRecebido: stats.recebido, valorPendente: stats.pendente 
-    });
+    // Mesmo valor exibido na tela (com o valor padrão do paciente quando a sessão não tem)
+    const comValor = sessoesPeriodo.map(s => ({ ...s, valor: getSessaoValor(s) }));
+    gerarRelatorioFinanceiroPDF(comValor, patients, label, { 
+      previsaoTotal: stats.total, valorRecebido: stats.recebido, valorPendente: stats.pendente
+    }, profissional);
     trackAction('EXPORT_PDF_FINANCIAL', { periodo, totalSessoes: stats.totalSessoes, total: stats.total, recebido: stats.recebido });
   };
 
   const handleExportPendencias = () => {
     const pendentes = sessoesPeriodo.filter(s => !s.pago);
     if (pendentes.length === 0) return;
-    gerarRelatorioPendenciasPDF(pendentes, patients);
+    gerarRelatorioPendenciasPDF(pendentes.map(s => ({ ...s, valor: getSessaoValor(s) })), patients, profissional);
     trackAction('EXPORT_PDF_PENDENCIAS', { total: pendentes.length });
   };
 
   const handleRecibo = (sessao) => {
     const pac = patients.find(p => p.id === sessao.id_paciente);
-    gerarReciboPDF(sessao, pac);
+    gerarReciboPDF({ ...sessao, valor: getSessaoValor(sessao) }, pac, profissional);
     trackAction('EXPORT_PDF_RECIBO', { sessionId: sessao.id, patientId: sessao.id_paciente });
   };
 
@@ -482,7 +520,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                 onClick={handleSavePixConfig}
                 disabled={savingPix}
                 className="ds-btn text-xs font-bold px-4 py-2 transition-all disabled:opacity-50"
-                style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}
               >
                 {savingPix ? 'Salvando...' : 'Salvar PIX'}
               </button>
@@ -588,7 +626,7 @@ export default function Financas({ patients, isLoadingPatients }) {
 
       {/* Filters Row */}
       <div className="ds-card p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider ml-1 whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Filtrar:</span>
           {[
             { id: 'todos', label: 'Todos', count: stats.totalSessoes },
@@ -637,6 +675,13 @@ export default function Financas({ patients, isLoadingPatients }) {
         {isLoading || isLoadingPatients ? (
           <div className="flex items-center justify-center py-16">
              <svg className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          </div>
+        ) : loadError ? (
+          <div className="py-16 text-center">
+            <p className="text-sm mb-3" style={{ color: 'var(--status-danger-text)' }}>Não foi possível carregar as sessões.</p>
+            <button onClick={loadFinancas} className="ds-btn ds-btn-secondary text-xs font-bold">
+              Tentar novamente
+            </button>
           </div>
         ) : sessoesFiltradas.length === 0 ? (
           <div className="py-16 text-center">
@@ -714,19 +759,21 @@ export default function Financas({ patients, isLoadingPatients }) {
                             <button
                               onClick={() => setEditingPayment(s.id)}
                               disabled={isUpdating}
-                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50 flex items-center gap-1"
+                              className="ds-btn text-[11px] font-bold px-3 py-1.5 max-sm:min-h-[44px] transition-all disabled:opacity-50 flex items-center gap-1"
                               style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success-text)', border: '1px solid var(--status-success)' }}
                             >
                               <CheckCircle2 size={13} /> Dar Baixa
                             </button>
-                            <button
-                              onClick={() => setPixSessao(s)}
-                              className="ds-btn text-[11px] font-bold px-3 py-1.5 transition-all flex items-center gap-1"
-                              style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
-                              title="Cobrar via PIX"
-                            >
-                              <QrCode size={13} /> PIX
-                            </button>
+                            {valor > 0 && (
+                              <button
+                                onClick={() => setPixSessao(s)}
+                                className="ds-btn text-[11px] font-bold px-3 py-1.5 max-sm:min-h-[44px] transition-all flex items-center gap-1"
+                                style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
+                                title="Cobrar via PIX"
+                              >
+                                <QrCode size={13} /> PIX
+                              </button>
+                            )}
                             <button
                               onClick={() => handleRecibo(s)}
                               className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all flex items-center justify-center"
@@ -743,7 +790,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                                 key={f}
                                 onClick={() => handleTogglePago(s, f)}
                                 disabled={isUpdating}
-                                className="ds-btn px-2 py-1 text-[10px] font-bold transition-all disabled:opacity-50"
+                                className="ds-btn px-2 py-1 max-sm:min-h-[44px] text-[10px] font-bold transition-all disabled:opacity-50"
                                 style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success-text)', border: '1px solid var(--status-success)' }}
                               >
                                 {f}
@@ -751,7 +798,8 @@ export default function Financas({ patients, isLoadingPatients }) {
                             ))}
                             <button
                               onClick={() => setEditingPayment(null)}
-                              className="px-1.5 py-1 rounded-md text-[10px] flex items-center justify-center" style={{ color: 'var(--text-muted)' }}
+                              className="px-1.5 py-1 max-sm:min-h-[44px] max-sm:min-w-[44px] rounded-md text-[10px] flex items-center justify-center" style={{ color: 'var(--text-muted)' }}
+                              aria-label="Cancelar"
                             >
                               <X size={12} />
                             </button>

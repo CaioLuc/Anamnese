@@ -46,9 +46,6 @@ export default function MoodChart({ sessoes }) {
 
   const points = data.map((d, i) => [padLeft + i * xStep, yScale(d.humor)]);
 
-  // SVG path
-  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ');
-
   // Smooth bezier
   const smoothD = points.reduce((acc, p, i, arr) => {
     if (i === 0) return `M${p[0]},${p[1]}`;

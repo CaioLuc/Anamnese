@@ -1,6 +1,6 @@
 import {
-  collection, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteDoc,
-  doc, query, where, serverTimestamp
+  collection, getDocs, getDoc, setDoc,
+  doc, query, where, serverTimestamp, writeBatch, runTransaction
 } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig.js';
 import { trackAction } from './logService';
@@ -21,60 +21,76 @@ function getAgendamentosRef() {
 // ESPELHAMENTO DE DISPONIBILIDADE
 // Grava apenas data, hora, duracao e status na coleção pública
 // ============================
-async function espelharSlot(uid, agId, dados) {
-  const ref = doc(db, 'psicologos', uid, SLOTS_COL, agId);
-  await setDoc(ref, {
+function slotRef(uid, agId) {
+  return doc(db, 'psicologos', uid, SLOTS_COL, agId);
+}
+
+function dadosSlot(dados) {
+  return {
     data: dados.data || '',
     hora: dados.hora || '',
     duracao_min: dados.duracao_min || 50,
     status: dados.status || 'agendado',
-  });
-}
-
-async function removerSlot(uid, agId) {
-  const ref = doc(db, 'psicologos', uid, SLOTS_COL, agId);
-  try { await deleteDoc(ref); } catch (_) { /* ok se não existe */ }
+  };
 }
 
 // ============================
 // CRUD DE AGENDAMENTOS (Psicólogo logado)
+// Agendamento + espelho gravados no mesmo batch: ou os dois ficam, ou nenhum
 // ============================
 export async function criarAgendamento(data) {
+  const [id] = await criarAgendamentosEmLote([data]);
+  return id;
+}
+
+// Cria vários agendamentos atomicamente (recorrência: até 52 × 2 escritas, abaixo do limite de 500 do batch)
+export async function criarAgendamentosEmLote(lista) {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Usuário não autenticado.');
-  const docRef = await addDoc(getAgendamentosRef(), {
-    ...data,
-    userId: uid,
-    createdAt: serverTimestamp()
+  const batch = writeBatch(db);
+  const ids = lista.map(data => {
+    const ref = doc(getAgendamentosRef());
+    batch.set(ref, { ...data, userId: uid, createdAt: serverTimestamp() });
+    batch.set(slotRef(uid, ref.id), dadosSlot(data));
+    return ref.id;
   });
-  // Espelhar
-  await espelharSlot(uid, docRef.id, data);
-  trackAction('CREATE_APPOINTMENT', { appointmentId: docRef.id, patientId: data.id_paciente, date: data.data, time: data.hora, duration: data.duracao_min });
-  return docRef.id;
+  await batch.commit();
+  lista.forEach((data, i) => trackAction('CREATE_APPOINTMENT', { appointmentId: ids[i], patientId: data.id_paciente, date: data.data, time: data.hora, duration: data.duracao_min }));
+  return ids;
 }
 
 export async function lerAgendamentos() {
   const snap = await getDocs(getAgendamentosRef());
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+}
+
+// Só os agendamentos de um dia (painel "Hoje")
+export async function lerAgendamentosPorData(dataStr) {
+  const snap = await getDocs(query(getAgendamentosRef(), where('data', '==', dataStr)));
+  return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 }
 
 export async function atualizarAgendamento(id, dados) {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Usuário não autenticado.');
-  await updateDoc(doc(db, 'psicologos', uid, AGENDAMENTOS_COL, id), dados);
-  // Atualizar espelho (pode ter mudado hora/data/status)
-  if (dados.data || dados.hora || dados.status) {
-    await espelharSlot(uid, id, dados);
-  }
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'psicologos', uid, AGENDAMENTOS_COL, id), dados);
+  // Espelho: só os campos enviados (update parcial não apaga data/hora do horário ocupado)
+  const parcial = Object.fromEntries(['data', 'hora', 'duracao_min', 'status']
+    .filter((k) => dados[k] !== undefined).map((k) => [k, dados[k]]));
+  if (Object.keys(parcial).length) batch.set(slotRef(uid, id), parcial, { merge: true });
+  await batch.commit();
   trackAction('UPDATE_APPOINTMENT', { appointmentId: id, status: dados.status, date: dados.data, time: dados.hora });
 }
 
 export async function deletarAgendamento(id) {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Usuário não autenticado.');
-  await deleteDoc(doc(db, 'psicologos', uid, AGENDAMENTOS_COL, id));
-  // Remover espelho
-  await removerSlot(uid, id);
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'psicologos', uid, AGENDAMENTOS_COL, id));
+  // delete em batch não falha se o espelho não existir
+  batch.delete(slotRef(uid, id));
+  await batch.commit();
   trackAction('DELETE_APPOINTMENT', { appointmentId: id });
 }
 
@@ -84,14 +100,20 @@ export async function deletarAgendamento(id) {
 export async function salvarConfigAgenda(config) {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Usuário não autenticado.');
-  const ref = doc(db, 'psicologos', uid, 'config', 'agenda');
-  await setDoc(ref, { ...config, updatedAt: serverTimestamp() }, { merge: true });
-  
-  // Salvar/atualizar lookup de slug
+  // Reivindicar slug antes da config: se já for de outro profissional, nada é salvo
   if (config.slug) {
     const slugRef = doc(db, 'slugs', config.slug.toLowerCase().trim());
-    await setDoc(slugRef, { uid, updatedAt: serverTimestamp() });
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(slugRef);
+      if (snap.exists() && snap.data().uid !== uid) {
+        throw new Error('Este link já está em uso por outro profissional.');
+      }
+      tx.set(slugRef, { uid, updatedAt: serverTimestamp() });
+    });
   }
+
+  const ref = doc(db, 'psicologos', uid, 'config', 'agenda');
+  await setDoc(ref, { ...config, updatedAt: serverTimestamp() }, { merge: true });
   trackAction('SAVE_AGENDA_CONFIG', { slug: config.slug || null });
 }
 
@@ -149,20 +171,21 @@ export async function lerAgendamentosDoDia(uid, dataStr) {
 
 // Paciente cria agendamento (sem auth)
 export async function criarAgendamentoPublico(uid, dados) {
-  const col = collection(db, 'psicologos', uid, AGENDAMENTOS_COL);
-  const docRef = await addDoc(col, {
+  const docRef = doc(collection(db, 'psicologos', uid, AGENDAMENTOS_COL));
+  const batch = writeBatch(db);
+  batch.set(docRef, {
     ...dados,
     status: 'pendente',
     origem: 'publico',
     createdAt: serverTimestamp()
   });
-  // Espelhar (dados seguros)
-  const slotRef = doc(db, 'psicologos', uid, SLOTS_COL, docRef.id);
-  await setDoc(slotRef, {
+  // Espelhar (dados seguros) no mesmo batch — regra usa existsAfter()
+  batch.set(slotRef(uid, docRef.id), {
     data: dados.data,
     hora: dados.hora,
     duracao_min: dados.duracao_min || 50,
     status: 'pendente',
   });
+  await batch.commit();
   return docRef.id;
 }

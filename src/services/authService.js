@@ -1,12 +1,15 @@
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { auth } from './firebaseConfig';
-import { trackAction } from './logService';
+import { doc, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, auth, db } from './firebaseConfig';
+import { trackAction, limparLogsLocais } from './logService';
 import logger from '../utils/logger';
 
 export const loginFirebaseUser = async (email, password) => {
@@ -20,10 +23,12 @@ export const loginFirebaseUser = async (email, password) => {
   }
 };
 
-export const cadastrarFirebaseUser = async (email, password) => {
+export const cadastrarFirebaseUser = async (email, password, nome = '') => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await trackAction('SIGNUP', { email, method: 'email_password' });
+    // O perfil no Firestore só é criado após o 2FA; o nome fica guardado no Auth até lá.
+    if (nome.trim()) await updateProfile(userCredential.user, { displayName: nome.trim() });
+    await trackAction('SIGNUP', { method: 'email_password' });
     return userCredential.user;
   } catch (error) {
     logger.error("Signup errorMessage:", error);
@@ -31,9 +36,27 @@ export const cadastrarFirebaseUser = async (email, password) => {
   }
 };
 
-export const logoutFirebaseUser = async () => {
+// Apaga do navegador rascunhos clínicos e a cópia local da auditoria (LGPD: nada sensível após sair)
+// Na saída por inatividade os rascunhos (sessionStorage, só desta aba) ficam para a mesma pessoa retomar.
+const limparDadosLocaisSensiveis = (manterRascunhos) => {
+  limparLogsLocais();
+  if (manterRascunhos) return;
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      Object.keys(store)
+        .filter((k) => k.startsWith('caritas_anamnese') || k.startsWith('caritas_sessao_draft'))
+        .forEach((k) => store.removeItem(k));
+    } catch (err) {
+      logger.warn('Erro ao limpar rascunhos locais:', err);
+    }
+  }
+};
+
+export const logoutFirebaseUser = async (motivo = 'manual') => {
   try {
-    await trackAction('LOGOUT', { method: 'manual' });
+    // Offline o addDoc só resolve com o servidor: não deixa a auditoria segurar o logout
+    await Promise.race([trackAction('LOGOUT', { method: motivo }), new Promise((r) => setTimeout(r, 1500))]);
+    limparDadosLocaisSensiveis(motivo === 'inatividade');
     await signOut(auth);
     // Forçar reload para capturar novos deploys
     window.location.href = '/';
@@ -56,7 +79,7 @@ export const redefinirSenhaFirebase = async (email) => {
   }
   try {
     await sendPasswordResetEmail(auth, email.trim());
-    await trackAction('PASSWORD_RESET_REQUEST', { email: email.trim() });
+    await trackAction('PASSWORD_RESET_REQUEST', {});
     return true;
   } catch (error) {
     logger.error("Erro ao solicitar redefinição de senha:", error);
@@ -65,137 +88,57 @@ export const redefinirSenhaFirebase = async (email) => {
 };
 
 // ==========================================
-// AUTENTICAÇÃO EM 2 ETAPAS (2FA) & DISPOSITIVO CONFIÁVEL
+// AUTENTICAÇÃO EM 2 ETAPAS (2FA) POR E-MAIL
 // ==========================================
-const TRUSTED_DEVICE_PREFIX = 'caritas_trusted_device_';
-const SESSION_2FA_PREFIX = 'caritas_2fa_session_';
-const CODE_2FA_PREFIX = 'caritas_2fa_code_';
+// Código gerado, enviado e validado só no servidor (functions/index.js).
+// A sessão liberada vive em `mfa_sessoes/{uid}_{auth_time}` e as regras do
+// Firestore bloqueiam dados clínicos sem ela.
+const functions = getFunctions(app, 'southamerica-east1');
+const DISPOSITIVO_PREFIX = 'caritas_dispositivo_mfa_';
 
-/**
- * Verifica se a máquina atual já foi marcada como confiável para este e-mail
- */
-export const isDispositivoConfiavel = (email) => {
-  if (!email) return false;
-  try {
-    const raw = localStorage.getItem(TRUSTED_DEVICE_PREFIX + email.toLowerCase().trim());
-    return !!raw;
-  } catch {
-    return false;
-  }
+const lerTokenDispositivo = (uid) => {
+  try { return localStorage.getItem(DISPOSITIVO_PREFIX + uid); } catch { return null; }
 };
 
-/**
- * Salva a máquina atual como confiável para nunca mais pedir 2FA
- */
-export const salvarDispositivoConfiavel = (email) => {
-  if (!email) return;
+const gravarTokenDispositivo = (uid, token) => {
   try {
-    localStorage.setItem(
-      TRUSTED_DEVICE_PREFIX + email.toLowerCase().trim(),
-      JSON.stringify({ trusted: true, email: email.toLowerCase().trim(), savedAt: new Date().toISOString() })
-    );
-  } catch (e) {
-    logger.error('Erro ao salvar dispositivo confiável:', e);
-  }
-};
-
-/**
- * Remove o status de máquina confiável
- */
-export const removerDispositivoConfiavel = (email) => {
-  if (!email) return;
-  try {
-    localStorage.removeItem(TRUSTED_DEVICE_PREFIX + email.toLowerCase().trim());
+    if (token) localStorage.setItem(DISPOSITIVO_PREFIX + uid, token);
+    else localStorage.removeItem(DISPOSITIVO_PREFIX + uid);
   } catch (err) {
-    logger.warn('Erro ao remover dispositivo:', err);
+    logger.warn('Erro ao gravar dispositivo confiável:', err);
   }
 };
 
-/**
- * Verifica se o usuário já validou 2FA na sessão atual do navegador
- */
-export const isSessao2FAVerificada = (email) => {
-  if (!email) return false;
-  try {
-    return sessionStorage.getItem(SESSION_2FA_PREFIX + email.toLowerCase().trim()) === 'true';
-  } catch (_err) {
-    return false;
-  }
+/** O login atual já passou pelo 2FA? */
+export const isSessaoMfaValida = async (user) => {
+  const { claims } = await user.getIdTokenResult();
+  const snap = await getDoc(doc(db, 'mfa_sessoes', `${user.uid}_${claims.auth_time}`));
+  return snap.exists() && snap.data().expiraEm.toMillis() > Date.now();
 };
 
-export const marcarSessao2FAVerificada = (email) => {
-  if (!email) return;
-  try {
-    sessionStorage.setItem(SESSION_2FA_PREFIX + email.toLowerCase().trim(), 'true');
-  } catch (err) {
-    logger.warn('Erro ao salvar sessão 2FA:', err);
-  }
+/** Libera o login com o token de dispositivo confiável (30 dias), se houver. */
+export const liberarPorDispositivoConfiavel = async (user) => {
+  const token = lerTokenDispositivo(user.uid);
+  if (!token) return false;
+  const { data } = await httpsCallable(functions, 'validarDispositivoMfa')({ token });
+  if (!data.ok) gravarTokenDispositivo(user.uid, null);
+  return data.ok;
 };
 
-/**
- * Gera código de 6 dígitos para o fluxo 2FA
- */
-export const gerarCodigo2FA = (email) => {
-  if (!email) return '123456';
-  const cleanEmail = email.toLowerCase().trim();
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  try {
-    const payload = {
-      code,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutos
-    };
-    sessionStorage.setItem(CODE_2FA_PREFIX + cleanEmail, JSON.stringify(payload));
-  } catch (err) {
-    logger.warn('Erro ao salvar código 2FA temporário:', err);
-  }
-  return code;
+/** Envia um novo código para o e-mail da conta. Retorna { enviadoPara, reenviarEmSegundos }. */
+export const enviarCodigoMfa = async () => {
+  const { data } = await httpsCallable(functions, 'enviarCodigoMfa')();
+  return data;
 };
 
-export const obterCodigo2FAAtivo = (email) => {
-  if (!email) return null;
-  const cleanEmail = email.toLowerCase().trim();
-  try {
-    const raw = sessionStorage.getItem(CODE_2FA_PREFIX + cleanEmail);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (Date.now() > data.expiresAt) {
-      sessionStorage.removeItem(CODE_2FA_PREFIX + cleanEmail);
-      return null;
-    }
-    return data.code;
-  } catch (_err) {
-    return null;
-  }
+/** Valida o código digitado; lança erro com mensagem pronta em pt-BR se falhar. */
+export const verificarCodigoMfa = async (codigo, lembrarDispositivo = false) => {
+  const { data } = await httpsCallable(functions, 'verificarCodigoMfa')({ codigo, lembrar: lembrarDispositivo });
+  const user = auth.currentUser;
+  if (!user) throw new Error('Sessão encerrada. Entre novamente.');
+  if (data.tokenDispositivo) gravarTokenDispositivo(user.uid, data.tokenDispositivo);
+  // O servidor marca o e-mail como verificado; atualiza o token para as regras enxergarem.
+  await user.getIdToken(true);
+  await trackAction('2FA_VERIFIED', { deviceTrusted: !!lembrarDispositivo });
+  return true;
 };
-
-/**
- * Valida o código digitado e persiste o dispositivo confiável se solicitado
- */
-export const verificarCodigo2FA = async (email, codigoDigitado, lembrarDispositivo = false) => {
-  if (!email) return { success: false, error: 'E-mail não fornecido.' };
-  const cleanEmail = email.toLowerCase().trim();
-  const cleanCode = (codigoDigitado || '').trim();
-  
-  const ativo = obterCodigo2FAAtivo(cleanEmail);
-  // Aceita código gerado ativo ou código mestre para facilidade de testes/auditoria
-  const isValido = (ativo && cleanCode === ativo) || cleanCode === '123456';
-
-  if (!isValido) {
-    return { success: false, error: 'Código de verificação incorreto ou expirado.' };
-  }
-
-  marcarSessao2FAVerificada(cleanEmail);
-  if (lembrarDispositivo) {
-    salvarDispositivoConfiavel(cleanEmail);
-  }
-
-  try {
-    sessionStorage.removeItem(CODE_2FA_PREFIX + cleanEmail);
-  } catch (err) {
-    logger.warn('Erro ao limpar código temporário:', err);
-  }
-
-  await trackAction('2FA_VERIFIED', { email: cleanEmail, deviceTrusted: !!lembrarDispositivo });
-  return { success: true };
-};
-

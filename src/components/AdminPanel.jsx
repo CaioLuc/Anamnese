@@ -1,5 +1,5 @@
 import logger from '../utils/logger';
-import { useState, useEffect, useMemo, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   listarTodosPsicologos, 
   atualizarPlanoPsicologo, 
@@ -11,7 +11,6 @@ import {
   salvarAvisoGlobal, 
   lerAvisoGlobal, 
   obterLogsAuditoria, 
-  limparLogsAntigos,
   listarClientesClinicas,
   salvarClienteClinica,
   deletarClienteClinica,
@@ -30,7 +29,8 @@ import {
   Settings, Clock, CheckCircle2, XCircle, AlertTriangle, AlertCircle, RefreshCw, Trash2, ChevronDown,
   Building2, Crown, Plus, Edit3, Sliders, LogIn, KeyRound, UserPlus, FolderOpen, FilePlus,
   ClipboardList, Smile, DollarSign, Stethoscope, CreditCard, BookOpen, BarChart3, Receipt,
-  Archive, Star, Hourglass, Ban, Compass, HelpCircle, Lock, Unlock, Gift, Scale
+  Archive, Star, Hourglass, Ban, Compass, HelpCircle, Lock, Unlock, Gift, Scale,
+  Calendar,
 } from 'lucide-react';
 
 // ==========================================
@@ -60,7 +60,8 @@ function diasAte(val) {
 // ==========================================
 // SUB-COMPONENTS
 // ==========================================
-function StatCard({ label, value, colorType, icon: Icon }) {
+function StatCard({ label, value, colorType, icon }) {
+  const Icon = icon;
   return (
     <div className="ds-card p-5" style={{ backgroundColor: 'var(--bg-card)' }}>
       <div className="flex items-center gap-3">
@@ -146,7 +147,7 @@ function RaioXModal({ psi, onClose }) {
         {/* Header */}
         <div className="sticky top-0 z-10 p-6 pb-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center  font-bold text-lg shrink-0" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
               {(psi.email || '?')[0].toUpperCase()}
             </div>
             <div>
@@ -343,7 +344,7 @@ function formatDuration(ms) {
 // ==========================================
 // AUDITORIA TAB COMPONENT
 // ==========================================
-function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilterType, setLogFilterType, logFilterEmail, setLogFilterEmail, expandedLogId, setExpandedLogId, isClearingLogs, setIsClearingLogs }) {
+function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilterType, setLogFilterType, logFilterEmail, setLogFilterEmail, expandedLogId, setExpandedLogId }) {
   
   useEffect(() => {
     loadLogs();
@@ -358,20 +359,6 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
       logger.error(e);
     } finally {
       setIsLoadingLogs(false);
-    }
-  };
-
-  const handleClearOldLogs = async () => {
-    if (!confirm('Deseja realmente apagar logs com mais de 30 dias?')) return;
-    setIsClearingLogs(true);
-    try {
-      const count = await limparLogsAntigos(30);
-      alert(`${count} log(s) antigo(s) removido(s).`);
-      loadLogs();
-    } catch (e) {
-      alert('Erro ao limpar logs.');
-    } finally {
-      setIsClearingLogs(false);
     }
   };
 
@@ -441,9 +428,6 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
           <Button onClick={loadLogs} variant="secondary">
             <RefreshCw size={16} className={isLoadingLogs ? 'animate-spin' : ''} /> Atualizar
           </Button>
-          <Button onClick={handleClearOldLogs} disabled={isClearingLogs} variant="ghost" style={{ color: 'var(--status-danger)' }}>
-            <Trash2 size={16} /> {isClearingLogs ? 'Limpando...' : 'Limpar +30d'}
-          </Button>
         </div>
       </div>
 
@@ -472,7 +456,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
               const dur = formatDuration(meta.durationMs);
 
               return (
-                <div key={log.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderBottom: '0.5px solid var(--border)' }}>
+                <div key={log.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderBottom: '1px solid var(--border)' }}>
                   <button
                     onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
                     className="w-full text-left p-4 flex items-start gap-3"
@@ -505,7 +489,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                   {/* Expanded Metadata */}
                   {isExpanded && (
                     <div className="px-4 pb-4 animate-in fade-in duration-150">
-                      <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                      <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                         <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Metadados da Ação</p>
                         
                         {Object.keys(meta).length === 0 ? (
@@ -513,7 +497,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {Object.entries(meta).map(([key, val]) => (
-                              <div key={key} className="flex flex-col rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}>
+                              <div key={key} className="flex flex-col rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                                 <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{key}</span>
                                 <span className="text-sm font-medium break-all mt-0.5" style={{ color: 'var(--text-primary)' }}>
                                   {typeof val === 'boolean' ? (
@@ -530,13 +514,13 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                         )}
 
                         {/* Extra info */}
-                        <div className="flex flex-wrap gap-2 mt-3 pt-3" style={{ borderTop: '0.5px solid var(--border)' }}>
-                          <div className="flex flex-col rounded-lg p-2.5 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}>
+                        <div className="flex flex-wrap gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                          <div className="flex flex-col rounded-lg p-2.5 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                             <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>UID Firebase</span>
                             <span className="text-[11px] font-mono break-all mt-0.5" style={{ color: 'var(--text-secondary)' }}>{log.psicologoId || '—'}</span>
                           </div>
                           {log.userAgent && (
-                            <div className="flex flex-col rounded-lg p-2.5 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--bg-card)', border: '0.5px solid var(--border)' }}>
+                            <div className="flex flex-col rounded-lg p-2.5 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Navegador</span>
                               <span className="text-[11px] break-all mt-0.5" style={{ color: 'var(--text-secondary)' }}>{log.userAgent.slice(0, 100)}...</span>
                             </div>
@@ -561,7 +545,6 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
 function DecideReportCard({ logs }) {
   const [emailPattern, setEmailPattern] = useState('@teste.com');
   const [preview, setPreview] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handlePreview = () => {
@@ -613,12 +596,12 @@ function DecideReportCard({ logs }) {
     <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)', border: '2px solid var(--accent)' }}>
       {/* Header */}
       <div className="p-5 flex items-start gap-4" style={{ background: 'linear-gradient(135deg, var(--accent-light), var(--bg-card))' }}>
-        <div className="p-3 rounded-2xl" style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}>
+        <div className="p-3 rounded-2xl" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-heading font-extrabold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <BarChart3 size={20} className="text-indigo-500" /> Relatório de Usabilidade — Framework DECIDE
+            <BarChart3 size={20} className="text-brand-500" /> Relatório de Usabilidade — Framework DECIDE
           </h3>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Gera 6 planilhas CSV completas para análise acadêmica dos testes de usabilidade com os participantes.</p>
         </div>
@@ -669,7 +652,7 @@ function DecideReportCard({ logs }) {
                 <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Planilhas incluídas no relatório:</p>
               </div>
               {preview.csvs.map((csv, i) => (
-                <div key={i} className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderTop: '0.5px solid var(--border)' }}>
+                <div key={i} className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderTop: '1px solid var(--border)' }}>
                   <div className="flex items-center gap-2">
                     <FileText size={16} className="text-slate-400 shrink-0" />
                     <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{csv.name}</span>
@@ -690,7 +673,7 @@ function DecideReportCard({ logs }) {
               onClick={handleDownloadZip}
               disabled={isDownloading}
               className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-              style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}
+              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}
             >
               {isDownloading ? (
                 <><RefreshCw size={16} className="animate-spin" /> Gerando ZIP...</>
@@ -894,7 +877,7 @@ function ClientesTab({ showToast }) {
                   {/* Info Clínica e Líder */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm" style={{ backgroundColor: 'var(--accent)' }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold  shadow-sm" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
                         <Building2 size={20} />
                       </div>
                       <div>
@@ -924,21 +907,21 @@ function ClientesTab({ showToast }) {
 
                   {/* Limites Contratados */}
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="rounded-xl p-3 text-center min-w-[120px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                    <div className="rounded-xl p-3 text-center min-w-[120px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                       <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Limite Psicólogos</p>
                       <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                         {psicologosCount} / <span style={{ color: 'var(--accent)' }}>{maxPsi}</span>
                       </p>
                     </div>
 
-                    <div className="rounded-xl p-3 text-center min-w-[130px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                    <div className="rounded-xl p-3 text-center min-w-[130px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                       <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Pacientes / Psi</p>
                       <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                         <span style={{ color: 'var(--status-success)' }}>{maxPac}</span> max
                       </p>
                     </div>
 
-                    <div className="rounded-xl p-3 text-center min-w-[110px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
+                    <div className="rounded-xl p-3 text-center min-w-[110px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                       <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Capacidade Total</p>
                       <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                         {maxPsi * maxPac}
@@ -970,7 +953,7 @@ function ClientesTab({ showToast }) {
 
                 {/* Lista rápida de psicólogos vinculados */}
                 {Array.isArray(c.psicologos) && c.psicologos.length > 0 && (
-                  <div className="mt-4 pt-3 flex flex-wrap items-center gap-1.5" style={{ borderTop: '0.5px solid var(--border)' }}>
+                  <div className="mt-4 pt-3 flex flex-wrap items-center gap-1.5" style={{ borderTop: '1px solid var(--border)' }}>
                     <span className="text-[11px] font-semibold mr-1" style={{ color: 'var(--text-muted)' }}>Psicólogos ({c.psicologos.length}):</span>
                     {c.psicologos.map((p, idx) => (
                       <span 
@@ -1181,7 +1164,6 @@ export default function AdminPanel() {
   const [logFilterType, setLogFilterType] = useState('');
   const [logFilterEmail, setLogFilterEmail] = useState('');
   const [expandedLogId, setExpandedLogId] = useState(null);
-  const [isClearingLogs, setIsClearingLogs] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -1304,7 +1286,7 @@ export default function AdminPanel() {
       {/* Header */}
       <div className="px-6 py-4 flex items-center justify-between shrink-0" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: 'var(--accent)', color: '#FFFFFF' }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
             <ShieldAlert size={20} />
           </div>
           <div>
@@ -1389,7 +1371,7 @@ export default function AdminPanel() {
 
             {/* Table */}
             <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
-              <div className="px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '0.5px solid var(--border)' }}>
+              <div className="px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
                 <h3 className="font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Psicólogos Cadastrados</h3>
                 <Button variant="ghost" size="sm" onClick={loadData}>
                   <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> Atualizar
@@ -1405,11 +1387,11 @@ export default function AdminPanel() {
                   {filtered.map(psi => {
                     const diasLogin = diasDesde(psi.lastLogin || psi.updatedAt);
                     return (
-                      <div key={psi.id} className="p-5 transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5" onClick={() => setSelectedPsi(psi)} style={{ borderBottom: '0.5px solid var(--border)' }}>
+                      <div key={psi.id} className="p-5 transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5" onClick={() => setSelectedPsi(psi)} style={{ borderBottom: '1px solid var(--border)' }}>
                         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                           {/* Info */}
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center  font-bold text-sm shrink-0" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
                               {(psi.email || '?')[0].toUpperCase()}
                             </div>
                             <div className="min-w-0">
@@ -1422,7 +1404,7 @@ export default function AdminPanel() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <PlanoBadge plano={psi.plano} />
                             {psi.isIsento ? (
-                              <Badge variant="neutral"><Gift size={11} className="inline mr-1 text-purple-500" /> Isento</Badge>
+                              <Badge variant="neutral"><Gift size={11} className="inline mr-1 text-brand-500" /> Isento</Badge>
                             ) : psi.statusPagamento === 'inadimplente' ? (
                               <Badge variant="danger"><AlertTriangle size={11} className="inline mr-1" /> Vencido</Badge>
                             ) : psi.statusPagamento === 'trial' ? (
@@ -1537,8 +1519,6 @@ export default function AdminPanel() {
           setLogFilterEmail={setLogFilterEmail}
           expandedLogId={expandedLogId}
           setExpandedLogId={setExpandedLogId}
-          isClearingLogs={isClearingLogs}
-          setIsClearingLogs={setIsClearingLogs}
         />}
       </div>
 
@@ -1567,7 +1547,7 @@ export default function AdminPanel() {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl text-xs space-y-1" style={{ backgroundColor: 'var(--status-warning-bg)', border: '0.5px solid var(--status-warning)' }}>
+            <div className="p-3 rounded-xl text-xs space-y-1" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
               <p className="font-bold flex items-center gap-1.5" style={{ color: 'var(--status-warning-text)' }}>
                 <Scale size={14} className="text-amber-500" /> Conformidade CFP & LGPD
               </p>
@@ -1576,7 +1556,7 @@ export default function AdminPanel() {
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2" style={{ borderTop: '0.5px solid var(--border)' }}>
+            <div className="flex items-center justify-end gap-3 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
               <Button 
                 variant="ghost" 
                 onClick={() => setProfileToDelete(null)}

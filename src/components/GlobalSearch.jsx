@@ -15,13 +15,9 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
 
   useEscapeKey(isOpen, onClose);
 
-  // Focar no input ao abrir
+  // Focar no input ao abrir (o Layout monta a busca só quando aberta, então o estado já nasce limpo)
   useEffect(() => {
-    if (isOpen) {
-      setQuery('');
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 50);
   }, [isOpen]);
 
   // Ações rápidas
@@ -74,11 +70,6 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
     return items;
   }, [query, patients, quickActions]);
 
-  // Resetar a seleção quando os resultados mudam
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [results.length]);
-
   // Navegação por teclado
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
@@ -89,8 +80,8 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
       setSelectedIndex(prev => Math.max(prev - 1, 0));
     } else if (e.key === 'Enter' && results.length > 0) {
       e.preventDefault();
-      const selected = results[selectedIndex];
-      handleSelect(selected);
+      const selected = results[Math.min(selectedIndex, results.length - 1)];
+      if (selected) handleSelect(selected);
     }
   };
 
@@ -134,7 +125,7 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Buscar paciente, ação ou tela..."
             className="flex-1 py-4 bg-transparent text-sm placeholder-slate-400 focus:outline-none"

@@ -26,6 +26,7 @@ export function ThemeProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook do próprio contexto
 export function useTheme() {
   return useContext(ThemeContext);
 }

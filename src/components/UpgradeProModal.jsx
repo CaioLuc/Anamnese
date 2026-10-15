@@ -10,7 +10,7 @@ export default function UpgradeProModal({ isOpen, onClose }) {
       <div className="relative w-full max-w-md ds-card overflow-hidden animate-in fade-in zoom-in duration-300" style={{ borderRadius: '24px' }}>
         
         {/* Gradient Header */}
-        <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 px-8 py-10 text-center overflow-hidden">
+        <div className="relative bg-gradient-to-br from-brand-600 via-brand-600 to-clay-500 px-8 py-10 text-center overflow-hidden">
           {/* Floating particles */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute w-32 h-32 -top-10 -left-10 bg-white/10 rounded-full blur-2xl animate-pulse" />
@@ -33,8 +33,8 @@ export default function UpgradeProModal({ isOpen, onClose }) {
         {/* Benefits */}
         <div className="px-8 py-6 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </div>
             <div>
               <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Resumos em segundos</p>
@@ -43,8 +43,8 @@ export default function UpgradeProModal({ isOpen, onClose }) {
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </div>
             <div>
               <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Prontuários impecáveis</p>
@@ -53,8 +53,8 @@ export default function UpgradeProModal({ isOpen, onClose }) {
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-pink-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <svg className="w-4 h-4 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div className="w-8 h-8 rounded-full bg-clay-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-clay-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div>
               <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Economize horas</p>
@@ -67,7 +67,7 @@ export default function UpgradeProModal({ isOpen, onClose }) {
         <div className="px-8 pb-8 space-y-3">
           <button
             onClick={() => { alert('Funcionalidade de pagamento em breve!'); }}
-            className="w-full py-3.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-purple-500/20 transition-all hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full py-3.5 bg-gradient-to-r from-brand-500 via-brand-500 to-clay-500 hover:from-brand-600 hover:via-brand-600 hover:to-clay-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-brand-500/20 transition-all hover:shadow-brand-500/40 hover:scale-[1.02] active:scale-[0.98]"
           >
             Assinar PRO — R$ 59,90/mês
           </button>

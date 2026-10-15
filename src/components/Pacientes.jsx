@@ -10,7 +10,8 @@ import Button from './ui/Button';
 import Badge from './ui/Badge';
 import Skeleton from './ui/Skeleton';
 import EmptyState from './ui/EmptyState';
-import { MAX_PACIENTES_POR_PSICOLOGO, obterLimitePacientesPsicologo } from '../services/liderService';
+import { obterLimitePacientesPsicologo } from '../services/liderService';
+import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, Users, Phone, FileText, Trash2 } from 'lucide-react';
 
 export default function Pacientes({ 
@@ -32,13 +33,16 @@ export default function Pacientes({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClinica, setFilterClinica] = useState(''); // '' = todas
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, patient: null });
+  const { showToast } = useToast();
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   // Auto-open patient modal when coming from Agenda 'Atender' or Dashboard 'Novo Paciente'
+  // Comando único vindo de outra tela (prop), consumido via onAutoOpenDone
   useEffect(() => {
     if (autoOpenPatient === '__add__') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsPatientModalOpen(true);
       if (onAutoOpenDone) onAutoOpenDone();
     } else if (autoOpenPatient) {
@@ -75,19 +79,19 @@ export default function Pacientes({
       if (onPatientAddedLocal) onPatientAddedLocal();
     } catch (err) {
       logger.error('Erro ao deletar:', err);
+      showToast({ type: 'error', message: 'Não foi possível remover o paciente. Tente novamente.' });
     }
   };
 
   const clinicas = [...new Set(patients.map(p => p.clinica).filter(Boolean))].sort();
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterClinica]);
 
+  // CPF é salvo só com dígitos: compara também o termo sem máscara
+  const searchDigits = searchTerm.replace(/\D/g, '');
   const filteredPatients = patients.filter(p => {
-    const matchSearch = !searchTerm || 
-      (p.nome && p.nome.toLowerCase().includes(searchTerm.toLowerCase())) || 
-      (p.cpf && p.cpf.includes(searchTerm));
+    const matchSearch = !searchTerm ||
+      (p.nome && p.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.cpf && (p.cpf.includes(searchTerm) || (searchDigits !== '' && p.cpf.includes(searchDigits))));
     const matchClinica = !filterClinica || p.clinica === filterClinica;
     return matchSearch && matchClinica;
   });
@@ -126,7 +130,7 @@ export default function Pacientes({
         {/* Barra de Busca Exclusiva */}
         <div 
           className="p-4 sm:p-6 flex items-center justify-between gap-4 flex-col sm:flex-row"
-          style={{ borderBottom: '0.5px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}
+          style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}
         >
             <div className="relative w-full sm:max-w-md">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -136,7 +140,7 @@ export default function Pacientes({
                     type="text"
                     placeholder="Buscar por nome ou CPF..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                     className="ds-input pl-10"
                 />
             </div>
@@ -144,7 +148,7 @@ export default function Pacientes({
               <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                 <select
                   value={filterClinica}
-                  onChange={(e) => setFilterClinica(e.target.value)}
+                  onChange={(e) => { setFilterClinica(e.target.value); setCurrentPage(1); }}
                   className="ds-input"
                 >
                   <option value="">Todos os locais</option>
@@ -173,7 +177,7 @@ export default function Pacientes({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-xs uppercase tracking-wider font-semibold" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '0.5px solid var(--border)', color: 'var(--text-muted)' }}>
+                <tr className="text-xs uppercase tracking-wider font-semibold" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                   <th className="px-6 py-4 whitespace-nowrap">Paciente</th>
                   <th className="px-6 py-4 whitespace-nowrap text-center">CPF</th>
                   <th className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">Idade / Nasc.</th>
@@ -181,7 +185,7 @@ export default function Pacientes({
                   <th className="px-6 py-4 whitespace-nowrap text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody style={{ borderTop: '0.5px solid var(--border)' }}>
+              <tbody style={{ borderTop: '1px solid var(--border)' }}>
                 {paginatedPatients.length === 0 ? (
                     <tr>
                         <td colSpan="5" className="px-6 py-12 text-center" style={{ color: 'var(--text-secondary)' }}>
@@ -202,14 +206,14 @@ export default function Pacientes({
                       key={patient.id} 
                       onClick={() => openPatientProfile(patient)}
                       className="transition-colors group cursor-pointer"
-                      style={{ borderBottom: '0.5px solid var(--border)' }}
+                      style={{ borderBottom: '1px solid var(--border)' }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 mr-4">
-                            <div className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '0.5px solid var(--accent)' }}>
+                            <div className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
                               {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
                             </div>
                           </div>
@@ -228,7 +232,7 @@ export default function Pacientes({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                         <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{age >= 0 ? `${age} anos` : '-'}</div>
-                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{dob.toLocaleDateString()}</div>
+                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{isNaN(dob.getTime()) ? '—' : dob.toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                         {patient.telefone ? (
@@ -289,7 +293,9 @@ export default function Pacientes({
         isLimitReached={isLimitReached}
         maxPacientes={maxPacientes}
       />
+      {/* key por paciente: remonta o modal e evita vazar estado (ex.: anamnese não salva) entre pacientes */}
       <PatientProfileModal
+        key={selectedPatient?.id ?? 'nenhum'}
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         patient={selectedPatient}
@@ -317,7 +323,7 @@ export default function Pacientes({
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         title="Remover Paciente"
-        message={`Tem certeza que deseja apagar ${confirmDialog.patient?.nome}? Esta ação é permanente e removerá todo o prontuário.`}
+        message={`Tem certeza que deseja apagar ${confirmDialog.patient?.nome}? O paciente vai para a Lixeira por 7 dias e pode ser restaurado. Depois disso, os dados de identificação são anonimizados e o prontuário é mantido por 5 anos (Res. CFP 01/2009).`}
         onConfirm={confirmExcluirPaciente}
         onCancel={() => setConfirmDialog({ isOpen: false, patient: null })}
         variant="danger"

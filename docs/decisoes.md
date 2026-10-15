@@ -138,6 +138,31 @@ Documento que registra as decisões de design e arquitetura inferidas a partir d
 
 ---
 
-## 6. Avaliação de Usabilidade (UX)
+## 6. Decisões de 15/10/2026 (revitalização)
+
+### ADR-2026-10-A — 2FA validado no servidor e exigido pelas regras
+- **Contexto**: o código era gerado no navegador, exibido na tela e havia um código mestre (`123456`). Não protegia nada.
+- **Decisão**: código gerado e conferido em Cloud Functions, enviado só por e-mail (extensão Trigger Email, sem dependência nova), sessão ligada ao `auth_time` do token e checada nas regras (`mfaOk()`).
+- **Consequência**: deploy de functions + rules precisa ser conjunto; e-mail mal configurado bloqueia o acesso.
+
+### ADR-2026-10-B — Líder Clínico vem do plano
+- **Decisão**: `isLider = perfil.plano === 'clinica'`. Remove o botão "Mudar" e o padrão "líder ligado" do `localStorage`, que dava o painel de líder a qualquer psicólogo.
+
+### ADR-2026-10-C — PDFs com seções preguiçosas
+- **Decisão**: `PdfBuilder.addSection()` só desenha o título quando a seção recebe o primeiro conteúdo; campos vazios, `false` e marcadores ("N/D", "Não informado") são omitidos (`temValor`). Nenhum texto clínico padrão é inventado.
+- **Consequência**: anamneses parcialmente preenchidas não geram seções em branco; documentos CFP mostram só o que foi informado. Acentos voltaram (Helvetica/WinAnsi cobre o Latin-1).
+
+### ADR-2026-10-D — Lixeira anonimiza em vez de apagar
+- **Decisão**: após 7 dias, os dados de identificação do paciente são removidos (`anonimizado: true`) e anamneses/sessões são preservadas (Res. CFP 01/2009, guarda de 5 anos).
+
+### ADR-2026-10-E — Nova identidade visual "Consultório"
+- **Decisão**: papel quente (#F5F3EE), tinta esverdeada, petróleo (#0E6B66) como marca e terracota pontual; Newsreader (títulos) + Public Sans (interface). Mantidos nome e logo. Detalhes em `design-system.md`.
+
+### ADR-2026-10-F — Trilha de auditoria append-only
+- **Decisão**: `action_logs` sem `update`/`delete` nas regras; `psicologoId` precisa ser o do usuário autenticado. Removido o botão "Limpar +30d" do Painel Admin.
+
+---
+
+## 7. Avaliação de Usabilidade (UX)
 
 Uma auditoria profunda da interface, das falhas estruturais de UX listadas neste ADR e de métricas de Nielsen encontra-se no arquivo dedicado: **[`AUDITORIA_UX.md`](./AUDITORIA_UX.md)**. O arquivo documenta as falhas identificadas (como a de roteamento mencionada na seção 3) com propostas formais de resolução.

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { dataLocalISO } from '../../utils/formatUtils';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import {
@@ -23,7 +24,7 @@ export default function EmitirDocumentoModal({
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Common Form States
-  const [data, setData] = useState(new Date().toISOString().split('T')[0]);
+  const [data, setData] = useState(dataLocalISO());
   const [finalidade, setFinalidade] = useState('');
   
   // Declaração specific
@@ -53,9 +54,16 @@ export default function EmitirDocumentoModal({
   const [crpProfissional, setCrpProfissional] = useState(psicologo?.crp || '');
   const [cpfProfissional, setCpfProfissional] = useState(psicologo?.cpf || '');
 
+  // O perfil chega depois (carregado pelo prontuário): preenche o que ainda está no padrão
+  useEffect(() => {
+    if (psicologo?.nome) setNomeProfissional((atual) => (atual === 'Psicólogo(a) Responsável' ? psicologo.nome : atual));
+    if (psicologo?.crp) setCrpProfissional((atual) => atual || psicologo.crp);
+    if (psicologo?.cpf) setCpfProfissional((atual) => atual || psicologo.cpf);
+  }, [psicologo?.nome, psicologo?.crp, psicologo?.cpf]);
+
   useEffect(() => {
     if (!isOpen) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = dataLocalISO();
     setData(today);
 
     if (tipo === 'declaracao') {
@@ -145,8 +153,8 @@ export default function EmitirDocumentoModal({
 
       showToast({ type: 'success', message: 'Documento oficial CFP gerado com sucesso!' });
       onClose();
-    } catch {
-      showToast({ type: 'error', message: 'Erro ao gerar documento PDF.' });
+    } catch (err) {
+      showToast({ type: 'error', message: err?.message || 'Erro ao gerar documento PDF.' });
     } finally {
       setIsGenerating(false);
     }

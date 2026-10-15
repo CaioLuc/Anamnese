@@ -166,11 +166,28 @@ Firestore Database
 
 ## Modelo de Autenticação e Autorização
 
-1. **Login**: E-mail + senha via Firebase Auth (`authService.js`)
-2. **Roles**: Determinado por lista hardcoded de e-mails admin (`adminService.js`)
-3. **Isolamento**: Cada psicólogo só acessa dados sob `/psicologos/{seu_uid}/...` (Firestore Rules)
-4. **Conta bloqueada**: Admin pode desativar `ativo: false` → tela `ContaBloqueada`
-5. **Planos**: `basico` (1 local) e `profissional` (4 locais) — controlado pelo admin
+> **Atualizado em 15/10/2026** — 2FA passou a ser validado no servidor e exigido pelas regras do Firestore.
+
+1. **Login**: E-mail + senha via Firebase Auth (`authService.js`).
+2. **Verificação em duas etapas (2FA) por e-mail** — o código nunca existe no navegador:
+   - `enviarCodigoMfa` (Cloud Function) gera 6 dígitos com `crypto.randomInt`, grava só o **hash** em `mfa_codigos/{uid}` (validade 10 min, 5 tentativas, reenvio a cada 60 s, máx. 5 envios/hora) e enfileira o e-mail na coleção `mail` (extensão **Trigger Email**).
+   - `verificarCodigoMfa` compara em tempo constante, cria `mfa_sessoes/{uid}_{auth_time}` (validade 12 h), marca `emailVerified` e, se pedido, devolve um **token de dispositivo confiável** (30 dias; só o hash fica em `mfa_dispositivos`).
+   - `validarDispositivoMfa` libera um novo login com esse token.
+   - **Regras do Firestore** (`mfaOk()`): nenhum dado de `psicologos/**`, `config` ou `admins` é lido/escrito sem a sessão 2FA do `auth_time` atual. Senha vazada sozinha não abre prontuário.
+3. **Roles**: Super Admin = documento em `admins/{uid}`. Só o e-mail bootstrap (com e-mail comprovado) se auto-registra; demais admins pelo console/Admin SDK.
+4. **Líder Clínico**: definido **na assinatura** — quem contrata o Plano Clínica & Equipe (`perfil.plano === 'clinica'`). Não existe mais alternância manual de modo líder.
+5. **Isolamento**: Cada psicólogo só acessa dados sob `/psicologos/{seu_uid}/...` (Firestore Rules).
+6. **Conta bloqueada**: Admin pode desativar `ativo: false` → tela `ContaBloqueada`.
+7. **Planos**: `basico`, `profissional` e `clinica` (`PLANOS_CARITAS` em `paymentService.js`). Pagamento ainda é simulado no cliente (ver `docs/tarefas.md`).
+
+### Implantação do 2FA (obrigatória antes de publicar as regras)
+
+1. Instalar a extensão **Trigger Email from Firestore** (coleção `mail`) e configurar o SMTP.
+2. `firebase deploy --only functions` (runtime Node 22).
+3. `firebase deploy --only firestore:rules`.
+4. (Recomendado) Política de TTL do Firestore no campo `expiraEm` de `mfa_sessoes` e `mfa_dispositivos`.
+
+> Publicar as regras sem as functions ou sem a extensão bloqueia o acesso de todos (ninguém recebe código).
 
 ---
 

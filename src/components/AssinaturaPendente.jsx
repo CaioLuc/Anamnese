@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  CreditCard, QrCode, ShieldAlert, Check, Lock, LogOut, 
+  CreditCard, QrCode, ShieldAlert, Check, LogOut,
   RefreshCw, Copy, ShieldCheck, HeartPulse
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -17,7 +17,7 @@ import logger from '../utils/logger';
 export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamentoRegularizado }) {
   const { showToast } = useToast();
   const [metodo, setMetodo] = useState('cartao'); // 'cartao' | 'pix'
-  const [planoId, setPlanoId] = useState(perfil?.plano || 'profissional');
+  const [planoId, setPlanoId] = useState(perfil?.plano || 'basico');
   const [isLoading, setIsLoading] = useState(false);
 
   // Cartão state
@@ -26,13 +26,12 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
     nomeTitular: '',
     validade: '',
     cvv: '',
-    cpfCnpj: '',
   });
 
   // PIX state
   const [pixData, setPixData] = useState(null);
 
-  const planoObj = PLANOS_CARITAS[planoId] || PLANOS_CARITAS.profissional;
+  const planoObj = PLANOS_CARITAS[planoId] || PLANOS_CARITAS.basico;
   const bandeira = detectarBandeiraCartao(cartaoForm.numero);
 
   const handlePagarCartao = async (e) => {
@@ -44,15 +43,14 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
         nomeTitular: cartaoForm.nomeTitular,
         validade: cartaoForm.validade,
         cvv: cartaoForm.cvv,
-        cpfCnpj: cartaoForm.cpfCnpj,
         planoId,
       });
 
-      showToast({ type: 'success', message: 'Pagamento processado com sucesso! Acesso regularizado.' });
+      showToast({ type: 'success', message: 'Cartão cadastrado e plano ativado.' });
       if (onPagamentoRegularizado) onPagamentoRegularizado();
     } catch (err) {
       logger.error('Erro ao regularizar com cartão:', err);
-      showToast({ type: 'error', message: err.message || 'Erro ao processar pagamento.' });
+      showToast({ type: 'error', message: err.message || 'Erro ao cadastrar o cartão.' });
     } finally {
       setIsLoading(false);
     }
@@ -63,19 +61,21 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
     setPixData(dados);
   };
 
-  const copiarPix = () => {
+  const copiarPix = async () => {
     if (!pixData?.copiaECola) return;
-    navigator.clipboard.writeText(pixData.copiaECola);
-    showToast({ type: 'success', message: 'Código PIX copiado com sucesso!' });
+    try {
+      await navigator.clipboard.writeText(pixData.copiaECola);
+      showToast({ type: 'success', message: 'Código PIX copiado com sucesso!' });
+    } catch (err) {
+      logger.error('Erro ao copiar código PIX:', err);
+      showToast({ type: 'error', message: 'Não foi possível copiar. Selecione o código e copie manualmente.' });
+    }
   };
 
+  // Sem confirmação automática do PIX: só avisa e recarrega o perfil (o acesso depende do status salvo).
   const handleConfirmarPixManual = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      showToast({ type: 'success', message: 'Pagamento identificado! Liberando plataforma...' });
-      if (onPagamentoRegularizado) onPagamentoRegularizado();
-    }, 1500);
+    showToast({ type: 'info', message: 'Recebemos seu aviso. O acesso é liberado assim que o pagamento for confirmado — normalmente em até 1 dia útil. Em caso de dúvida, fale com o suporte.' });
+    if (onPagamentoRegularizado) onPagamentoRegularizado();
   };
 
   return (
@@ -222,23 +222,9 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
-                  CPF/CNPJ do Titular
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={cartaoForm.cpfCnpj}
-                  onChange={(e) => setCartaoForm({ ...cartaoForm, cpfCnpj: e.target.value })}
-                  placeholder="000.000.000-00"
-                  className="ds-input w-full font-mono"
-                />
-              </div>
-
               <div className="p-3 bg-[var(--bg-secondary)] rounded-lg text-[11px] text-[var(--text-muted)] flex items-center gap-2">
-                <Lock size={14} className="shrink-0 text-emerald-500" />
-                <span>Cobrança mensal no valor de <strong>R$ {planoObj.preco.toFixed(2)}</strong> via gateway Asaas.</span>
+                <CreditCard size={14} className="shrink-0 text-emerald-500" />
+                <span>Valor do plano: <strong>R$ {planoObj.preco.toFixed(2)}</strong>/mês.</span>
               </div>
 
               <button
@@ -247,7 +233,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                 className="ds-btn ds-btn-primary w-full py-3 flex items-center justify-center gap-2 text-sm font-semibold shadow-lg"
               >
                 {isLoading ? <RefreshCw className="animate-spin" size={18} /> : <Check size={18} />}
-                Pagar com Cartão & Desbloquear Imediatamente
+                Cadastrar Cartão e Ativar Plano
               </button>
             </form>
           )}
@@ -288,11 +274,10 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                   <button
                     type="button"
                     onClick={handleConfirmarPixManual}
-                    disabled={isLoading}
                     className="ds-btn bg-emerald-600 hover:bg-emerald-700 text-white w-full py-3 flex items-center justify-center gap-2 text-sm font-semibold shadow-lg mt-2"
                   >
-                    {isLoading ? <RefreshCw className="animate-spin" size={18} /> : <Check size={18} />}
-                    Já Efetuei o Pagamento (Liberar Acesso)
+                    <Check size={18} />
+                    Já paguei
                   </button>
                 </>
               )}

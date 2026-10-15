@@ -4,15 +4,20 @@ import { criarPaciente, atualizarPaciente, buscarPacientePorCPF, lerClinicas } f
 import { formatCPF, cleanCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
 import { useEscapeKey } from '../hooks/useKeyboard';
 import { AlertTriangle } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 const toTitleCase = (str) => {
   const preps = ["de", "da", "do", "das", "dos", "e"];
   return str
-    .toLowerCase()
-    .split(' ')
+    .trim()
+    .split(/\s+/)
     .map((word, index) => {
-       if (index > 0 && preps.includes(word)) return word;
-       return word.charAt(0).toUpperCase() + word.slice(1);
+       const lower = word.toLowerCase();
+       if (index > 0 && preps.includes(lower)) return lower;
+       // Palavra com maiúscula interna digitada de propósito (ex.: McDonald) é mantida; caixa alta total é normalizada
+       const base = word !== word.toUpperCase() && /\p{Lu}/u.test(word.slice(1)) ? word : lower;
+       // Maiúscula no início da palavra e após hífen/apóstrofo (ex.: Maria-José, D'Ávila)
+       return base.replace(/(^|[-'’])(\p{L})/gu, (_, sep, letra) => sep + letra.toUpperCase());
     })
     .join(' ');
 };
@@ -29,6 +34,7 @@ export default function AddPatientModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [clinicas, setClinicas] = useState([]);
+  const { showToast } = useToast();
 
 
   useEffect(() => {
@@ -83,15 +89,27 @@ export default function AddPatientModal({
       const cpfLimpo = cleanCPF(formData.cpf);
 
       // Verificar CPF duplicado para o mesmo psicólogo
-      const existente = await buscarPacientePorCPF(cpfLimpo);
+      let existente;
+      try {
+        existente = await buscarPacientePorCPF(cpfLimpo);
+      } catch (err) {
+        // Sem a verificação não dá para garantir que não há duplicata: aborta
+        logger.error(err);
+        showToast({ type: 'error', message: 'Não foi possível verificar o CPF. Tente novamente.' });
+        return;
+      }
       if (existente) {
         // Se estiver editando o mesmo paciente, ignorar
         if (!patientToEdit || existente.id !== patientToEdit.id) {
+          if (existente.deletedAt) {
+            throw new Error('Já existe um paciente com este CPF na Lixeira. Restaure-o em Lixeira.');
+          }
           throw new Error(`Já existe um paciente cadastrado com este CPF: ${existente.nome}. Não é possível duplicar.`);
         }
       }
 
-      const dataToSave = { ...formData, cpf: cpfLimpo };
+      // Normaliza o nome também aqui: Enter envia o formulário sem disparar o onBlur
+      const dataToSave = { ...formData, nome: toTitleCase(formData.nome), cpf: cpfLimpo };
 
       if (patientToEdit) {
         await atualizarPaciente(patientToEdit.id, dataToSave);
@@ -159,14 +177,15 @@ export default function AddPatientModal({
             <input
               type="text"
               value={formData.nome}
-              onChange={(e) => setFormData({ ...formData, nome: toTitleCase(e.target.value) })}
+              onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              onBlur={(e) => setFormData(prev => ({ ...prev, nome: toTitleCase(e.target.value) }))}
               className="ds-input"
               placeholder="Ex: João Silva"
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>Data de Nascimento *</label>
               <input
@@ -200,7 +219,7 @@ export default function AddPatientModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>Telefone</label>
               <input

@@ -26,4 +26,9 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // Cloud Functions rodam em Node (CommonJS)
+    files: ['functions/**/*.js'],
+    languageOptions: { globals: globals.node, sourceType: 'commonjs' },
+  },
 ])

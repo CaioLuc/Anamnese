@@ -12,7 +12,6 @@ export default function Clinicas() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [maxLocais, setMaxLocais] = useState(1);
-  const [planoAtual, setPlanoAtual] = useState('basico');
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, clinica: null });
 
   useEffect(() => {
@@ -25,7 +24,6 @@ export default function Clinicas() {
       const perfil = await lerPerfilPsicologo();
       if (perfil) {
         setMaxLocais(perfil.max_locais || 1);
-        setPlanoAtual(perfil.plano || 'basico');
       }
     } catch (err) {
       logger.error(err);
@@ -78,7 +76,7 @@ export default function Clinicas() {
     try {
       await deletarClinica(id);
       await loadClinicas();
-    } catch (err) {
+    } catch {
       setError('Erro ao remover local.');
     }
   };
@@ -127,7 +125,7 @@ export default function Clinicas() {
       </div>
 
       <div className="ds-card overflow-hidden flex-1 flex flex-col min-h-0" style={{ backgroundColor: 'var(--bg-card)' }}>
-        <div className="p-5" style={{ borderBottom: '0.5px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="p-5" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
           <h3 className="font-heading font-semibold" style={{ color: 'var(--text-primary)' }}>Locais Cadastrados</h3>
         </div>
         
@@ -141,7 +139,7 @@ export default function Clinicas() {
         ) : (
           <ul className="flex-1 overflow-y-auto custom-scrollbar" style={{ divideColor: 'var(--border)', divideWidth: '0.5px', divideStyle: 'solid' }}>
             {clinicas.map(c => (
-              <li key={c.id} className="flex items-center justify-between p-5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderBottom: '0.5px solid var(--border)' }}>
+              <li key={c.id} className="flex items-center justify-between p-5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
                     <Building2 size={20} />

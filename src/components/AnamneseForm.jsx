@@ -72,6 +72,75 @@ const INITIAL_STATE = {
   observacoes_gerais: ''
 };
 
+// ==========================================
+// COMPONENTES DE UI (escopo de módulo: declarados dentro do form, remontavam a cada tecla e perdiam o foco)
+// ==========================================
+function Switch({ label, name, checked, onChange }) {
+  return (
+    <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border transition-all group hover:border-brand-500/30" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <span className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{label}</span>
+      <div className="relative">
+        <input type="checkbox" name={name} checked={checked} onChange={onChange} className="sr-only" />
+        <div className="block w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: checked ? 'var(--accent)' : 'var(--border)' }}></div>
+        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm ${checked ? 'transform translate-x-4' : ''}`}></div>
+      </div>
+    </label>
+  );
+}
+
+function SectionHeader({ title, desc, step }) {
+  return (
+    <div className="flex items-center gap-4 mb-6 pt-8 first:pt-0">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
+         {step}
+      </div>
+      <div>
+        <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+        {desc && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{desc}</p>}
+      </div>
+    </div>
+  );
+}
+
+function TextArea({ name, value, onChange, label, tip, rows = 3, placeholder, danger }) {
+  const isFilled = (value || '').trim().length > 0;
+  return (
+  <div>
+    {tip ? (
+      <Tooltip text={tip} showIcon>
+        <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+           {label}
+           {!isFilled && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--status-warning)' }} title="Campo não preenchido"></span>}
+        </label>
+      </Tooltip>
+    ) : (
+      <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+         {label}
+         {!isFilled && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--status-warning)' }} title="Campo não preenchido"></span>}
+      </label>
+    )}
+    <div className="relative">
+      <textarea
+        name={name} value={value || ''} onChange={onChange} rows={rows}
+        placeholder={placeholder}
+        className={`ds-input resize-y min-h-[80px] custom-scrollbar text-sm leading-relaxed ${
+          danger
+            ? 'border-red-400'
+            : !isFilled
+              ? 'border-orange-300'
+              : ''
+        }`}
+      />
+      {isFilled && (
+        <span className="absolute bottom-2 right-3 text-[10px] pointer-events-none" style={{ color: 'var(--text-muted)' }}>
+          {(value || '').length} caracteres
+        </span>
+      )}
+    </div>
+  </div>
+  );
+}
+
 export default function AnamneseForm({ patient, onSaved, initialData }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
@@ -82,8 +151,12 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
     const { showToast } = useToast();
     const [autoSaveStatus, setAutoSaveStatus] = useState('');
     const [hasDraft, setHasDraft] = useState(false);
-    const autoSaveTimerRef = useRef(null);
+    const [saved, setSaved] = useState(false);
+    const submitLockRef = useRef(false);
+    const pendingDraftRef = useRef(null);
+    const draftErrorShownRef = useRef(false);
 
+    // Rascunhos ficam no sessionStorage: existem só nesta aba e são apagados no logout.
     const draftKey = `caritas_anamnese_draft_${patient?.id || 'unknown'}`;
 
     // Completion tracking
@@ -104,59 +177,80 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
     useEffect(() => {
       if (initialData) return;
       try {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
+        const stored = sessionStorage.getItem(draftKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
           if (parsed?.data && Object.values(parsed.data).some(v => v !== '' && v !== false && v !== 0)) {
             setHasDraft(true);
           }
         }
-      } catch (_) {}
+      } catch { /* storage indisponível: segue sem rascunho */ }
     }, [draftKey, initialData]);
 
-    // Auto-save debounce (H1)
-    const scheduleAutoSave = useCallback((data) => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = setTimeout(() => {
-        try {
-          const hasContent = Object.values(data).some(v => v !== '' && v !== false && v !== 0);
-          if (!hasContent) return;
-          setAutoSaveStatus('saving');
-          localStorage.setItem(draftKey, JSON.stringify({ data, savedAt: new Date().toISOString() }));
-          setTimeout(() => {
-            setAutoSaveStatus('saved');
-            setTimeout(() => setAutoSaveStatus(''), 3000);
-          }, 300);
-        } catch (_) {}
-      }, 2000);
+    // Grava o rascunho na hora; retorna false se o storage falhar (cota, modo privado)
+    const writeDraft = useCallback((data) => {
+      pendingDraftRef.current = null;
+      try {
+        sessionStorage.setItem(draftKey, JSON.stringify({ data, savedAt: new Date().toISOString() }));
+        return true;
+      } catch (err) {
+        logger.error(err);
+        return false;
+      }
     }, [draftKey]);
 
+    // Auto-save debounce (H1) — pausado enquanto o banner de rascunho está aberto e após salvar
     useEffect(() => {
-      if (!initialData) scheduleAutoSave(formData);
-      return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-    }, [formData, scheduleAutoSave, initialData]);
+      pendingDraftRef.current = null;
+      if (initialData || hasDraft || saved) return;
+      if (!Object.values(formData).some(v => v !== '' && v !== false && v !== 0)) return;
+      pendingDraftRef.current = formData;
+      const timer = setTimeout(() => {
+        setAutoSaveStatus('saving');
+        if (!writeDraft(formData)) {
+          setAutoSaveStatus('error');
+          if (!draftErrorShownRef.current) {
+            draftErrorShownRef.current = true;
+            showToast({ type: 'error', message: 'Não foi possível salvar o rascunho automático neste navegador.' });
+          }
+          return;
+        }
+        setTimeout(() => {
+          setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus(''), 3000);
+        }, 300);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }, [formData, initialData, hasDraft, saved, writeDraft, showToast]);
+
+    // Ao desmontar ou sair da página, grava na hora o que o debounce ainda não salvou
+    useEffect(() => {
+      const flush = () => { if (pendingDraftRef.current) writeDraft(pendingDraftRef.current); };
+      window.addEventListener('pagehide', flush);
+      return () => { window.removeEventListener('pagehide', flush); flush(); };
+    }, [writeDraft]);
 
     const restoreDraft = () => {
       try {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
+        const stored = sessionStorage.getItem(draftKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
           setFormData(prev => ({ ...prev, ...parsed.data }));
           showToast({ type: 'success', message: 'Rascunho restaurado com sucesso!' });
         }
-      } catch (_) {
+      } catch {
         showToast({ type: 'error', message: 'Erro ao restaurar rascunho.' });
       }
       setHasDraft(false);
     };
 
     const dismissDraft = () => {
-      try { localStorage.removeItem(draftKey); } catch (_) {}
+      try { sessionStorage.removeItem(draftKey); } catch { /* storage indisponível */ }
       setHasDraft(false);
     };
 
     const clearDraft = () => {
-      try { localStorage.removeItem(draftKey); } catch (_) {}
+      try { sessionStorage.removeItem(draftKey); } catch { /* storage indisponível */ }
     };
 
     useEffect(() => {
@@ -165,6 +259,8 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
 
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
+      // Começar a digitar com o aviso aberto = começar do zero; o autosave volta a proteger o texto novo
+      if (hasDraft) setHasDraft(false);
       setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
@@ -176,6 +272,15 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
 
     const handleSubmit = async (e) => {
       e.preventDefault();
+      // Trava síncrona: Ctrl+S (requestSubmit) ignora o botão desabilitado
+      if (submitLockRef.current) return;
+      if (!Object.keys(INITIAL_STATE).some(k => typeof formData[k] === 'string' && formData[k].trim())) {
+        showToast({ type: 'error', message: 'Preencha ao menos o motivo da consulta antes de salvar.' });
+        scrollToStep(2);
+        return;
+      }
+      submitLockRef.current = true;
+      let created = false;
       setIsSubmitting(true);
       setStatusMessage({ type: '', text: '' });
 
@@ -186,6 +291,8 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             clearDraft();
         } else {
             await criarAnamnese({ id_paciente: patient.id, ...formData });
+            created = true;
+            setSaved(true);
             showToast({ type: 'success', message: 'Anamnese estruturada salva com sucesso!' });
             clearDraft();
         }
@@ -205,73 +312,10 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
         logger.error(err);
         showToast({ type: 'error', message: 'Erro ao salvar a Anamnese. Verifique sua conexão.' });
       } finally {
+        // Após criar, mantém a trava até o pai fechar o form (evita anamnese duplicada)
+        if (!created) submitLockRef.current = false;
         setIsSubmitting(false);
       }
-    };
-
-    // ==========================================
-    // COMPONENTES INTERNOS (UI)
-    // ==========================================
-    const Switch = ({ label, name, checked }) => (
-      <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border transition-all group hover:border-blue-500/30" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <span className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{label}</span>
-        <div className="relative">
-          <input type="checkbox" name={name} checked={checked} onChange={handleChange} className="sr-only" />
-          <div className="block w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: checked ? 'var(--accent)' : 'var(--border)' }}></div>
-          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm ${checked ? 'transform translate-x-4' : ''}`}></div>
-        </div>
-      </label>
-    );
-
-    const SectionHeader = ({ title, desc, step }) => (
-        <div className="flex items-center gap-4 mb-6 pt-8 first:pt-0">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
-             {step}
-          </div>
-          <div>
-            <h3 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-            {desc && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{desc}</p>}
-          </div>
-        </div>
-    );
-
-    const TextArea = ({ name, label, tip, rows = 3, placeholder, danger }) => {
-      const isFilled = (formData[name] || '').trim().length > 0;
-      return (
-      <div>
-        {tip ? (
-          <Tooltip text={tip} showIcon>
-            <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-               {label}
-               {!isFilled && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--status-warning)' }} title="Campo não preenchido"></span>}
-            </label>
-          </Tooltip>
-        ) : (
-          <label className="block text-xs font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-             {label}
-             {!isFilled && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--status-warning)' }} title="Campo não preenchido"></span>}
-          </label>
-        )}
-        <div className="relative">
-          <textarea
-            name={name} value={formData[name] || ''} onChange={handleChange} rows={rows}
-            placeholder={placeholder}
-            className={`ds-input resize-y min-h-[80px] custom-scrollbar text-sm leading-relaxed ${
-              danger 
-                ? 'border-red-400' 
-                : !isFilled
-                  ? 'border-orange-300'
-                  : ''
-            }`}
-          />
-          {isFilled && (
-            <span className="absolute bottom-2 right-3 text-[10px] pointer-events-none" style={{ color: 'var(--text-muted)' }}>
-              {(formData[name] || '').length} caracteres
-            </span>
-          )}
-        </div>
-      </div>
-      );
     };
 
     const sectionClass = "ds-card p-6 scroll-mt-24";
@@ -298,7 +342,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                   <svg className="w-5 h-5 shrink-0" style={{ color: 'var(--status-warning)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-sm font-medium" style={{ color: 'var(--status-warning-text)' }}>Existe um rascunho salvo automaticamente para este paciente.</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--status-warning-text)' }}>Existe um rascunho salvo automaticamente para este paciente. Se começar a digitar, ele será descartado.</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button type="button" onClick={dismissDraft} className="ds-btn ds-btn-ghost px-3 py-1.5 text-xs">
@@ -313,7 +357,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             
             {/* Patient card + auto-save + progress */}
             <div className="border rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--accent-light)', borderColor: 'var(--border)' }}>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md" style={{ backgroundColor: 'var(--accent)' }}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center  font-bold text-lg shrink-0 shadow-md" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
                 {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
@@ -331,11 +375,13 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                 {/* Auto-save indicator */}
                 {autoSaveStatus && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all duration-300 shrink-0" style={{
-                    backgroundColor: autoSaveStatus === 'saving' ? 'var(--bg-primary)' : 'var(--status-success-bg)',
-                    color: autoSaveStatus === 'saving' ? 'var(--text-muted)' : 'var(--status-success-text)'
+                    backgroundColor: autoSaveStatus === 'saving' ? 'var(--bg-primary)' : autoSaveStatus === 'error' ? 'var(--status-danger-bg)' : 'var(--status-success-bg)',
+                    color: autoSaveStatus === 'saving' ? 'var(--text-muted)' : autoSaveStatus === 'error' ? 'var(--status-danger-text)' : 'var(--status-success-text)'
                   }}>
                     {autoSaveStatus === 'saving' ? (
                       <><svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Salvando...</>
+                    ) : autoSaveStatus === 'error' ? (
+                      <>Rascunho não salvo</>
                     ) : (
                       <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Salvo</>
                     )}
@@ -351,7 +397,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                   type="button"
                   key={idx}
                   onClick={() => scrollToStep(idx)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold whitespace-nowrap rounded-xl transition-all border"
+                  className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] sm:min-h-0 text-[11px] font-bold whitespace-nowrap rounded-xl transition-all border"
                   style={{
                     backgroundColor: currentStep === idx ? 'var(--accent)' : 'var(--bg-card)',
                     color: currentStep === idx ? '#FFFFFF' : 'var(--text-secondary)',
@@ -370,13 +416,13 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             <section id="step-0" className={sectionClass}>
                 <SectionHeader step="0" title="Histórico Prévio" desc="Relacionamentos anteriores com serviços de Saúde Mental." />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Switch label="Já consultou um psicólogo anteriormente?" name="psicologo_previo" checked={formData.psicologo_previo} />
-                    <Switch label="Já consultou um psiquiatra anteriormente?" name="psiquiatra_previo" checked={formData.psiquiatra_previo} />
+                    <Switch label="Já consultou um psicólogo anteriormente?" name="psicologo_previo" checked={formData.psicologo_previo} onChange={handleChange} />
+                    <Switch label="Já consultou um psiquiatra anteriormente?" name="psiquiatra_previo" checked={formData.psiquiatra_previo} onChange={handleChange} />
                 </div>
                 {formData.psiquiatra_previo && (
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 p-4 rounded-xl border animate-in fade-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--accent-light)', borderColor: 'var(--border)' }}>
-                      <Switch label="Se sim, foi em ambulatório?" name="foi_ambulatorio" checked={formData.foi_ambulatorio} />
-                      <Switch label="Se sim, houve internamento?" name="houve_internamento" checked={formData.houve_internamento} />
+                      <Switch label="Se sim, foi em ambulatório?" name="foi_ambulatorio" checked={formData.foi_ambulatorio} onChange={handleChange} />
+                      <Switch label="Se sim, houve internamento?" name="houve_internamento" checked={formData.houve_internamento} onChange={handleChange} />
                    </div>
                 )}
             </section>
@@ -422,7 +468,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                     </div>
 
                     {/* Irmãos */}
-                    <div className="grid grid-cols-3 gap-3 p-4 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                         <div>
                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Qtd. Irmãos</label>
                            <input type="number" name="qtd_irmaos" value={formData.qtd_irmaos} onChange={handleChange} className="ds-input" />
@@ -437,7 +483,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                         </div>
                     </div>
 
-                    <TextArea name="observacoes_familiares" label="Outras Observações Familiares" tip="Inclua informações sobre a dinâmica de convivência, divorcios, adoção, pais ausentes, violência doméstica ou outros fatores relevantes da história familiar." placeholder="Detalhes adicionais sobre a família..." />
+                    <TextArea name="observacoes_familiares" value={formData.observacoes_familiares} onChange={handleChange} label="Outras Observações Familiares" tip="Inclua informações sobre a dinâmica de convivência, divorcios, adoção, pais ausentes, violência doméstica ou outros fatores relevantes da história familiar." placeholder="Detalhes adicionais sobre a família..." />
                 </div>
             </section>
 
@@ -447,8 +493,8 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             <section id="step-2" className={sectionClass}>
                 <SectionHeader step="2" title="Motivo da Consulta" desc="Razões principais pela busca do atendimento e sua história." />
                 <div className="space-y-4">
-                    <TextArea name="motivo_consulta" label="Qual o motivo da procura pelo atendimento psicológico?" tip="Registre a queixa principal nas palavras do paciente. Inclua fatores emocionais, cognitivos e comportamentais que motivaram a busca por ajuda." rows={4} placeholder="Descreva o que trouxe o paciente até aqui..." />
-                    <TextArea name="historico_queixa" label="Histórico das dificuldades relatadas" tip="Desde quando apresenta a queixa? Houve piora recente? O que já tentou para lidar com o problema? Qual o impacto na vida cotidiana?" rows={4} placeholder="Cronologia e evolução da queixa..." />
+                    <TextArea name="motivo_consulta" value={formData.motivo_consulta} onChange={handleChange} label="Qual o motivo da procura pelo atendimento psicológico?" tip="Registre a queixa principal nas palavras do paciente. Inclua fatores emocionais, cognitivos e comportamentais que motivaram a busca por ajuda." rows={4} placeholder="Descreva o que trouxe o paciente até aqui..." />
+                    <TextArea name="historico_queixa" value={formData.historico_queixa} onChange={handleChange} label="Histórico das dificuldades relatadas" tip="Desde quando apresenta a queixa? Houve piora recente? O que já tentou para lidar com o problema? Qual o impacto na vida cotidiana?" rows={4} placeholder="Cronologia e evolução da queixa..." />
                 </div>
             </section>
 
@@ -458,12 +504,12 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
             <section id="step-3" className={sectionClass}>
                 <SectionHeader step="3" title="Dinâmicas de Vida" desc="Estruturação da rotina, relacionamentos e vida social." />
                 <div className="space-y-4">
-                    <TextArea name="dinamica_familiar" label="Dinâmica Familiar (Nuclear e Constituída)" tip="Descreva quem mora na casa, qualidade do relacionamento com familiares próximos, conflitos, lutos ou separações marcantes." rows={3} />
+                    <TextArea name="dinamica_familiar" value={formData.dinamica_familiar} onChange={handleChange} label="Dinâmica Familiar (Nuclear e Constituída)" tip="Descreva quem mora na casa, qualidade do relacionamento com familiares próximos, conflitos, lutos ou separações marcantes." rows={3} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <TextArea name="dinamica_profissional" label="Área Profissional / Acadêmica" tip="Ocupação atual, satisfação, pressões, conflitos com colegas ou superiores. Se estudante, desempenho escolar e relacionamento com professores." rows={3} />
-                      <TextArea name="dinamica_amorosa" label="Vida Amorosa / Relacional" tip="Estado civil, duração do relacionamento atual, padrões relacionais, dificuldades de intimidade, histórico de relacionamentos abusivos." rows={3} />
+                      <TextArea name="dinamica_profissional" value={formData.dinamica_profissional} onChange={handleChange} label="Área Profissional / Acadêmica" tip="Ocupação atual, satisfação, pressões, conflitos com colegas ou superiores. Se estudante, desempenho escolar e relacionamento com professores." rows={3} />
+                      <TextArea name="dinamica_amorosa" value={formData.dinamica_amorosa} onChange={handleChange} label="Vida Amorosa / Relacional" tip="Estado civil, duração do relacionamento atual, padrões relacionais, dificuldades de intimidade, histórico de relacionamentos abusivos." rows={3} />
                     </div>
-                    <TextArea name="dinamica_social" label="Vida Social e Rede de Apoio" tip="Amizades, suporte social, isolamento, participação em grupos, senso de pertencimento." rows={2} placeholder="Descreva a rede de apoio social do paciente..." />
+                    <TextArea name="dinamica_social" value={formData.dinamica_social} onChange={handleChange} label="Vida Social e Rede de Apoio" tip="Amizades, suporte social, isolamento, participação em grupos, senso de pertencimento." rows={2} placeholder="Descreva a rede de apoio social do paciente..." />
                 </div>
             </section>
 
@@ -474,14 +520,14 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                 <SectionHeader step="4" title="Hábitos e Rotina" desc="Padrões de sono, alimentação, exercício e lazer." />
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <TextArea name="rotina_sono" label="Qualidade do Sono" tip="Horário de dormir e acordar, insônia, bruxismo, apneia, pesadelos recorrentes, uso de medicação para dormir, horas de sono por noite." rows={2} placeholder="Dorme bem? Quantas horas?" />
-                      <TextArea name="alimentacao" label="Alimentação" tip="Padrão alimentar, restrições, compulsão, perda de apetite, relação emocional com comida." rows={2} placeholder="Come bem? Alguma restrição?" />
+                      <TextArea name="rotina_sono" value={formData.rotina_sono} onChange={handleChange} label="Qualidade do Sono" tip="Horário de dormir e acordar, insônia, bruxismo, apneia, pesadelos recorrentes, uso de medicação para dormir, horas de sono por noite." rows={2} placeholder="Dorme bem? Quantas horas?" />
+                      <TextArea name="alimentacao" value={formData.alimentacao} onChange={handleChange} label="Alimentação" tip="Padrão alimentar, restrições, compulsão, perda de apetite, relação emocional com comida." rows={2} placeholder="Come bem? Alguma restrição?" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <TextArea name="exercicio_fisico" label="Exercício Físico" rows={2} placeholder="Pratica atividade física? Qual e com que frequência?" />
-                      <TextArea name="lazer_hobbies" label="Lazer e Hobbies" rows={2} placeholder="O que faz para se divertir? Tem hobbies?" />
+                      <TextArea name="exercicio_fisico" value={formData.exercicio_fisico} onChange={handleChange} label="Exercício Físico" rows={2} placeholder="Pratica atividade física? Qual e com que frequência?" />
+                      <TextArea name="lazer_hobbies" value={formData.lazer_hobbies} onChange={handleChange} label="Lazer e Hobbies" rows={2} placeholder="O que faz para se divertir? Tem hobbies?" />
                     </div>
-                    <TextArea name="espiritualidade" label="Espiritualidade / Religiosidade" tip="Vínculo religioso, práticas espirituais, crenças que influenciam o processo terapêutico." rows={2} placeholder="Tem alguma religião ou prática espiritual?" />
+                    <TextArea name="espiritualidade" value={formData.espiritualidade} onChange={handleChange} label="Espiritualidade / Religiosidade" tip="Vínculo religioso, práticas espirituais, crenças que influenciam o processo terapêutico." rows={2} placeholder="Tem alguma religião ou prática espiritual?" />
                 </div>
             </section>
 
@@ -492,16 +538,16 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-bl-[100px] pointer-events-none"></div>
                 <SectionHeader step="5" title="Quadro Clínico e Sintomatológico" desc="Fatores de crise, doenças e uso de substâncias." />
                 <div className="space-y-4 relative z-10">
-                    <TextArea name="sintomas_apresentados" label="Sintomas Apresentados Atualmente" tip="Inclua sintomas físicos (insônia, dor de cabeça, taquicardia) e emocionais (tristeza, irritabilidade, apatia). Frequência e intensidade." rows={3} danger />
-                    <TextArea name="fatores_agravantes" label="Eventos/fatores que precipitam ou agravam crises" rows={3} danger />
-                    <TextArea name="transtornos_anteriores" label="Histórico de Transtornos (Paciente e Família)" tip="Diagnósticos prévios do paciente ou de familiares. Ex: depressão na família, diagnóstico de TDAH na infância." rows={3} danger />
+                    <TextArea name="sintomas_apresentados" value={formData.sintomas_apresentados} onChange={handleChange} label="Sintomas Apresentados Atualmente" tip="Inclua sintomas físicos (insônia, dor de cabeça, taquicardia) e emocionais (tristeza, irritabilidade, apatia). Frequência e intensidade." rows={3} danger />
+                    <TextArea name="fatores_agravantes" value={formData.fatores_agravantes} onChange={handleChange} label="Eventos/fatores que precipitam ou agravam crises" rows={3} danger />
+                    <TextArea name="transtornos_anteriores" value={formData.transtornos_anteriores} onChange={handleChange} label="Histórico de Transtornos (Paciente e Família)" tip="Diagnósticos prévios do paciente ou de familiares. Ex: depressão na família, diagnóstico de TDAH na infância." rows={3} danger />
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <TextArea name="doencas_importantes" label="Doenças Importantes (Antecedentes)" rows={2} danger placeholder="Doenças crônicas, cirurgias, alergias..." />
-                        <TextArea name="medicamentos" label="Medicações em Uso Atualmente" rows={2} danger placeholder="Nome, dosagem, prescrito por quem..." />
+                        <TextArea name="doencas_importantes" value={formData.doencas_importantes} onChange={handleChange} label="Doenças Importantes (Antecedentes)" rows={2} danger placeholder="Doenças crônicas, cirurgias, alergias..." />
+                        <TextArea name="medicamentos" value={formData.medicamentos} onChange={handleChange} label="Medicações em Uso Atualmente" rows={2} danger placeholder="Nome, dosagem, prescrito por quem..." />
                     </div>
 
-                    <TextArea name="uso_substancias" label="Uso de Substâncias Psicoativas" tip="Tabagismo, álcool, drogas ilícitas. Frequência, quantidade e tempo de uso." rows={2} danger />
+                    <TextArea name="uso_substancias" value={formData.uso_substancias} onChange={handleChange} label="Uso de Substâncias Psicoativas" tip="Tabagismo, álcool, drogas ilícitas. Frequência, quantidade e tempo de uso." rows={2} danger />
 
                     {/* Suicide alert */}
                     <div className="p-5 rounded-xl mt-4 border" style={{ backgroundColor: 'var(--status-danger-bg)', borderColor: 'var(--status-danger)' }}>
@@ -517,11 +563,11 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
              {/* ==========================================
                  SEÇÃO 6: Finalização
              ========================================== */}
-             <section id="step-6" className={`${sectionClass} bg-gradient-to-br from-indigo-500/5 to-transparent`}>
+             <section id="step-6" className={`${sectionClass} bg-gradient-to-br from-brand-500/5 to-transparent`}>
                 <SectionHeader step="6" title="Finalização" desc="Expectativas do paciente e parecer profissional." />
                 <div className="space-y-4">
-                  <TextArea name="expectativa_terapia" label="O que o paciente espera da terapia?" tip="Expectativas, objetivos, medos em relação ao processo terapêutico." rows={3} placeholder="Quais resultados o paciente deseja alcançar..." />
-                  <TextArea name="observacoes_gerais" label="Observações Gerais do Profissional" rows={5} placeholder="Anotações de percepções psicoterapêuticas da primeira consulta, hipóteses diagnósticas, impressões clínicas..." />
+                  <TextArea name="expectativa_terapia" value={formData.expectativa_terapia} onChange={handleChange} label="O que o paciente espera da terapia?" tip="Expectativas, objetivos, medos em relação ao processo terapêutico." rows={3} placeholder="Quais resultados o paciente deseja alcançar..." />
+                  <TextArea name="observacoes_gerais" value={formData.observacoes_gerais} onChange={handleChange} label="Observações Gerais do Profissional" rows={5} placeholder="Anotações de percepções psicoterapêuticas da primeira consulta, hipóteses diagnósticas, impressões clínicas..." />
                 </div>
             </section>
 
@@ -535,7 +581,7 @@ export default function AnamneseForm({ patient, onSaved, initialData }) {
               </div>
               <button 
                 type="submit" 
-                disabled={isSubmitting}
+                disabled={isSubmitting || saved}
                 className="ds-btn ds-btn-primary px-8 py-3.5 ml-auto text-sm font-bold shadow-lg"
               >
                 {isSubmitting ? 'Salvando...' : initialData?.id ? 'Atualizar Ficha' : 'Assinar e Concluir Anamnese'}

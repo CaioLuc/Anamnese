@@ -1,6 +1,7 @@
 import logger from '../utils/logger';
 import { useState, useEffect } from 'react';
 import { salvarConfigAgenda, lerConfigAgenda, verificarSlugDisponivel } from '../services/agendaService';
+import { useToast } from '../contexts/ToastContext';
 import Button from './ui/Button';
 import { Check, X } from 'lucide-react';
 
@@ -29,13 +30,21 @@ export default function ConfigAgenda({ onClose }) {
   const [isLoading, setIsLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [slugOriginal, setSlugOriginal] = useState('');
+  // Sem carga bem-sucedida, salvar sobrescreveria a configuração real com os padrões
+  const [erroCarregar, setErroCarregar] = useState(false);
+  const [tentativaLoad, setTentativaLoad] = useState(0);
+  const { showToast } = useToast();
 
   useEffect(() => {
     async function load() {
+      setIsLoading(true);
+      setErroCarregar(false);
       try {
         const config = await lerConfigAgenda();
         if (config) {
           setSlug(config.slug || '');
+          setSlugOriginal(config.slug || '');
           setNomePublico(config.nome_publico || '');
           setEspecialidade(config.especialidade || '');
           setDuracaoPadrao(config.duracao_padrao || 50);
@@ -44,31 +53,37 @@ export default function ConfigAgenda({ onClose }) {
         }
       } catch (e) {
         logger.error(e);
+        setErroCarregar(true);
+        showToast({ type: 'error', message: 'Não foi possível carregar sua configuração. O salvamento fica bloqueado até carregar.' });
       } finally {
         setIsLoading(false);
       }
     }
     load();
-  }, []);
+  }, [tentativaLoad, showToast]);
 
   // Slug validation
   useEffect(() => {
     if (!slug || slug.length < 3) { setSlugStatus(''); return; }
+    // Descarta respostas de slugs anteriores que cheguem fora de ordem
+    let ativo = true;
     const timer = setTimeout(async () => {
       setSlugStatus('checking');
       try {
         const available = await verificarSlugDisponivel(slug);
-        setSlugStatus(available ? 'ok' : 'taken');
+        if (ativo) setSlugStatus(available ? 'ok' : 'taken');
       } catch {
-        setSlugStatus('');
+        if (ativo) setSlugStatus('');
       }
     }, 500);
-    return () => clearTimeout(timer);
+    return () => { ativo = false; clearTimeout(timer); };
   }, [slug]);
 
   const handleSlugChange = (val) => {
     // Normalizar: só lowercase, letras, números e hifens
     const cleaned = val.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
+    // Zera o status durante o debounce para não salvar com o "ok" do slug anterior
+    if (cleaned !== slug) setSlugStatus('');
     setSlug(cleaned);
   };
 
@@ -81,9 +96,17 @@ export default function ConfigAgenda({ onClose }) {
   };
 
   const handleSave = async () => {
-    if (!slug || slug.length < 3) return alert('O slug precisa ter pelo menos 3 caracteres.');
-    if (slugStatus === 'taken') return alert('Este slug já está em uso. Escolha outro.');
-    if (!nomePublico) return alert('Preencha o nome público.');
+    const erro = (message) => showToast({ type: 'error', message });
+    if (erroCarregar) return erro('Não foi possível carregar sua configuração. Tente novamente antes de salvar.');
+    if (!slug || slug.length < 3) return erro('O slug precisa ter pelo menos 3 caracteres.');
+    if (slugStatus === 'taken') return erro('Este slug já está em uso. Escolha outro.');
+    if (slug !== slugOriginal && slugStatus !== 'ok') return erro('Aguarde a verificação do slug antes de salvar.');
+    if (!nomePublico) return erro('Preencha o nome público.');
+    if (!Number.isInteger(duracaoPadrao) || duracaoPadrao < 15 || duracaoPadrao > 180) {
+      return erro('A duração da sessão deve ser um número inteiro entre 15 e 180 minutos.');
+    }
+    const diaInvalido = DIAS.find(({ id }) => dias[id].ativo && (!dias[id].inicio || !dias[id].fim || dias[id].inicio >= dias[id].fim));
+    if (diaInvalido) return erro(`${diaInvalido.label}: informe início e fim, com o início antes do fim.`);
 
     setIsSaving(true);
     try {
@@ -95,11 +118,12 @@ export default function ConfigAgenda({ onClose }) {
         valor_consulta: valorConsulta,
         dias,
       });
+      setSlugOriginal(slug);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       logger.error(e);
-      alert('Erro ao salvar: ' + (e.message || 'Tente novamente.'));
+      erro('Erro ao salvar: ' + (e.message || 'Tente novamente.'));
     } finally {
       setIsSaving(false);
     }
@@ -145,8 +169,8 @@ export default function ConfigAgenda({ onClose }) {
         <div>
           <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Seu slug (URL personalizada)</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}>
-              <span className="px-3 text-xs py-2.5 whitespace-nowrap" style={{ color: 'var(--text-muted)', borderRight: '0.5px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>/agendar/</span>
+            <div className="flex-1 flex items-center rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+              <span className="px-3 text-xs py-2.5 whitespace-nowrap" style={{ color: 'var(--text-muted)', borderRight: '1px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>/agendar/</span>
               <input
                 type="text"
                 value={slug}
@@ -171,7 +195,7 @@ export default function ConfigAgenda({ onClose }) {
         </div>
 
         {publicUrl && slugStatus === 'ok' && (
-          <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', border: '0.5px solid var(--accent)' }}>
+          <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)' }}>
             <span className="text-xs truncate flex-1 font-mono" style={{ color: 'var(--accent)' }}>{publicUrl}</span>
             <Button size="sm" onClick={handleCopy}>
               {copied ? 'Copiado!' : 'Copiar'}
@@ -237,22 +261,29 @@ export default function ConfigAgenda({ onClose }) {
                 className={`flex items-center gap-3 p-3 rounded-xl transition-all`}
                 style={{ 
                     backgroundColor: d.ativo ? 'var(--bg-secondary)' : 'transparent',
-                    border: `0.5px solid ${d.ativo ? 'var(--border)' : 'transparent'}`,
+                    border: `1px solid ${d.ativo ? 'var(--border)' : 'transparent'}`,
                     opacity: d.ativo ? 1 : 0.5
                 }}
               >
+                {/* Botão envolve trilho + rótulo: área de toque ≥ 44px */}
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={d.ativo}
                   onClick={() => toggleDia(dia.id)}
-                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0`}
-                  style={{ backgroundColor: d.ativo ? 'var(--accent)' : 'var(--bg-secondary)', border: '0.5px solid var(--border)' }}
+                  className="flex items-center gap-3 min-h-[44px] flex-shrink-0 text-left"
                 >
-                  <span 
-                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow transition-all duration-200 ${d.ativo ? 'translate-x-4' : 'translate-x-0'}`} 
-                    style={{ backgroundColor: '#FFFFFF' }}
-                  />
+                  <span
+                    className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0`}
+                    style={{ backgroundColor: d.ativo ? 'var(--accent)' : 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow transition-all duration-200 ${d.ativo ? 'translate-x-4' : 'translate-x-0'}`}
+                      style={{ backgroundColor: '#FFFFFF' }}
+                    />
+                  </span>
+                  <span className="text-sm font-medium w-20" style={{ color: 'var(--text-primary)' }}>{dia.label}</span>
                 </button>
-                <span className="text-sm font-medium w-20" style={{ color: 'var(--text-primary)' }}>{dia.label}</span>
                 {d.ativo && (
                   <div className="flex items-center gap-2 flex-wrap">
                     <input type="time" value={d.inicio} onChange={e => updateDia(dia.id, 'inicio', e.target.value)}
@@ -275,10 +306,16 @@ export default function ConfigAgenda({ onClose }) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving}>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button onClick={handleSave} disabled={isSaving || erroCarregar}>
           {isSaving ? 'Salvando...' : 'Salvar Configuração'}
         </Button>
+        {erroCarregar && (
+          <span className="text-sm flex items-center gap-2" role="alert" style={{ color: 'var(--status-danger)' }}>
+            Falha ao carregar a configuração.
+            <Button size="sm" variant="secondary" onClick={() => setTentativaLoad(n => n + 1)}>Tentar novamente</Button>
+          </span>
+        )}
         {saved && <span className="text-sm font-semibold animate-in fade-in flex items-center gap-1" style={{ color: 'var(--status-success)' }}><Check size={16} /> Salvo com sucesso!</span>}
       </div>
     </div>

@@ -95,11 +95,6 @@ function formatDurationSec(ms) {
   return (ms / 1000).toFixed(1);
 }
 
-function formatDurationMin(ms) {
-  if (!ms || ms < 0) return '';
-  return (ms / 60000).toFixed(2);
-}
-
 function median(arr) {
   if (!arr.length) return 0;
   const sorted = [...arr].sort((a, b) => a - b);
@@ -533,7 +528,7 @@ export function gerarCSVErros(participants) {
 
     // Detectar navegação excessiva (mais de 3 navegações seguidas sem ação)
     let navSequence = 0;
-    p.logs.forEach((log, i) => {
+    p.logs.forEach((log) => {
       if (log.actionType === 'NAVIGATE') {
         navSequence++;
         if (navSequence >= 4) {

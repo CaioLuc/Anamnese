@@ -15,12 +15,14 @@ import {
   detectarBandeiraCartao 
 } from '../services/paymentService';
 import logger from '../utils/logger';
+import { parseDate } from '../utils/formatUtils';
 
 export default function PerfilEPlano({ onProfileUpdated }) {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('perfil'); // 'perfil' | 'planos' | 'pagamento' | 'faturas'
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [erroCarregamento, setErroCarregamento] = useState(false);
 
   // Perfil state
   const [perfil, setPerfil] = useState(null);
@@ -47,10 +49,12 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
   // PIX state
   const [pixData, setPixData] = useState(null);
-  const [pixPlanoSelecionado, setPixPlanoSelecionado] = useState('profissional');
+  // null = plano atual; preenchido ao clicar em "Contratar {plano}"
+  const [pixPlanoSelecionado, setPixPlanoSelecionado] = useState(null);
 
   const carregarPerfil = async () => {
     setIsLoading(true);
+    setErroCarregamento(false);
     try {
       const p = await lerPerfilPsicologo();
       if (p) {
@@ -67,6 +71,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
       }
     } catch (err) {
       logger.error('Erro ao carregar perfil:', err);
+      setErroCarregamento(true);
       showToast({ type: 'error', message: 'Erro ao carregar informações de perfil.' });
     } finally {
       setIsLoading(false);
@@ -127,14 +132,19 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
   const handleGerarPix = (planoId) => {
     setPixPlanoSelecionado(planoId);
-    const dados = gerarDadosPixMensal(planoId, perfil?.email);
+    const dados = gerarDadosPixMensal(planoId);
     setPixData(dados);
   };
 
-  const copiarPix = () => {
+  const copiarPix = async () => {
     if (!pixData?.copiaECola) return;
-    navigator.clipboard.writeText(pixData.copiaECola);
-    showToast({ type: 'success', message: 'Código PIX Copia e Cola copiado para a área de transferência!' });
+    try {
+      await navigator.clipboard.writeText(pixData.copiaECola);
+      showToast({ type: 'success', message: 'Código PIX Copia e Cola copiado para a área de transferência!' });
+    } catch (err) {
+      logger.error('Erro ao copiar código PIX:', err);
+      showToast({ type: 'error', message: 'Não foi possível copiar. Selecione o código e copie manualmente.' });
+    }
   };
 
   if (isLoading) {
@@ -148,8 +158,26 @@ export default function PerfilEPlano({ onProfileUpdated }) {
     );
   }
 
+  if (erroCarregamento) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <AlertCircle className="text-rose-500" size={32} />
+          <p className="text-sm text-[var(--text-secondary)]">Não foi possível carregar seu perfil e assinatura.</p>
+          <button
+            onClick={carregarPerfil}
+            className="ds-btn ds-btn-primary px-6 py-2.5 inline-flex items-center gap-2"
+          >
+            <RefreshCw size={16} /> Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const statusAssinatura = verificarStatusAssinatura(perfil);
   const planoAtualId = perfil?.plano || 'basico';
+  const planoSelecionadoId = pixPlanoSelecionado || planoAtualId;
   const planoAtualObj = PLANOS_CARITAS[planoAtualId] || PLANOS_CARITAS.basico;
   const bandeiraCartaoDetectada = detectarBandeiraCartao(cartaoForm.numero);
 
@@ -173,6 +201,12 @@ export default function PerfilEPlano({ onProfileUpdated }) {
           <p className="text-sm text-[var(--text-secondary)] mt-1">
             Cadastre seus dados profissionais para os cabeçalhos de prontuário e mantenha sua assinatura regularizada.
           </p>
+          {/* Liderança vem só do plano contratado (App: isLider = plano === 'clinica'); sem alternância aqui */}
+          {perfil?.plano === 'clinica' && (
+            <p className="text-xs font-semibold text-[var(--accent)] mt-1 flex items-center gap-1.5">
+              <Building size={14} /> Você é o(a) Líder Clínico(a) desta equipe
+            </p>
+          )}
         </div>
 
         {/* Resumo financeiro rápido */}
@@ -387,7 +421,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
               Escolha o Plano Ideal para a sua Prática Clínica
             </h2>
             <p className="text-sm text-[var(--text-secondary)]">
-              Cobrança mensal automatizada via Asaas. Troque de plano a qualquer momento sem taxas de fidelidade.
+              Mensalidade via cartão de crédito ou PIX. Troque de plano a qualquer momento sem taxas de fidelidade.
             </p>
           </div>
 
@@ -479,10 +513,10 @@ export default function PerfilEPlano({ onProfileUpdated }) {
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
               <div>
                 <h2 className="text-lg font-heading font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                  <CreditCard size={18} className="text-[var(--accent)]" /> Cartão de Crédito (Recorrente)
+                  <CreditCard size={18} className="text-[var(--accent)]" /> Cartão de Crédito
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Renovação mensal automática sem necessidade de cobrança manual.
+                  Cadastre o cartão para pagar a mensalidade do plano escolhido.
                 </p>
               </div>
             </div>
@@ -490,8 +524,8 @@ export default function PerfilEPlano({ onProfileUpdated }) {
             {/* Visualização de Cartão Cadastrado */}
             {perfil?.cartaoInfo && !mostrarFormCartao ? (
               <div className="space-y-4">
-                <div className="p-5 rounded-xl bg-gradient-to-br from-slate-900 to-indigo-950 text-white shadow-md relative overflow-hidden border border-slate-700">
-                  <div className="absolute right-4 top-4 text-xs font-bold uppercase tracking-wider text-cyan-300">
+                <div className="p-5 rounded-xl bg-gradient-to-br from-slate-900 to-brand-950 text-white shadow-md relative overflow-hidden border border-slate-700">
+                  <div className="absolute right-4 top-4 text-xs font-bold uppercase tracking-wider text-brand-300">
                     {perfil.cartaoInfo.bandeira || 'Crédito'}
                   </div>
                   <div className="w-10 h-7 rounded bg-amber-400/80 mb-6" />
@@ -512,11 +546,18 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
-                    <Check size={14} /> Cobrança recorrente ativa
+                    <Check size={14} />
+                    {perfil.proximoVencimento
+                      ? `Próxima cobrança em ${parseDate(perfil.proximoVencimento)?.toLocaleDateString('pt-BR')}`
+                      : 'Cartão cadastrado'}
                   </span>
                   <button
-                    onClick={() => setMostrarFormCartao(true)}
-                    className="text-xs text-[var(--accent)] hover:underline font-semibold"
+                    onClick={() => {
+                      // Trocar cartão mantém o plano atual
+                      setPixPlanoSelecionado(null);
+                      setMostrarFormCartao(true);
+                    }}
+                    className="text-xs text-[var(--accent)] hover:underline font-semibold min-h-[44px] md:min-h-0 inline-flex items-center"
                   >
                     Trocar Cartão de Crédito
                   </button>
@@ -524,7 +565,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
               </div>
             ) : (
               /* Formulário de Novo Cartão */
-              <form onSubmit={(e) => handleSalvarCartao(e, planoAtualId)} className="space-y-4">
+              <form onSubmit={(e) => handleSalvarCartao(e, planoSelecionadoId)} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                     Número do Cartão de Crédito
@@ -607,7 +648,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
                 <div className="p-3 bg-[var(--bg-secondary)] rounded-lg text-[11px] text-[var(--text-muted)] flex items-start gap-2">
                   <Lock size={14} className="shrink-0 mt-0.5 text-emerald-500" />
-                  <span>Ambiente seguro certificado. Dados sensíveis processados em conformidade com as normas PCI-DSS.</span>
+                  <span>O número completo do cartão e o CVV não são armazenados; guardamos apenas bandeira, 4 últimos dígitos, titular e validade.</span>
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -641,7 +682,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                   <QrCode size={18} className="text-emerald-500" /> PIX Mensal (Instantâneo)
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Pague sua mensalidade via QR Code ou Copia e Cola com liberação automática imediata.
+                  Pague sua mensalidade via QR Code ou Copia e Cola.
                 </p>
               </div>
             </div>
@@ -653,15 +694,15 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                    Gerar Cobrança PIX para o {PLANOS_CARITAS[pixPlanoSelecionado]?.nome}
+                    Gerar Cobrança PIX para o {PLANOS_CARITAS[planoSelecionadoId]?.nome}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
-                    Valor: <strong className="text-[var(--text-primary)]">R$ {PLANOS_CARITAS[pixPlanoSelecionado]?.preco.toFixed(2)}</strong>. O sistema identifica a quitação e mantém sua conta liberada por 30 dias.
+                    Valor: <strong className="text-[var(--text-primary)]">R$ {PLANOS_CARITAS[planoSelecionadoId]?.preco.toFixed(2)}</strong>. A liberação acontece após a confirmação do pagamento.
                   </p>
                 </div>
 
                 <button
-                  onClick={() => handleGerarPix(pixPlanoSelecionado)}
+                  onClick={() => handleGerarPix(planoSelecionadoId)}
                   className="ds-btn ds-btn-primary px-6 py-2.5 inline-flex items-center gap-2"
                 >
                   <QrCode size={16} /> Gerar QR Code PIX
@@ -699,12 +740,12 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
                 <div className="p-3 bg-emerald-500/10 rounded-lg text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
                   <Check size={16} className="shrink-0" />
-                  <span>Após o pagamento no seu banco, a liberação é confirmada em instantes.</span>
+                  <span>A liberação acontece após a confirmação do pagamento.</span>
                 </div>
 
                 <button
                   onClick={() => setPixData(null)}
-                  className="text-xs text-[var(--text-muted)] hover:underline block text-center w-full"
+                  className="text-xs text-[var(--text-muted)] hover:underline inline-flex items-center justify-center text-center w-full min-h-[44px] md:min-h-0"
                 >
                   Gerar nova cobrança PIX
                 </button>
