@@ -146,9 +146,11 @@ export async function contarPacientesDoPsicologo(uid) {
 // ==========================================
 export async function atualizarPlanoPsicologo(uid, plano) {
   try {
+    // Plano Clínica não tem checkout: o admin ativa depois de negociar com a clínica
     const config = {
       basico: { plano: 'basico', max_locais: 1 },
       profissional: { plano: 'profissional', max_locais: 4 },
+      clinica: { plano: 'clinica', max_locais: 10 },
     };
     const dados = config[plano] || config.basico;
     const psicRef = doc(db, 'psicologos', uid);

@@ -23,8 +23,7 @@ const AssinaturaPendente = lazy(() => import('./components/AssinaturaPendente'))
 import { lerPacientes, lerAnamnesesDoPaciente, limparLixeiraPacientes, lerPerfilPsicologo, salvarPerfilPsicologo } from './services/patientService';
 import { isAdminEmail, verificarOuCriarAdmin } from './services/adminService';
 import { trackAction } from './services/logService';
-import { verificarStatusAssinatura, DIAS_TRIAL_PADRAO } from './services/paymentService';
-import { dataLocalISO } from './utils/formatUtils';
+import { verificarStatusAssinatura } from './services/paymentService';
 
 // Mapeamento de path de URL → id interno de navegação
 const PATH_MAP = {
@@ -132,15 +131,12 @@ function AppMain() {
       setIsAdmin(false);
       let perfil = await lerPerfilPsicologo();
       if (!perfil) {
-        // Primeiro login: criar perfil com plano básico e 14 dias de teste gratuito
-        const trialAte = new Date();
-        trialAte.setDate(trialAte.getDate() + DIAS_TRIAL_PADRAO);
+        // Primeiro login: perfil nasce pendente e cai na tela de pagamento (sem teste grátis)
         await salvarPerfilPsicologo({
           email: currentUser.email,
           nome: currentUser.displayName || '',
           plano: 'basico',
-          statusPagamento: 'trial',
-          trialAte: dataLocalISO(trialAte),
+          statusPagamento: 'pendente',
           ativo: true,
           max_locais: 1,
         });
@@ -277,8 +273,6 @@ function AppMain() {
                  onPatientAddedLocal={handlePatientAddedLocal} 
                  autoOpenPatient={autoOpenPatientForProfile}
                  autoOpenTab={autoOpenTabForProfile}
-                 isLider={isLider}
-                 userEmail={user?.email}
                  onAutoOpenDone={() => {
                    setAutoOpenPatientForProfile(null);
                    setAutoOpenTabForProfile('');

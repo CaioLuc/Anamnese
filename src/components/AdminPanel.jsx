@@ -81,6 +81,13 @@ function StatCard({ label, value, colorType, icon }) {
 }
 
 function PlanoBadge({ plano }) {
+  if (plano === 'clinica') {
+    return (
+      <Badge variant="success">
+        <span className="inline-flex items-center gap-1"><Building2 size={11} /> Clínica</span>
+      </Badge>
+    );
+  }
   const isPro = plano === 'profissional';
   return (
     <Badge variant={isPro ? 'warning' : 'neutral'}>
@@ -1052,7 +1059,7 @@ function ClientesTab({ showToast }) {
 
                 <div>
                   <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Limite de Pacientes por Psicólogo
+                    Capacidade sugerida por psicólogo (triagem)
                   </label>
                   <input
                     type="number"
@@ -1111,7 +1118,7 @@ function ClientesTab({ showToast }) {
                   className="ds-input w-full font-mono text-xs"
                 />
                 <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Os psicólogos listados herdarão a quota configurada acima ({formData.maxPacientesPorPsicologo} pacientes).
+                  Pacientes são ilimitados; a capacidade acima ({formData.maxPacientesPorPsicologo}) só orienta a distribuição da triagem pelo Líder.
                 </p>
               </div>
 
@@ -1409,6 +1416,8 @@ export default function AdminPanel() {
                               <Badge variant="danger"><AlertTriangle size={11} className="inline mr-1" /> Vencido</Badge>
                             ) : psi.statusPagamento === 'trial' ? (
                               <Badge variant="warning"><Clock size={11} className="inline mr-1" /> Trial</Badge>
+                            ) : psi.statusPagamento === 'pendente' ? (
+                              <Badge variant="warning"><Hourglass size={11} className="inline mr-1" /> Aguardando pagamento</Badge>
                             ) : (
                               <Badge variant="success"><CreditCard size={11} className="inline mr-1" /> Em Dia</Badge>
                             )}
@@ -1428,15 +1437,17 @@ export default function AdminPanel() {
                               <RefreshCw size={20} className="animate-spin" style={{ color: 'var(--accent)' }} />
                             ) : (
                               <>
-                                {(!psi.plano || psi.plano === 'basico') ? (
-                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'profissional')} title="Promover para Profissional">
-                                    <Star size={11} className="mr-1" /> Pro
-                                  </Button>
-                                ) : (
-                                  <Button size="sm" variant="secondary" onClick={() => handlePlano(psi.id, 'basico')} title="Rebaixar para Básico">
-                                    <ClipboardList size={11} className="mr-1" /> Basic
-                                  </Button>
-                                )}
+                                {/* Único caminho para o Plano Clínica (sem checkout, valor negociado) */}
+                                <select
+                                  aria-label={`Plano de ${psi.nome || psi.email}`}
+                                  value={psi.plano || 'basico'}
+                                  onChange={(e) => handlePlano(psi.id, e.target.value)}
+                                  className="ds-input text-xs py-1 h-[34px] w-auto"
+                                >
+                                  <option value="basico">Básico</option>
+                                  <option value="profissional">Pro</option>
+                                  <option value="clinica">Clínica</option>
+                                </select>
                                 <Button size="sm" variant="secondary" onClick={() => handleRegularizarPagamento(psi.id)} title="Liberar Assinatura por 30 dias">
                                   <CreditCard size={11} className="mr-1" /> +30d
                                 </Button>

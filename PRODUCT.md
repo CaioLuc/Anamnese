@@ -32,7 +32,7 @@ Feito para a rotina e as regras da psicologia brasileira: Resoluções CFP 01/20
 - React 19 + Vite 8 + Tailwind 3.4, Firebase (Auth, Firestore, Functions v2 em `southamerica-east1`, Hosting). jsPDF no cliente.
 - Isolamento rígido por profissional nas regras do Firestore; trilha de auditoria append-only; soft-delete com lixeira de 7 dias; anonimização em vez de exclusão física de registros clínicos.
 - Todo texto de interface em pt-BR.
-- Pagamento de assinatura (Asaas) ainda é simulado no cliente; não afirmar cobrança real.
+- Assinatura cobrada pelo Asaas (cartão recorrente ou PIX) via Cloud Functions; conta nova paga antes de usar, sem teste grátis. Plano Clínica é sob consulta (contato@noxxd.com.br).
 
 ## Brand Commitments
 

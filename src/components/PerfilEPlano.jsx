@@ -8,7 +8,10 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from '../contexts/ToastContext';
 import { lerPerfilPsicologo, salvarPerfilPsicologo } from '../services/patientService';
 import { 
-  PLANOS_CARITAS, 
+  PLANOS_CARITAS,
+  CONTATO_COMERCIAL,
+  formatarPrecoPlano,
+  planoContratavel, 
   verificarStatusAssinatura, 
   iniciarAssinaturaCartao, 
   gerarCobrancaPix, 
@@ -188,7 +191,8 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
   const statusAssinatura = verificarStatusAssinatura(perfil);
   const planoAtualId = perfil?.plano || 'basico';
-  const planoSelecionadoId = pixPlanoSelecionado || planoAtualId;
+  // Clínica e ids legados não têm checkout: a cobrança cai no Essencial até o usuário escolher outro
+  const planoSelecionadoId = pixPlanoSelecionado || planoContratavel(planoAtualId);
   const planoAtualObj = PLANOS_CARITAS[planoAtualId] || PLANOS_CARITAS.basico;
   const bandeiraCartaoDetectada = detectarBandeiraCartao(cartaoForm.numero);
 
@@ -230,7 +234,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
             <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-1.5">
               {planoAtualObj.nome}
               <span className="text-xs font-normal text-[var(--text-secondary)]">
-                (R$ {planoAtualObj.preco.toFixed(2)}/mês)
+                ({formatarPrecoPlano(planoAtualObj)})
               </span>
             </div>
             {perfil?.proximoVencimento && (
@@ -468,10 +472,18 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                     </div>
 
                     <div className="my-4">
-                      <span className="text-3xl font-heading font-extrabold text-[var(--text-primary)]">
-                        R$ {plano.preco.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-[var(--text-secondary)] ml-1">/mês</span>
+                      {plano.sobConsulta ? (
+                        <span className="text-2xl font-heading font-extrabold text-[var(--text-primary)]">
+                          Sob consulta
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-3xl font-heading font-extrabold text-[var(--text-primary)] tabular">
+                            R$ {plano.preco.toFixed(2).replace('.', ',')}
+                          </span>
+                          <span className="text-xs text-[var(--text-secondary)] ml-1">/mês</span>
+                        </>
+                      )}
                     </div>
 
                     <div className="border-t border-[var(--border)] pt-4 space-y-2.5">
@@ -492,6 +504,13 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                       >
                         Seu Plano Ativo
                       </button>
+                    ) : plano.sobConsulta ? (
+                      <a
+                        href={`mailto:${CONTATO_COMERCIAL}?subject=${encodeURIComponent('CARITAS — Plano Clínica & Equipe')}`}
+                        className="ds-btn ds-btn-secondary w-full py-2.5 px-4 text-xs font-semibold flex items-center justify-center gap-2"
+                      >
+                        Falar com a equipe
+                      </a>
                     ) : (
                       <button
                         onClick={() => {
@@ -749,7 +768,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                     Gerar Cobrança PIX para o {PLANOS_CARITAS[planoSelecionadoId]?.nome}
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
-                    Valor: <strong className="text-[var(--text-primary)]">R$ {PLANOS_CARITAS[planoSelecionadoId]?.preco.toFixed(2)}</strong>. A liberação acontece após a confirmação do pagamento.
+                    Valor: <strong className="text-[var(--text-primary)]">{formatarPrecoPlano(PLANOS_CARITAS[planoSelecionadoId])}</strong>. A liberação acontece após a confirmação do pagamento.
                   </p>
                 </div>
 

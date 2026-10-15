@@ -221,13 +221,17 @@ describe('action_logs (append-only)', () => {
 })
 
 describe('perfil e cobrança (psicologos/{uid})', () => {
-  it('dono cria perfil só em trial no plano básico', async () => {
+  it('dono cria perfil só pendente de pagamento, no plano básico', async () => {
     await liberarMfa('psi-novo')
     const db = comoUsuario('psi-novo')
-    await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', plano: 'profissional' }))
+    await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', plano: 'profissional', statusPagamento: 'pendente' }))
     await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', statusPagamento: 'ativo' }))
-    await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', isIsento: true }))
-    await assertSucceeds(db.doc('psicologos/psi-novo').set({ nome: 'N', plano: 'basico', statusPagamento: 'trial', max_locais: 1 }))
+    await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', statusPagamento: 'trial' }))
+    // Sem status o paywall liberaria o acesso
+    await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', plano: 'basico' }))
+    await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', statusPagamento: 'pendente', trialAte: '2099-01-01' }))
+    await assertFails(db.doc('psicologos/psi-novo').set({ nome: 'N', statusPagamento: 'pendente', isIsento: false }))
+    await assertSucceeds(db.doc('psicologos/psi-novo').set({ nome: 'N', plano: 'basico', statusPagamento: 'pendente', max_locais: 1, ativo: true }))
   })
 
   it('dono edita cadastro, mas não plano, pagamento nem apaga o perfil', async () => {

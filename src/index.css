@@ -448,6 +448,17 @@
     animation: fade-up 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  /* Variações escritas na sintaxe do plugin antigo; sem elas essas classes não faziam nada */
+  .animate-in.fade-in { animation-name: fade-in; }
+  .animate-in.zoom-in,
+  .animate-in.zoom-in-95 { animation-name: zoom-in; }
+  .animate-in.slide-in-from-top-2 { animation-name: slide-down; }
+
+  /* Mostra onde um item chegou (campo novo ou movido): contorno que se apaga, sem deslocar o layout */
+  .ds-arrive {
+    animation: arrive 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -456,6 +467,26 @@
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoom-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes arrive {
+  from { outline: 2px solid var(--accent); outline-offset: 3px; }
+  to { outline: 2px solid transparent; outline-offset: 3px; }
 }
 
 /* Alvos de toque no celular: mínimo de 44px */
@@ -475,6 +506,15 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Menos movimento, não menos informação: entradas viram só opacidade e o contorno de chegada continua */
+  .animate-in {
+    animation-name: fade-in !important;
+    animation-duration: 150ms !important;
+  }
+  .ds-arrive {
+    animation-duration: 900ms !important;
   }
 }
 

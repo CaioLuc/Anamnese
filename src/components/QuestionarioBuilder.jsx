@@ -4,7 +4,9 @@ import { criarQuestionario, atualizarQuestionario } from '../services/patientSer
 import Button from './ui/Button';
 import ConfirmDialog from './ConfirmDialog';
 import { useToast } from '../contexts/ToastContext';
-import { 
+import { useKeyboard } from '../hooks/useKeyboard';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import {
   Folder, AlignLeft, FileText, CircleDot, CheckSquare, List, Hash, Calendar, 
   Trash2, ChevronUp, ChevronDown, ChevronDown as ChevronDownIcon, X, Plus, Smile,
   ClipboardList, Activity, Heart, Target, User, GraduationCap, Building2, BookOpen,
@@ -150,7 +152,7 @@ function CampoEditor({ campo, onChange, onRemover, onMover, isFirst, isLast }) {
   const TipoIcon = TIPOS_CAMPO.find(t => t.tipo === campo.tipo)?.icone || FileText;
 
   return (
-    <div className="rounded-xl overflow-hidden transition-shadow" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: expanded ? 'var(--shadow)' : 'none' }}>
+    <div id={`campo-${campo.id}`} className="rounded-xl overflow-hidden transition-shadow scroll-my-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: expanded ? 'var(--shadow)' : 'none' }}>
       {/* Header do campo */}
       <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: expanded ? '1px solid var(--border)' : 'none' }}>
         <div className="flex flex-col gap-0.5">
@@ -282,13 +284,19 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
   const snapshotAtual = JSON.stringify({ nome, descricao, icone, campos });
   const [snapshotInicial] = useState(snapshotAtual);
   const dirty = snapshotAtual !== snapshotInicial;
+  useUnsavedChanges(dirty);
 
+  // Campo recém-criado ou movido: rola até ele e acende o contorno, para o olho achar onde ele foi parar
+  const [destaque, setDestaque] = useState(null);
   useEffect(() => {
-    if (!dirty) return;
-    const avisar = (e) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', avisar);
-    return () => window.removeEventListener('beforeunload', avisar);
-  }, [dirty]);
+    const el = destaque && document.getElementById(`campo-${destaque.id}`);
+    if (!el) return;
+    const reduzido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ block: 'nearest', behavior: reduzido ? 'auto' : 'smooth' });
+    el.classList.remove('ds-arrive');
+    void el.offsetWidth; // reinicia a animação quando o mesmo campo é movido de novo
+    el.classList.add('ds-arrive');
+  }, [destaque]);
 
   const addCampo = (tipo) => {
     const novo = {
@@ -302,6 +310,7 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
       ...(tipo === 'scale' ? { min: 1, max: 10 } : {}),
     };
     setCampos([...campos, novo]);
+    setDestaque({ id: novo.id, vez: Date.now() });
   };
 
   const updateCampo = (idx, campoAtualizado) => {
@@ -320,6 +329,7 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
     if (alvo < 0 || alvo >= novos.length) return;
     [novos[idx], novos[alvo]] = [novos[alvo], novos[idx]];
     setCampos(novos.map((c, i) => ({ ...c, ordem: i })));
+    setDestaque({ id: novos[alvo].id, vez: Date.now() });
   };
 
   const handleSalvar = async () => {
@@ -359,6 +369,12 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
       setIsSaving(false);
     }
   };
+
+  useKeyboard([
+    { key: 's', ctrl: true, action: () => { if (!isSaving) handleSalvar(); } },
+  ]);
+
+  const obrigatorios = campos.filter((c) => c.obrigatorio).length;
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden" onClick={() => showEmojis && setShowEmojis(false)}>
@@ -448,7 +464,13 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Adicione campos usando o painel &quot;Adicionar Campo&quot;</p>
             </div>
           ) : (
-            campos.map((campo, idx) => (
+            <>
+            <p className="text-xs tabular" style={{ color: 'var(--text-muted)' }} aria-live="polite">
+              {campos.length} {campos.length === 1 ? 'campo' : 'campos'}
+              {obrigatorios > 0 && ` · ${obrigatorios} ${obrigatorios === 1 ? 'obrigatório' : 'obrigatórios'}`}
+              <span className="hidden sm:inline"> · Ctrl+S salva</span>
+            </p>
+            {campos.map((campo, idx) => (
               <CampoEditor
                 key={campo.id}
                 campo={campo}
@@ -458,7 +480,8 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
                 isFirst={idx === 0}
                 isLast={idx === campos.length - 1}
               />
-            ))
+            ))}
+            </>
           )}
         </div>
 
@@ -471,10 +494,7 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
               <button
                 key={t.tipo}
                 onClick={() => addCampo(t.tipo)}
-                className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all group"
-                style={{ backgroundColor: 'transparent' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-card)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl transition-colors duration-150 group hover:bg-[var(--bg-card)] active:scale-[0.99]"
               >
                 <t.icone size={18} className="mt-0.5" style={{ color: 'var(--text-muted)' }} />
                 <div>

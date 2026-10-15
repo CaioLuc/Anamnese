@@ -301,7 +301,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
               <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {viewState === 'login'
                   ? 'Entre para acessar seus pacientes e sua agenda.'
-                  : '14 dias grátis, sem cartão de crédito.'}
+                  : 'Depois do cadastro, você escolhe o plano e ativa o acesso.'}
               </p>
 
               <div className="ds-segmented w-full mt-7 mb-6">

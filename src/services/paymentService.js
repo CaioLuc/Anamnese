@@ -11,12 +11,11 @@ export const PLANOS_CARITAS = {
   basico: {
     id: 'basico',
     nome: 'Plano Essencial',
-    preco: 79.90,
+    preco: 59.90,
     intervalo: 'mensal',
-    maxPacientes: 20,
     maxLocais: 1,
     recursos: [
-      'Até 20 pacientes cadastrados',
+      'Pacientes ilimitados',
       'Prontuário Eletrônico conforme CFP 01/2009',
       'Anamnese Adulto e Infantil',
       'Agenda de Sessões com Link Público',
@@ -28,12 +27,11 @@ export const PLANOS_CARITAS = {
   profissional: {
     id: 'profissional',
     nome: 'Plano Profissional (Pro)',
-    preco: 139.90,
+    preco: 119.90,
     intervalo: 'mensal',
-    maxPacientes: 50,
     maxLocais: 4,
     recursos: [
-      'Até 50 pacientes cadastrados',
+      'Pacientes ilimitados',
       'Resumo Clínico estruturado com Inteligência Artificial',
       'Até 4 locais de atendimento simultâneos',
       'Selo Digital de Autenticidade (CFP Res. 06/2019)',
@@ -45,14 +43,15 @@ export const PLANOS_CARITAS = {
   clinica: {
     id: 'clinica',
     nome: 'Plano Clínica & Equipe',
-    preco: 299.90,
+    // Sem preço fixo: valor negociado por clínica e ativado pelo admin (não passa pelo checkout)
+    preco: null,
+    sobConsulta: true,
     intervalo: 'mensal',
-    maxPacientes: 160,
     maxLocais: 10,
     maxPsicologos: 8,
     recursos: [
       '1 Líder Clínico + 8 Psicólogos integrados',
-      'Até 160 pacientes distribuídos pela equipe',
+      'Pacientes ilimitados para toda a equipe',
       'Painel de Gestão e Supervisão Técnica',
       'Gestão Centralizada de Finanças e Repasses',
       'Auditoria de Prontuários e Conformidade CFP',
@@ -62,9 +61,23 @@ export const PLANOS_CARITAS = {
   },
 };
 
+export const CONTATO_COMERCIAL = 'contato@noxxd.com.br';
+
+// Planos com checkout próprio (o Clínica é negociado à parte)
+export const PLANOS_CONTRATAVEIS = Object.values(PLANOS_CARITAS).filter((p) => !p.sobConsulta);
+
+// Plano que dá para cobrar no checkout; Clínica, 'isento' e ids legados ('pro', 'premium') caem no Essencial
+export function planoContratavel(id) {
+  return PLANOS_CONTRATAVEIS.some((p) => p.id === id) ? id : 'basico';
+}
+
+export function formatarPrecoPlano(plano) {
+  if (!plano) return '';
+  return plano.sobConsulta ? 'Sob consulta' : `R$ ${plano.preco.toFixed(2).replace('.', ',')}/mês`;
+}
+
 // Tolerância legal/operacional (dias após o vencimento antes de bloquear)
 export const DIAS_CARENCIA_BLOQUEIO = 3;
-export const DIAS_TRIAL_PADRAO = 14;
 
 // ==========================================
 // DETECTAR BANDEIRA DO CARTÃO DE CRÉDITO
@@ -127,10 +140,20 @@ export function verificarStatusAssinatura(perfil) {
     };
   }
 
+  // Conta nova: paga antes de usar (não há mais teste grátis)
+  if (perfil.statusPagamento === 'pendente') {
+    return {
+      emDia: false,
+      status: 'pendente',
+      proximoVencimento: null,
+      motivo: 'Escolha um plano e conclua o pagamento para começar a usar o CARITAS.',
+    };
+  }
+
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
-  // 1. Checagem de Período Trial (Novo Cadastro)
+  // 1. Trial de contas criadas antes do pagamento antecipado (vale até a data gravada)
   if (perfil.statusPagamento === 'trial' || (!perfil.statusPagamento && perfil.trialAte)) {
     // 'YYYY-MM-DD' lido como data local (new Date('YYYY-MM-DD') seria meia-noite UTC)
     const dataTrial = parseDate(perfil.trialAte);

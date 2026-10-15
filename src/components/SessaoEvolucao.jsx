@@ -13,6 +13,10 @@ import { trackAction } from '../services/logService';
 import Button from './ui/Button';
 import Select from './ui/Select';
 
+const corHumor = (n) => (n <= 3 ? 'var(--status-danger)' : n <= 6 ? 'var(--status-warning)' : 'var(--status-success)');
+const rotuloHumor = (n) => (n <= 2 ? 'Muito baixo' : n <= 4 ? 'Baixo' : n <= 6 ? 'Moderado' : n <= 8 ? 'Bom' : 'Muito bom');
+const contarPalavras = (texto) => (texto.trim() ? texto.trim().split(/\s+/).length : 0);
+
 export default function SessaoEvolucao({ patients, isLoadingPatients, preSelectedPatient }) {
   const [formData, setFormData] = useState({
     id_paciente: preSelectedPatient?.id || '',
@@ -38,6 +42,8 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
   const [profissional, setProfissional] = useState(null);
   // Texto original das observações antes do resumo da I.A. (para desfazer)
   const [observacoesAntesIA, setObservacoesAntesIA] = useState(null);
+  // Muda quando a I.A. troca o texto (ou o usuário desfaz): remonta o textarea e acende o contorno de chegada
+  const [versaoIA, setVersaoIA] = useState(0);
   const formRef = useRef(null);
   const submittingRef = useRef(false);
   const formStartTime = useRef(Date.now());
@@ -184,7 +190,8 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Registre o status, comportamento e sintomas do atendimento atual.</p>
       </div>
 
-      <div className="ds-card p-6 sm:p-10 relative overflow-hidden">
+      {/* Sem overflow-hidden: ele prenderia a barra de ações fixa e cortaria a lista de pacientes */}
+      <div className="ds-card p-6 sm:p-10 sm:pb-0 pb-0 relative">
         
         {statusMessage.text && (
           <div className="mb-8 p-4 rounded-lg border flex items-start gap-3 transition-all" style={{
@@ -334,25 +341,38 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                 <span className="ml-2 font-normal text-xs" style={{ color: 'var(--text-secondary)' }}>(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
               </label>
             </Tooltip>
-            <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Um marcador desliza até a nota: a mudança fica visível sem trocar 10 caixas de cor */}
+            <div role="group" aria-label="Nota de humor de 1 a 10" className="relative grid grid-cols-10 rounded-xl border p-1" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <span
+                aria-hidden="true"
+                className="absolute top-1 bottom-1 left-1 rounded-lg transition-[transform,background-color] duration-300 ease-out-expo"
+                style={{
+                  width: 'calc((100% - 0.5rem) / 10)',
+                  transform: `translateX(${(formData.humor - 1) * 100}%)`,
+                  backgroundColor: corHumor(formData.humor),
+                }}
+              />
               {Array.from({ length: 10 }).map((_, i) => {
                 const val = i + 1;
                 const isSelected = formData.humor === val;
-                const color = val <= 3 ? 'var(--status-danger)' : val <= 6 ? 'var(--status-warning)' : 'var(--status-success)';
                 return (
                   <button key={val} type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setFormData(prev => ({ ...prev, humor: val }))}
-                    className="w-11 h-11 rounded-lg text-sm font-bold border transition-all"
-                    style={{
-                      backgroundColor: isSelected ? color : 'var(--bg-card)',
-                      color: isSelected ? '#FFFFFF' : color,
-                      borderColor: isSelected ? color : 'var(--border)'
-                    }}
+                    className="relative h-11 rounded-lg text-sm font-bold tabular transition-colors duration-200"
+                    style={{ color: isSelected ? '#FFFFFF' : corHumor(val) }}
                   >
                     {val}
                   </button>
                 );
               })}
+            </div>
+            <div className="flex justify-between items-baseline mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <span>Sofrimento intenso</span>
+              <span className="text-xs font-semibold" style={{ color: corHumor(formData.humor) }} aria-live="polite">
+                {formData.humor} · {rotuloHumor(formData.humor)}
+              </span>
+              <span>Bem-estar evidente</span>
             </div>
           </div>
 
@@ -383,6 +403,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                     const { resumo } = await gerarResumoIA('sessao', textoCompleto);
                     setFormData(prev => ({ ...prev, observacoes: resumo }));
                     setObservacoesAntesIA(textoOriginal);
+                    setVersaoIA(v => v + 1);
                     setStatusMessage({ type: 'success', text: 'Resumo gerado com I.A. com sucesso!' });
                     setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
                   } catch (err) {
@@ -426,23 +447,29 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
               </div>
             )}
             <textarea
+              key={versaoIA}
               value={formData.observacoes}
               onChange={(e) => { setFormData({ ...formData, observacoes: e.target.value }); setObservacoesAntesIA(null); }}
               disabled={isGeneratingIA}
-              className="ds-input resize-y min-h-[150px] custom-scrollbar"
+              className={`ds-input resize-y min-h-[150px] custom-scrollbar leading-relaxed ${versaoIA > 0 ? 'ds-arrive' : ''}`}
               placeholder="Resumo da sessão e os principais temas abordados..."
               required
             />
-            {observacoesAntesIA !== null && (
-              <button
-                type="button"
-                onClick={() => { setFormData(prev => ({ ...prev, observacoes: observacoesAntesIA })); setObservacoesAntesIA(null); }}
-                className="mt-2 text-xs font-semibold underline"
-                style={{ color: 'var(--accent)' }}
-              >
-                Desfazer resumo
-              </button>
-            )}
+            <div className="mt-2 flex items-center justify-between gap-3 min-h-[20px]">
+              {observacoesAntesIA !== null ? (
+                <button
+                  type="button"
+                  onClick={() => { setFormData(prev => ({ ...prev, observacoes: observacoesAntesIA })); setObservacoesAntesIA(null); setVersaoIA(v => v + 1); }}
+                  className="text-xs font-semibold underline underline-offset-2 animate-in fade-in"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  Desfazer resumo
+                </button>
+              ) : <span />}
+              <span className="text-[11px] tabular" style={{ color: 'var(--text-muted)' }}>
+                {contarPalavras(formData.observacoes)} palavras
+              </span>
+            </div>
           </div>
 
           {/* Sessão 3: Comportamento */}
@@ -472,9 +499,10 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           </div>
 
           {/* Botões */}
-          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid var(--border)' }}>
+          {/* Fixa no rodapé: salvar continua ao alcance enquanto se escreve uma evolução longa */}
+          <div className="sticky bottom-0 z-10 -mx-6 sm:-mx-10 px-6 sm:px-10 py-4 rounded-b-ds flex flex-col sm:flex-row items-center justify-between gap-4 safe-bottom" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>
             <p className="text-xs max-w-sm hidden md:block" style={{ color: 'var(--text-secondary)' }}>
-              Este histórico ficará salvo eternamente no banco de dados e poderá ser recuperado no prontuário do paciente.
+              A evolução entra no prontuário do paciente e segue a guarda mínima de 5 anos (CFP 01/2009). <span className="whitespace-nowrap">Ctrl+S salva.</span>
             </p>
             
             <div className="flex w-full sm:w-auto items-center gap-3">

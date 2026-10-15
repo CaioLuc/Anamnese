@@ -1,10 +1,35 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
+import { Check } from 'lucide-react';
+
+// Opção em forma de botão (radio, checkbox, escala): aria-pressed carrega o estado para leitores de tela
+const opcaoClasse = (ativa) =>
+  `min-h-[44px] sm:min-h-[36px] px-3 rounded-lg text-sm font-medium border transition-[background-color,border-color,color,transform] duration-150 ease-out-expo active:scale-[0.97] ${
+    ativa
+      ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-contrast)]'
+      : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent)]'
+  }`;
+
+function respondido(valor) {
+  if (Array.isArray(valor)) return valor.length > 0;
+  if (typeof valor === 'number') return true;
+  return typeof valor === 'string' && valor.trim() !== '';
+}
+
+function Rotulo({ campo, htmlFor, id }) {
+  return (
+    <label htmlFor={htmlFor} id={id} className="ds-label">
+      {campo.label}
+      {campo.obrigatorio && <span className="ml-0.5" style={{ color: 'var(--status-danger)' }} aria-hidden="true">*</span>}
+      {campo.obrigatorio && <span className="sr-only"> (obrigatório)</span>}
+    </label>
+  );
+}
 
 // Campo: Separador de Seção
 function SectionField({ campo }) {
   return (
-    <div className="pt-4 pb-2 border-b border-brand-200 dark:border-brand-500/30 mb-2">
-      <h3 className="text-sm font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest">
+    <div className="pt-6 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+      <h3 className="font-heading text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
         {campo.label}
       </h3>
     </div>
@@ -13,15 +38,14 @@ function SectionField({ campo }) {
 
 // Campo: Texto simples ou textarea
 function TextField({ campo, value, onChange, tipo }) {
-  const base = "w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors resize-none";
+  const id = useId();
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-        {campo.label} {campo.obrigatorio && <span className="text-red-500">*</span>}
-      </label>
+      <Rotulo campo={campo} htmlFor={id} />
       {tipo === 'textarea' ? (
         <textarea
-          className={`${base} min-h-[90px]`}
+          id={id}
+          className="ds-input min-h-[96px] resize-y leading-relaxed"
           placeholder={campo.placeholder || ''}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
@@ -29,8 +53,9 @@ function TextField({ campo, value, onChange, tipo }) {
         />
       ) : (
         <input
+          id={id}
           type={tipo === 'number' ? 'number' : tipo === 'date' ? 'date' : 'text'}
-          className={base}
+          className={`ds-input ${tipo === 'number' ? 'tabular' : ''}`}
           placeholder={campo.placeholder || ''}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
@@ -41,24 +66,20 @@ function TextField({ campo, value, onChange, tipo }) {
   );
 }
 
-// Campo: Radio (seleção única)
+// Campo: Radio (seleção única; clicar de novo desmarca)
 function RadioField({ campo, value, onChange }) {
+  const id = useId();
   return (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-        {campo.label} {campo.obrigatorio && <span className="text-red-500">*</span>}
-      </label>
+    <div role="group" aria-labelledby={id}>
+      <Rotulo campo={campo} id={id} />
       <div className="flex flex-wrap gap-2">
         {(campo.opcoes || []).map((opcao) => (
           <button
             key={opcao}
             type="button"
+            aria-pressed={value === opcao}
             onClick={() => onChange(value === opcao ? '' : opcao)}
-            className={`px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-sm font-medium border transition-all ${
-              value === opcao
-                ? 'bg-brand-500 border-brand-500 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-brand-400 dark:hover:border-brand-500'
-            }`}
+            className={opcaoClasse(value === opcao)}
           >
             {opcao}
           </button>
@@ -70,36 +91,31 @@ function RadioField({ campo, value, onChange }) {
 
 // Campo: Checkbox (seleção múltipla)
 function CheckboxField({ campo, value, onChange }) {
+  const id = useId();
   const selected = Array.isArray(value) ? value : [];
   const toggle = (opcao) => {
     if (selected.includes(opcao)) onChange(selected.filter(v => v !== opcao));
     else onChange([...selected, opcao]);
   };
   return (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-        {campo.label} {campo.obrigatorio && <span className="text-red-500">*</span>}
-      </label>
+    <div role="group" aria-labelledby={id}>
+      <Rotulo campo={campo} id={id} />
       <div className="flex flex-wrap gap-2">
-        {(campo.opcoes || []).map((opcao) => (
-          <button
-            key={opcao}
-            type="button"
-            onClick={() => toggle(opcao)}
-            className={`px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-sm font-medium border transition-all flex items-center gap-1.5 ${
-              selected.includes(opcao)
-                ? 'bg-brand-500 border-brand-500 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-brand-400 dark:hover:border-brand-500'
-            }`}
-          >
-            {selected.includes(opcao) && (
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-            {opcao}
-          </button>
-        ))}
+        {(campo.opcoes || []).map((opcao) => {
+          const ativa = selected.includes(opcao);
+          return (
+            <button
+              key={opcao}
+              type="button"
+              aria-pressed={ativa}
+              onClick={() => toggle(opcao)}
+              className={`${opcaoClasse(ativa)} flex items-center gap-1.5`}
+            >
+              {ativa && <Check size={14} strokeWidth={3} className="animate-in zoom-in" aria-hidden="true" />}
+              {opcao}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -107,13 +123,13 @@ function CheckboxField({ campo, value, onChange }) {
 
 // Campo: Select (dropdown)
 function SelectField({ campo, value, onChange }) {
+  const id = useId();
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-        {campo.label} {campo.obrigatorio && <span className="text-red-500">*</span>}
-      </label>
+      <Rotulo campo={campo} htmlFor={id} />
       <select
-        className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors"
+        id={id}
+        className="ds-input"
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         required={campo.obrigatorio}
@@ -129,34 +145,31 @@ function SelectField({ campo, value, onChange }) {
 
 // Campo: Escala numérica
 function ScaleField({ campo, value, onChange }) {
+  const id = useId();
   const min = campo.min ?? 1;
   const max = campo.max ?? 10;
   // Teto de 21 botões, mesmo para templates antigos salvos fora da faixa
   const nums = Array.from({ length: Math.max(0, Math.min(max - min + 1, 21)) }, (_, i) => i + min);
   return (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-        {campo.label} {campo.obrigatorio && <span className="text-red-500">*</span>}
-      </label>
-      <div className="flex gap-2 flex-wrap">
+    <div role="group" aria-labelledby={id}>
+      <Rotulo campo={campo} id={id} />
+      <div className="flex gap-1.5 flex-wrap">
         {nums.map((n) => (
           <button
             key={n}
             type="button"
+            aria-pressed={value === n}
             onClick={() => onChange(value === n ? null : n)}
-            className={`w-9 h-9 rounded-lg text-sm font-bold border transition-all ${
-              value === n
-                ? 'bg-brand-500 border-brand-500 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-brand-400'
-            }`}
+            className={`${opcaoClasse(value === n)} w-11 sm:w-9 px-0 font-bold tabular`}
           >
             {n}
           </button>
         ))}
       </div>
-      {value != null && (
-        <p className="text-xs text-brand-500 mt-1">Selecionado: {value}</p>
-      )}
+      <div className="flex justify-between text-[11px] mt-1.5 tabular" style={{ color: 'var(--text-muted)' }}>
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
     </div>
   );
 }
@@ -186,16 +199,50 @@ export default function QuestionarioFiller({ template, respostas = {}, onChange,
 
   if (!template?.campos?.length) {
     return (
-      <div className="text-center py-10 text-slate-400">
+      <div className="text-center py-10 text-sm" style={{ color: 'var(--text-muted)' }}>
         Este questionário não possui campos configurados.
       </div>
     );
   }
 
   const campos = [...template.campos].sort((a, b) => a.ordem - b.ordem);
+  const perguntas = campos.filter((c) => c.tipo !== 'section');
+  const respondidas = perguntas.filter((c) => respondido(exibidos[c.id])).length;
+  const obrigatoriasPendentes = perguntas.filter((c) => c.obrigatorio && !respondido(exibidos[c.id])).length;
+  const pct = perguntas.length ? Math.round((respondidas / perguntas.length) * 100) : 0;
 
   return (
     <div className="space-y-6">
+      {!readOnly && perguntas.length > 0 && (
+        <div className="sticky top-0 z-10 -mx-1 px-1 py-2" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <div className="flex items-center justify-between text-xs mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <span className="tabular" aria-live="polite">
+              {respondidas} de {perguntas.length} respondidas
+            </span>
+            {obrigatoriasPendentes > 0 && (
+              <span className="tabular" style={{ color: 'var(--status-warning-text)' }}>
+                {obrigatoriasPendentes} {obrigatoriasPendentes === 1 ? 'obrigatória pendente' : 'obrigatórias pendentes'}
+              </span>
+            )}
+          </div>
+          <div
+            className="h-1.5 rounded-full overflow-hidden"
+            style={{ backgroundColor: 'var(--border)' }}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            aria-label="Progresso do questionário"
+          >
+            {/* scaleX em vez de width: anima sem recalcular layout */}
+            <div
+              className="h-full w-full origin-left rounded-full transition-transform duration-500 ease-out-expo"
+              style={{ transform: `scaleX(${pct / 100})`, backgroundColor: 'var(--status-success)' }}
+            />
+          </div>
+        </div>
+      )}
+
       {campos.map((campo) => {
         const val = exibidos[campo.id];
 
@@ -206,8 +253,8 @@ export default function QuestionarioFiller({ template, respostas = {}, onChange,
           if (!resposta && resposta !== 0) return null;
           return (
             <div key={campo.id} className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{campo.label}</span>
-              <span className="text-sm text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-white/5 px-3 py-2 rounded-lg">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{campo.label}</span>
+              <span className="text-sm px-3 py-2 rounded-lg" style={{ color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}>
                 {Array.isArray(resposta) ? resposta.join(', ') : String(resposta)}
               </span>
             </div>

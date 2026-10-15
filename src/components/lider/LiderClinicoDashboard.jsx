@@ -14,6 +14,7 @@ import {
   obterFilaTriagem,
   encaminharPacienteTriagem,
 } from '../../services/liderService';
+import { CONTATO_COMERCIAL } from '../../services/paymentService';
 import { useToast } from '../../contexts/ToastContext';
 import {
   Users,
@@ -26,7 +27,6 @@ import {
   Activity,
   CheckCircle,
   Zap,
-  Check,
 } from 'lucide-react';
 
 export default function LiderClinicoDashboard() {
@@ -69,7 +69,7 @@ export default function LiderClinicoDashboard() {
       setNovoCrp('');
       setNovoEmail('');
       setNovaEspecialidade('');
-      setNovoMaxPacientes(25);
+      setNovoMaxPacientes(MAX_PACIENTES_POR_PSICOLOGO);
       carregarDados();
     } catch (err) {
       showToast({ type: 'error', message: err.message || 'Erro ao adicionar membro.' });
@@ -388,10 +388,11 @@ export default function LiderClinicoDashboard() {
                     >
                       <option value="">Selecione o Psicólogo...</option>
                       {equipe.map((p) => {
-                        const vagas = (p.maxPacientes || 25) - (p.pacientesAtivos || 0);
+                        // Capacidade é sugestão de agenda, não limite: lotado só avisa, não bloqueia
+                        const vagas = (p.maxPacientes || MAX_PACIENTES_POR_PSICOLOGO) - (p.pacientesAtivos || 0);
                         return (
-                          <option key={p.id} value={p.id} disabled={vagas <= 0}>
-                            {p.nome} ({vagas} vagas) - {p.especialidade}
+                          <option key={p.id} value={p.id}>
+                            {p.nome} ({vagas > 0 ? `${vagas} vagas` : 'acima da capacidade'}) - {p.especialidade}
                           </option>
                         );
                       })}
@@ -498,72 +499,38 @@ export default function LiderClinicoDashboard() {
         </form>
       </Modal>
 
-      {/* Modal: Upgrade de Plano (Mais Psicólogos e Mais Pacientes) */}
+      {/* Modal: expansão de equipe (Plano Clínica é negociado, sem preço fixo) */}
       <Modal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
-        title="Expansão de Equipe & Planos de Clínica"
-        subtitle="Adicione mais psicólogos e aumente o teto de pacientes por profissional"
-        size="lg"
+        title="Expandir a equipe"
+        subtitle="O Plano Clínica & Equipe é negociado conforme o tamanho da clínica"
         footer={
           <div className="flex justify-end gap-3 w-full">
             <Button variant="ghost" onClick={() => setIsUpgradeModalOpen(false)}>
               Fechar
             </Button>
-            <Button onClick={() => {
-              showToast({ type: 'success', message: 'Solicitação de upgrade enviada! Entraremos em contato com a fatura Asaas.' });
-              setIsUpgradeModalOpen(false);
-            }}>
+            <a
+              href={`mailto:${CONTATO_COMERCIAL}?subject=${encodeURIComponent('CARITAS — Expansão de equipe')}`}
+              className="ds-btn ds-btn-primary inline-flex items-center gap-2"
+            >
               <Zap size={16} />
-              Contratar Upgrade (Asaas)
-            </Button>
+              Falar com a equipe
+            </a>
           </div>
         }
       >
-        <div className="space-y-4 py-2">
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-            Seu pacote atual é o <strong className="text-[var(--text-primary)]">Plano Clínica Standard</strong> com 1 Líder Clínico, 8 psicólogos credenciados e limite de 20 pacientes por psicólogo (total de 160 pacientes).
+        <div className="space-y-3 py-2 text-sm text-[var(--text-secondary)] leading-relaxed">
+          <p>
+            Sua clínica conta hoje com 1 Líder Clínico e até {MAX_PSICOLOGOS_EQUIPE} psicólogos, com pacientes ilimitados.
           </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-            {/* Standard (Atual) */}
-            <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] space-y-3 relative">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Plano Atual</span>
-              <h4 className="font-heading font-bold text-base text-[var(--text-primary)]">Clínica Standard</h4>
-              <p className="text-xl font-bold text-[var(--text-primary)]">Incluso</p>
-              <ul className="text-xs text-[var(--text-secondary)] space-y-2 pt-2 border-t border-[var(--border)]">
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Até 8 Psicólogos</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> 20 Pacientes/psi (160 tot.)</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Painel de Liderança</li>
-              </ul>
-            </div>
-
-            {/* Pro */}
-            <div className="p-4 rounded-xl border-2 border-[var(--accent)] bg-[var(--bg-card)] space-y-3 relative shadow-md">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)]">Recomendado</span>
-              <h4 className="font-heading font-bold text-base text-[var(--text-primary)]">Clínica Pro</h4>
-              <p className="text-xl font-bold text-[var(--text-primary)]">R$ 490<span className="text-xs font-normal text-[var(--text-muted)]">/mês</span></p>
-              <ul className="text-xs text-[var(--text-secondary)] space-y-2 pt-2 border-t border-[var(--border)]">
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Até 15 Psicólogos</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> 35 Pacientes/psi (525 tot.)</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Triagem Automatizada</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Cobrança Asaas Integrada</li>
-              </ul>
-            </div>
-
-            {/* Enterprise */}
-            <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] space-y-3 relative">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Redes & Hospitais</span>
-              <h4 className="font-heading font-bold text-base text-[var(--text-primary)]">Enterprise</h4>
-              <p className="text-xl font-bold text-[var(--text-primary)]">Sob Medida</p>
-              <ul className="text-xs text-[var(--text-secondary)] space-y-2 pt-2 border-t border-[var(--border)]">
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Psicólogos Ilimitados</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Pacientes Ilimitados</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> Múltiplos Líderes Clínicos</li>
-                <li className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" /> SLA e Auditoria CFP</li>
-              </ul>
-            </div>
-          </div>
+          <p>
+            Para incluir mais profissionais, escreva para{' '}
+            <a href={`mailto:${CONTATO_COMERCIAL}`} className="text-[var(--accent)] font-semibold hover:underline">
+              {CONTATO_COMERCIAL}
+            </a>
+            . O valor é combinado com a equipe CARITAS.
+          </p>
         </div>
       </Modal>
     </div>

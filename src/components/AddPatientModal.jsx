@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { criarPaciente, atualizarPaciente, buscarPacientePorCPF, lerClinicas } from '../services/patientService';
 import { formatCPF, cleanCPF, validarCPF, formatTelefone } from '../utils/formatUtils';
 import { useEscapeKey } from '../hooks/useKeyboard';
-import { AlertTriangle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
 const toTitleCase = (str) => {
@@ -27,8 +26,6 @@ export default function AddPatientModal({
   onClose, 
   onPatientAdded, 
   patientToEdit = null,
-  isLimitReached = false,
-  maxPacientes = 20,
 }) {
   const [formData, setFormData] = useState({ nome: '', data_nascimento: '', telefone: '', cpf: '', valor_sessao: '', clinica: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -148,29 +145,6 @@ export default function AddPatientModal({
           </div>
         )}
 
-        {isLimitReached && !patientToEdit ? (
-          <div className="space-y-4 py-4 text-center">
-            <div className="w-14 h-14 mx-auto rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
-              <AlertTriangle size={28} />
-            </div>
-            <h3 className="text-xl font-heading font-bold" style={{ color: 'var(--text-primary)' }}>
-              Limite de {maxPacientes} Pacientes Atingido
-            </h3>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              O plano padrão para cada psicólogo da clínica é de até {maxPacientes} pacientes cadastrados.
-              Para adicionar mais pacientes, solicite liberação de cota ao seu Líder Clínico ou faça upgrade para o Plano Ilimitado.
-            </p>
-            <div className="pt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="ds-btn ds-btn-primary w-full py-2.5 font-semibold"
-              >
-                Entendido
-              </button>
-            </div>
-          </div>
-        ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>Nome Completo *</label>
@@ -279,7 +253,6 @@ export default function AddPatientModal({
             </button>
           </div>
         </form>
-        )}
       </div>
     </div>
   );

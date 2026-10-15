@@ -397,7 +397,12 @@ exports.criarCobrancaPix = onCall({ region: REGIAO, cors: true, secrets: [ASAAS_
         externalReference: montarReferencia(auth.uid, planoId),
       },
     });
-    const qr = await chamarAsaas(config, `/payments/${cobranca.id}/pixQrCode`);
+    // Sem QR (ex.: conta Asaas sem chave Pix) a cobrança não serve: apaga para não sobrar cobrança órfã
+    const qr = await chamarAsaas(config, `/payments/${cobranca.id}/pixQrCode`).catch(async (err) => {
+      await chamarAsaas(config, `/payments/${cobranca.id}`, { metodo: "DELETE" })
+        .catch((e) => console.error("Falha ao apagar cobrança PIX sem QR:", e.message));
+      throw err;
+    });
     return {
       paymentId: cobranca.id,
       valor: plano.preco,

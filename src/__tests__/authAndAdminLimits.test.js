@@ -16,7 +16,6 @@ import {
   obterLogsAuditoria
 } from '../services/adminService';
 import {
-  obterLimitePacientesPsicologo,
   obterLimitePsicologosEquipe
 } from '../services/liderService';
 
@@ -209,8 +208,7 @@ describe('Gestão de Clientes / Clínicas e Limites de Líder no Super Admin', (
   });
 
   it('deve refletir limites dinâmicos no liderService para psicólogo e líder', () => {
-    // Sem cliente configurado -> fallback padrão (8 psicólogos, 20 pacientes)
-    expect(obterLimitePacientesPsicologo('avulso@email.com')).toBe(20);
+    // Sem cliente configurado -> fallback padrão (8 psicólogos; pacientes são ilimitados)
     expect(obterLimitePsicologosEquipe('avulso@email.com')).toBe(8);
 
     // Com cliente configurado
@@ -224,7 +222,6 @@ describe('Gestão de Clientes / Clínicas e Limites de Líder no Super Admin', (
     });
 
     expect(obterLimitePsicologosEquipe('vip.lider@clinica.com')).toBe(15);
-    expect(obterLimitePacientesPsicologo('vip.psi@clinica.com')).toBe(40);
   });
 
   it('deve permitir atualizar e excluir cliente/clínica', async () => {
