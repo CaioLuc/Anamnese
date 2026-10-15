@@ -10,7 +10,6 @@ import Button from './ui/Button';
 import Badge from './ui/Badge';
 import Skeleton from './ui/Skeleton';
 import EmptyState from './ui/EmptyState';
-import { obterLimitePacientesPsicologo } from '../services/liderService';
 import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, Users, Phone, FileText, Trash2 } from 'lucide-react';
 
@@ -21,8 +20,6 @@ export default function Pacientes({
   autoOpenPatient, 
   autoOpenTab, 
   onAutoOpenDone,
-  isLider = false,
-  userEmail = '',
 }) {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [isEditPatientModalOpen, setIsEditPatientModalOpen] = useState(false);
@@ -99,8 +96,6 @@ export default function Pacientes({
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedPatients = filteredPatients.slice(startIndex, startIndex + itemsPerPage);
-  const maxPacientes = obterLimitePacientesPsicologo(userEmail);
-  const isLimitReached = !isLider && patients.length >= maxPacientes;
 
   return (
     <div className="w-full">
@@ -108,21 +103,19 @@ export default function Pacientes({
         <div>
           <div className="flex items-center gap-3">
             <h2 className="text-3xl font-heading font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Pacientes cadastrados</h2>
-            {!isLider && (
-              <Badge variant={isLimitReached ? 'danger' : 'neutral'}>
-                {patients.length}/{maxPacientes} Pacientes
-              </Badge>
-            )}
+            <Badge variant="neutral">
+              {patients.length} {patients.length === 1 ? 'paciente' : 'pacientes'}
+            </Badge>
           </div>
           <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Gerencie sua lista de pacientes e acompanhe as evoluções psicoterapêuticas.</p>
         </div>
         <Button 
           onClick={() => setIsPatientModalOpen(true)} 
-          variant={isLimitReached ? 'secondary' : 'primary'}
+          variant="primary"
           className="flex-shrink-0"
         >
           <Plus size={18} />
-          {isLimitReached ? 'Limite Atingido (Upgrade)' : 'Adicionar Paciente'}
+          Adicionar Paciente
         </Button>
       </div>
 
@@ -290,8 +283,6 @@ export default function Pacientes({
         isOpen={isPatientModalOpen} 
         onClose={() => setIsPatientModalOpen(false)} 
         onPatientAdded={onPatientAddedLocal}
-        isLimitReached={isLimitReached}
-        maxPacientes={maxPacientes}
       />
       {/* key por paciente: remonta o modal e evita vazar estado (ex.: anamnese não salva) entre pacientes */}
       <PatientProfileModal

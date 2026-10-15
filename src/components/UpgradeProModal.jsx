@@ -1,4 +1,8 @@
+import { useNavigate } from 'react-router-dom';
+import { PLANOS_CARITAS, formatarPrecoPlano } from '../services/paymentService';
+
 export default function UpgradeProModal({ isOpen, onClose }) {
+  const navigate = useNavigate();
   if (!isOpen) return null;
 
   return (
@@ -66,10 +70,10 @@ export default function UpgradeProModal({ isOpen, onClose }) {
         {/* CTA */}
         <div className="px-8 pb-8 space-y-3">
           <button
-            onClick={() => { alert('Funcionalidade de pagamento em breve!'); }}
+            onClick={() => { onClose(); navigate('/perfil'); }}
             className="w-full py-3.5 bg-gradient-to-r from-brand-500 via-brand-500 to-clay-500 hover:from-brand-600 hover:via-brand-600 hover:to-clay-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-brand-500/20 transition-all hover:shadow-brand-500/40 hover:scale-[1.02] active:scale-[0.98]"
           >
-            Assinar PRO — R$ 59,90/mês
+            Assinar PRO — {formatarPrecoPlano(PLANOS_CARITAS.profissional)}
           </button>
           <button
             onClick={onClose}

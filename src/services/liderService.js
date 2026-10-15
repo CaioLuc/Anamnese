@@ -1,38 +1,12 @@
 import logger from '../utils/logger';
 
-// Limite regulamentar do plano CARITAS para Líder Clínico
+// Tamanho padrão da equipe no Plano Clínica & Equipe
 export const MAX_PSICOLOGOS_EQUIPE = 8;
+// Capacidade de agenda sugerida por psicólogo na distribuição da triagem (não é limite de plano: pacientes são ilimitados)
 export const MAX_PACIENTES_POR_PSICOLOGO = 20;
 
 export const STORAGE_KEY_EQUIPE = 'caritas_lider_equipe';
 export const STORAGE_KEY_TRIAGEM = 'caritas_lider_triagem';
-
-/**
- * Retorna o limite de pacientes contratado para o psicólogo (padrão 20 ou customizado pela clínica)
- */
-export function obterLimitePacientesPsicologo(email) {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem('caritas_admin_clientes_clinicas');
-      if (raw) {
-        const clientes = JSON.parse(raw);
-        if (email) {
-          const clean = email.toLowerCase().trim();
-          const match = clientes.find(c => 
-            (c.emailLider || '').toLowerCase() === clean ||
-            (c.psicologos || []).some(p => (typeof p === 'string' ? p : p.email || '').toLowerCase() === clean)
-          );
-          if (match && match.maxPacientesPorPsicologo) {
-            return Number(match.maxPacientesPorPsicologo);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    logger.warn('Erro ao ler limites de pacientes:', err);
-  }
-  return MAX_PACIENTES_POR_PSICOLOGO;
-}
 
 /**
  * Retorna o limite de psicólogos contratado para o líder clínico (padrão 8 ou customizado pela clínica)

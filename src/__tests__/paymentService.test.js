@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { createRequire } from 'module';
 import * as svc from '../services/paymentService';
 import {
   PLANOS_CARITAS,
@@ -26,13 +27,35 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
       expect(PLANOS_CARITAS.profissional).toBeDefined();
       expect(PLANOS_CARITAS.clinica).toBeDefined();
 
-      expect(PLANOS_CARITAS.basico.preco).toBe(79.90);
-      expect(PLANOS_CARITAS.profissional.preco).toBe(139.90);
-      expect(PLANOS_CARITAS.clinica.preco).toBe(299.90);
+      expect(PLANOS_CARITAS.basico.preco).toBe(59.90);
+      expect(PLANOS_CARITAS.profissional.preco).toBe(119.90);
+      // Clínica: preço negociado, fora do checkout
+      expect(PLANOS_CARITAS.clinica.preco).toBeNull();
+      expect(PLANOS_CARITAS.clinica.sobConsulta).toBe(true);
+      expect(svc.PLANOS_CONTRATAVEIS.map((p) => p.id)).toEqual(['basico', 'profissional']);
+      expect(svc.formatarPrecoPlano(PLANOS_CARITAS.clinica)).toBe('Sob consulta');
+      expect(svc.formatarPrecoPlano(PLANOS_CARITAS.basico)).toBe('R$ 59,90/mês');
+      // Plano fora do catálogo (ids legados 'pro'/'premium', 'isento') não pode derrubar a tela
+      expect(svc.formatarPrecoPlano(PLANOS_CARITAS.pro)).toBe('');
+      expect(svc.planoContratavel('profissional')).toBe('profissional');
+      expect(svc.planoContratavel('clinica')).toBe('basico');
+      expect(svc.planoContratavel('pro')).toBe('basico');
+      expect(svc.planoContratavel(undefined)).toBe('basico');
 
-      expect(PLANOS_CARITAS.basico.maxPacientes).toBe(20);
-      expect(PLANOS_CARITAS.profissional.maxPacientes).toBe(50);
-      expect(PLANOS_CARITAS.clinica.maxPacientes).toBe(160);
+      // Pacientes ilimitados: nenhum plano carrega teto de pacientes
+      Object.values(PLANOS_CARITAS).forEach((p) => expect(p.maxPacientes).toBeUndefined());
+    });
+  });
+
+  describe('Conta nova paga antes de usar', () => {
+    it('bloqueia perfil pendente de pagamento', () => {
+      const res = verificarStatusAssinatura({ plano: 'basico', statusPagamento: 'pendente' });
+      expect(res.emDia).toBe(false);
+      expect(res.status).toBe('pendente');
+    });
+
+    it('isenção do admin vale mesmo para conta pendente', () => {
+      expect(verificarStatusAssinatura({ statusPagamento: 'pendente', isIsento: true }).emDia).toBe(true);
     });
   });
 
@@ -151,6 +174,15 @@ describe('Serviço de Pagamentos e Planos (paymentService)', () => {
     it('expõe apenas os callables de cobrança', () => {
       expect(typeof svc.iniciarAssinaturaCartao).toBe('function');
       expect(typeof svc.gerarCobrancaPix).toBe('function');
+    });
+
+    it('preços do cliente batem com os do servidor (functions/asaas.js)', () => {
+      const { PLANOS_COBRANCA } = createRequire(import.meta.url)('../../functions/asaas.js');
+      expect(Object.keys(PLANOS_COBRANCA).sort()).toEqual(svc.PLANOS_CONTRATAVEIS.map((p) => p.id).sort());
+      svc.PLANOS_CONTRATAVEIS.forEach((p) => {
+        expect(PLANOS_COBRANCA[p.id].preco).toBeCloseTo(p.preco, 2);
+        expect(PLANOS_COBRANCA[p.id].maxLocais).toBe(p.maxLocais);
+      });
     });
   });
 });

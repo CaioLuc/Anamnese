@@ -6,7 +6,11 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { logoutFirebaseUser } from '../services/authService';
 import { 
-  PLANOS_CARITAS, 
+  PLANOS_CARITAS,
+  PLANOS_CONTRATAVEIS,
+  CONTATO_COMERCIAL,
+  formatarPrecoPlano,
+  planoContratavel, 
   iniciarAssinaturaCartao, 
   gerarCobrancaPix, 
   detectarBandeiraCartao 
@@ -17,7 +21,8 @@ import logger from '../utils/logger';
 export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamentoRegularizado }) {
   const { showToast } = useToast();
   const [metodo, setMetodo] = useState('cartao'); // 'cartao' | 'pix'
-  const [planoId, setPlanoId] = useState(perfil?.plano || 'basico');
+  const [planoId, setPlanoId] = useState(planoContratavel(perfil?.plano));
+  const contaNova = statusAssinatura?.status === 'pendente';
   const [isLoading, setIsLoading] = useState(false);
 
   // Cartão state
@@ -104,16 +109,18 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
             <ShieldAlert size={28} />
           </div>
           <h1 className="text-2xl font-heading font-bold text-[var(--text-primary)]">
-            Regularização de Mensalidade
+            {contaNova ? 'Ative sua conta' : 'Regularização de Mensalidade'}
           </h1>
           <p className="text-sm text-[var(--text-secondary)] max-w-lg mx-auto">
             {statusAssinatura?.motivo || 'Identificamos uma pendência na sua assinatura do CARITAS. Regularize seu pagamento para continuar atendendo normalmente.'}
           </p>
 
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-2 max-w-md mx-auto">
-            <ShieldCheck size={16} className="shrink-0 text-emerald-500" />
-            <span>Seus prontuários e pacientes continuam 100% seguros e guardados (CFP Res. 01/2009).</span>
-          </div>
+          {!contaNova && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-2 max-w-md mx-auto">
+              <ShieldCheck size={16} className="shrink-0 text-emerald-500" />
+              <span>Seus prontuários e pacientes continuam 100% seguros e guardados (CFP Res. 01/2009).</span>
+            </div>
+          )}
         </div>
 
         {/* Card de Pagamento Imediato */}
@@ -132,11 +139,17 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                   }}
                   className="ds-input font-medium text-sm"
                 >
-                  <option value="basico">Plano Essencial (R$ 79,90/mês)</option>
-                  <option value="profissional">Plano Profissional Pro (R$ 139,90/mês)</option>
-                  <option value="clinica">Plano Clínica & Equipe (R$ 299,90/mês)</option>
+                  {PLANOS_CONTRATAVEIS.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nome} ({formatarPrecoPlano(p)})</option>
+                  ))}
                 </select>
               </div>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
+                Clínica com equipe? Valor sob consulta:{' '}
+                <a href={`mailto:${CONTATO_COMERCIAL}`} className="text-[var(--accent)] font-semibold hover:underline">
+                  {CONTATO_COMERCIAL}
+                </a>
+              </p>
             </div>
 
             {/* Alternador de método */}

@@ -3,11 +3,11 @@
 const crypto = require("crypto");
 
 // Fonte da verdade dos preços no servidor: o cliente envia só o planoId.
-// Precisa bater com PLANOS_CARITAS (src/services/paymentService.js).
+// Precisa bater com PLANOS_CARITAS (src/services/paymentService.js; teste em asaasWebhook.test.js).
+// O Plano Clínica não entra aqui: preço negociado e ativação manual pelo admin.
 const PLANOS_COBRANCA = {
-  basico: { nome: "Plano Essencial", preco: 79.9, maxLocais: 1 },
-  profissional: { nome: "Plano Profissional (Pro)", preco: 139.9, maxLocais: 4 },
-  clinica: { nome: "Plano Clínica & Equipe", preco: 299.9, maxLocais: 10 },
+  basico: { nome: "Plano Essencial", preco: 59.9, maxLocais: 1 },
+  profissional: { nome: "Plano Profissional (Pro)", preco: 119.9, maxLocais: 4 },
 };
 
 const URL_ASAAS = {

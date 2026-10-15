@@ -84,22 +84,23 @@ service cloud.firestore {
       // O dono lê o próprio perfil e edita dados cadastrais. Plano, cobrança e trial são gravados
       // só pelas Cloud Functions (webhookAsaas, Admin SDK) e pelo admin (docs/decisoes.md, cobrança Asaas).
       allow read: if isOwner(uid) || isAdmin();
-      // Perfil inicial só nasce em trial, no plano básico, sem vínculo de cobrança
+      // Perfil inicial nasce pendente de pagamento (sem trial), no plano básico, sem vínculo de cobrança.
+      // statusPagamento é obrigatório: perfil sem status seria tratado como ativo pelo paywall.
       allow create: if isAdmin() || (isOwner(uid) &&
-        request.resource.data.get('isIsento', false) == false &&
+        request.resource.data.statusPagamento == 'pendente' &&
         request.resource.data.get('plano', 'basico') == 'basico' &&
-        request.resource.data.get('statusPagamento', 'trial') == 'trial' &&
         request.resource.data.get('max_locais', 1) == 1 &&
-        !('cartaoInfo' in request.resource.data) &&
-        !('historicoFaturas' in request.resource.data) &&
-        !('asaasCustomerId' in request.resource.data) &&
-        !('asaasSubscriptionId' in request.resource.data));
+        request.resource.data.get('ativo', true) == true &&
+        !request.resource.data.keys().hasAny([
+          'isIsento', 'trialAte', 'proximoVencimento', 'cartaoInfo', 'historicoFaturas',
+          'asaasCustomerId', 'asaasSubscriptionId'
+        ]));
       allow update: if isAdmin() || (isOwner(uid) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'ativo', 'isIsento', 'plano', 'statusPagamento', 'trialAte', 'proximoVencimento',
           'historicoFaturas', 'max_locais', 'cartaoInfo', 'asaasCustomerId', 'asaasSubscriptionId'
         ]));
-      // Apagar perfil (e recomeçar o trial) é só do admin
+      // Apagar perfil (e recriá-lo) é só do admin
       allow delete: if isAdmin();
 
       // Regras para subcoleções dentro do perfil do psicólogo
