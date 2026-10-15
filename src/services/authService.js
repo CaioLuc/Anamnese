@@ -6,10 +6,11 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, terminate, clearIndexedDbPersistence } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, auth, db } from './firebaseConfig';
 import { trackAction, limparLogsLocais } from './logService';
+import { limparStorageLider } from './liderService';
 import logger from '../utils/logger';
 
 export const loginFirebaseUser = async (email, password) => {
@@ -40,6 +41,8 @@ export const cadastrarFirebaseUser = async (email, password, nome = '') => {
 // Na saída por inatividade os rascunhos (sessionStorage, só desta aba) ficam para a mesma pessoa retomar.
 const limparDadosLocaisSensiveis = (manterRascunhos) => {
   limparLogsLocais();
+  // Fila de triagem do Líder (nome, idade, queixa) não é rascunho: sai sempre
+  limparStorageLider();
   if (manterRascunhos) return;
   for (const store of [localStorage, sessionStorage]) {
     try {
@@ -58,7 +61,12 @@ export const logoutFirebaseUser = async (motivo = 'manual') => {
     await Promise.race([trackAction('LOGOUT', { method: motivo }), new Promise((r) => setTimeout(r, 1500))]);
     limparDadosLocaisSensiveis(motivo === 'inatividade');
     await signOut(auth);
-    // Forçar reload para capturar novos deploys
+    // A cópia offline do Firestore (IndexedDB) guarda CPF e prontuário em texto puro: não fica no computador do consultório.
+    // Falha se houver outra aba aberta; aí a limpeza ocorre no próximo logout.
+    await terminate(db)
+      .then(() => clearIndexedDbPersistence(db))
+      .catch((err) => logger.warn('Cache local do Firestore não foi apagado:', err));
+    // Forçar reload para capturar novos deploys (e recriar o Firestore encerrado acima)
     window.location.href = '/';
   } catch (error) {
     logger.error("Logout errorMessage:", error);

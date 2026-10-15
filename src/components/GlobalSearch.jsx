@@ -97,7 +97,8 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
 
   const handleSelect = (item) => {
     onClose();
-    trackAction('SEARCH_SELECT', { query, type: item.type, label: item.label, path: item.path });
+    // Sem o texto digitado nem o rótulo: os dois podem ser nome ou CPF de paciente, e o log de auditoria é lido pelo admin
+    trackAction('SEARCH_SELECT', { type: item.type, path: item.path });
     if (item.type === 'patient') {
       onNavigate(item.path, { openPatient: item.patient });
     } else if (item.actionType === 'addPatient') {
