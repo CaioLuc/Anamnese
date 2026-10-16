@@ -93,12 +93,13 @@ service cloud.firestore {
         request.resource.data.get('ativo', true) == true &&
         !request.resource.data.keys().hasAny([
           'isIsento', 'trialAte', 'proximoVencimento', 'cartaoInfo', 'historicoFaturas',
-          'asaasCustomerId', 'asaasSubscriptionId'
+          'asaasCustomerId', 'asaasSubscriptionId', 'equipeIlimitada'
         ]));
       allow update: if isAdmin() || (isOwner(uid) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'ativo', 'isIsento', 'plano', 'statusPagamento', 'trialAte', 'proximoVencimento',
-          'historicoFaturas', 'max_locais', 'cartaoInfo', 'asaasCustomerId', 'asaasSubscriptionId'
+          'historicoFaturas', 'max_locais', 'cartaoInfo', 'asaasCustomerId', 'asaasSubscriptionId',
+          'equipeIlimitada'
         ]));
       // Apagar perfil (e recriá-lo) é só do admin
       allow delete: if isAdmin();

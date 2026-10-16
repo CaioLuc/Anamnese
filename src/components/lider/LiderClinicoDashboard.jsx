@@ -33,7 +33,9 @@ import {
 // Abaixo de md cada linha da tabela vira um cartão; o rótulo da coluna vem do data-label
 const TD_MOBILE = 'max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:px-0 max-md:py-1.5 max-md:text-left max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:font-semibold max-md:before:text-[var(--text-muted)]';
 
-export default function LiderClinicoDashboard() {
+export default function LiderClinicoDashboard({ limiteEquipe = MAX_PSICOLOGOS_EQUIPE }) {
+  const ilimitado = !Number.isFinite(limiteEquipe);
+  const limiteTexto = ilimitado ? 'sem limite' : limiteEquipe;
   const { showToast } = useToast();
   const [equipe, setEquipe] = useState(() => obterEquipeLider());
   const [triagem, setTriagem] = useState(() => obterFilaTriagem());
@@ -67,7 +69,7 @@ export default function LiderClinicoDashboard() {
         email: novoEmail,
         especialidade: novaEspecialidade,
         maxPacientes: novoMaxPacientes,
-      });
+      }, limiteEquipe);
       showToast({ type: 'success', message: 'Psicólogo adicionado à equipe com sucesso!' });
       setIsAddModalOpen(false);
       setNovoNome('');
@@ -125,7 +127,7 @@ export default function LiderClinicoDashboard() {
               Liderança Clínica & Supervisão
             </h2>
             <Badge variant="info">
-              {equipe.length}/{MAX_PSICOLOGOS_EQUIPE} Profissionais
+              {ilimitado ? `${equipe.length} Profissionais` : `${equipe.length}/${limiteEquipe} Profissionais`}
             </Badge>
           </div>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -134,7 +136,7 @@ export default function LiderClinicoDashboard() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {equipe.length >= MAX_PSICOLOGOS_EQUIPE ? (
+          {equipe.length >= limiteEquipe ? (
             <Button
               variant="secondary"
               onClick={() => setIsUpgradeModalOpen(true)}
@@ -179,12 +181,12 @@ export default function LiderClinicoDashboard() {
             <Users size={18} className="text-[var(--accent)]" />
           </div>
           <div className="text-2xl font-bold font-heading text-[var(--text-primary)]">
-            {metricas.totalProfissionais} <span className="text-sm font-normal text-[var(--text-muted)]">/ {MAX_PSICOLOGOS_EQUIPE} vagas</span>
+            {metricas.totalProfissionais} <span className="text-sm font-normal text-[var(--text-muted)]">/ {limiteTexto} vagas</span>
           </div>
           <div className="w-full bg-[var(--bg-secondary)] rounded-full h-1.5 overflow-hidden">
             <div
               className="bg-[var(--accent)] h-1.5 rounded-full transition-all"
-              style={{ width: `${(metricas.totalProfissionais / MAX_PSICOLOGOS_EQUIPE) * 100}%` }}
+              style={{ width: ilimitado ? '0%' : `${(metricas.totalProfissionais / limiteEquipe) * 100}%` }}
             />
           </div>
         </Card>
@@ -426,7 +428,7 @@ export default function LiderClinicoDashboard() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Adicionar Psicólogo à Equipe"
-        subtitle={`Vagas preenchidas: ${equipe.length} de ${MAX_PSICOLOGOS_EQUIPE}`}
+        subtitle={`Vagas preenchidas: ${equipe.length} de ${limiteTexto}`}
         size="md"
         footer={
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
@@ -533,7 +535,7 @@ export default function LiderClinicoDashboard() {
       >
         <div className="space-y-3 py-2 text-sm text-[var(--text-secondary)] leading-relaxed">
           <p>
-            Sua clínica conta hoje com 1 Líder Clínico e até {MAX_PSICOLOGOS_EQUIPE} psicólogos, com pacientes ilimitados.
+            Sua clínica conta hoje com 1 Líder Clínico e até {limiteTexto} psicólogos, com pacientes ilimitados.
           </p>
           <p>
             Para incluir mais profissionais, escreva para{' '}

@@ -180,10 +180,11 @@ export function salvarEquipeLider(equipe) {
 /**
  * Adiciona um psicólogo à equipe (limite de 8 profissionais)
  */
-export function adicionarMembroEquipe(membro) {
+// limite: Infinity quando o admin libera a equipe (perfil.equipeIlimitada)
+export function adicionarMembroEquipe(membro, limite = MAX_PSICOLOGOS_EQUIPE) {
   const equipe = obterEquipeLider();
-  if (equipe.length >= MAX_PSICOLOGOS_EQUIPE) {
-    throw new Error(`Limite máximo atingido: a equipe de supervisão pode ter até ${MAX_PSICOLOGOS_EQUIPE} psicólogos.`);
+  if (equipe.length >= limite) {
+    throw new Error(`Limite máximo atingido: a equipe de supervisão pode ter até ${limite} psicólogos.`);
   }
 
   const novoMembro = {

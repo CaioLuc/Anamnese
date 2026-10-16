@@ -294,7 +294,7 @@ function AppMain() {
         if (!isLider) {
           return <DashboardSummary patients={patients} isLoading={isLoadingPatients} onNavigate={handleNavigate} perfil={perfilPsicologo} />;
         }
-        return <LiderClinicoDashboard />;
+        return <LiderClinicoDashboard limiteEquipe={perfilPsicologo?.equipeIlimitada ? Infinity : undefined} />;
       case 'questionarios':
         return <Questionarios />;
       case 'clinicas':
