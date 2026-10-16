@@ -67,27 +67,32 @@ export default function HelpPanel({ isOpen, onClose }) {
       {/* Panel */}
       <div
         ref={panelRef}
-        className={`fixed top-0 right-0 z-[401] h-full w-full max-w-md shadow-2xl transition-transform duration-300 ease-out flex flex-col ${
+        role="dialog"
+        aria-modal="true"
+        aria-label="Central de Ajuda"
+        className={`fixed top-0 right-0 z-[401] h-[100dvh] w-full sm:max-w-md shadow-2xl transition-transform duration-300 ease-out flex flex-col safe-top safe-bottom ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{ backgroundColor: 'var(--bg-card)', borderLeft: '1px solid var(--border)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 shrink-0" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-light)' }}>
+        <div className="flex items-center justify-between p-4 sm:p-6 shrink-0" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--accent-light)' }}>
               <svg className="w-5 h-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <div>
-              <h2 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Central de Ajuda</h2>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Dúvidas frequentes e guias</p>
+            <div className="min-w-0">
+              <h2 className="text-lg font-heading font-bold truncate" style={{ color: 'var(--text-primary)' }}>Central de Ajuda</h2>
+              <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>Dúvidas frequentes e guias</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-muted)' }}
+            aria-label="Fechar central de ajuda"
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors shrink-0"
+            style={{ color: 'var(--text-muted)' }}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -96,7 +101,7 @@ export default function HelpPanel({ isOpen, onClose }) {
         </div>
 
         {/* Search */}
-        <div className="p-4 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="p-3.5 sm:p-4 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -107,12 +112,14 @@ export default function HelpPanel({ isOpen, onClose }) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar ajuda..."
-              className="ds-input pl-10"
+              className="ds-input pl-10 pr-10"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}
+                aria-label="Limpar busca"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg"
+                style={{ color: 'var(--text-muted)' }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

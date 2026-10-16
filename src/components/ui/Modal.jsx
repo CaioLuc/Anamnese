@@ -45,7 +45,7 @@ export default function Modal({
     md: 'sm:max-w-lg',
     lg: 'sm:max-w-2xl',
     xl: 'sm:max-w-4xl',
-    full: 'sm:max-w-6xl sm:h-[90vh]',
+    full: 'sm:max-w-6xl sm:h-[90dvh]',
   }[size] || 'sm:max-w-lg';
 
   return (
@@ -57,7 +57,7 @@ export default function Modal({
     >
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" 
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
         onClick={onClose}
         aria-hidden="true"
       />
@@ -66,20 +66,20 @@ export default function Modal({
       <div 
         ref={dialogRef}
         className={`relative z-10 w-full bg-[var(--bg-card)] border border-[var(--border)] shadow-2xl 
-          rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden 
+          rounded-t-2xl sm:rounded-2xl max-h-[92dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden 
           animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-150 ${sizeClasses} ${className}`}
       >
         {/* Header */}
         {(title || onClose) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-            <div>
+          <div className="flex items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--border)] shrink-0">
+            <div className="min-w-0 flex-1">
               {title && (
-                <h3 id="modal-title" className="text-lg font-heading font-semibold text-[var(--text-primary)]">
+                <h3 id="modal-title" className="text-base sm:text-lg font-heading font-semibold text-[var(--text-primary)] break-words">
                   {title}
                 </h3>
               )}
               {subtitle && (
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5 break-words">{subtitle}</p>
               )}
             </div>
             {onClose && (
@@ -87,7 +87,7 @@ export default function Modal({
                 type="button"
                 onClick={onClose}
                 aria-label="Fechar janela modal"
-                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] transition-colors"
+                className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] transition-colors shrink-0"
               >
                 <X size={18} />
               </button>
@@ -96,13 +96,13 @@ export default function Modal({
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-primary)]/50 shrink-0 flex items-center justify-end gap-3">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-[var(--border)] bg-[var(--bg-primary)]/50 shrink-0 flex items-center justify-end gap-3 safe-bottom">
             {footer}
           </div>
         )}

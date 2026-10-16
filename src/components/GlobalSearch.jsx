@@ -111,14 +111,19 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[500] flex items-start justify-center pt-[15vh] p-4">
+    <div className="fixed inset-0 z-[500] flex items-start justify-center pt-3 sm:pt-[14vh] p-2.5 sm:p-4 safe-top">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg ds-card rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Busca rápida"
+        className="relative w-full max-w-lg max-h-[82dvh] flex flex-col ds-card rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      >
         {/* Search Input */}
-        <div className="flex items-center gap-3 px-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -129,16 +134,24 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Buscar paciente, ação ou tela..."
-            className="flex-1 py-4 bg-transparent text-sm placeholder-slate-400 focus:outline-none"
+            className="flex-1 min-w-0 py-3.5 sm:py-4 bg-transparent text-base sm:text-sm placeholder-slate-400 focus:outline-none"
             style={{ color: 'var(--text-primary)' }}
           />
+          <button
+            type="button"
+            onClick={onClose}
+            className="sm:hidden px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 min-h-[36px]"
+            style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+          >
+            Fechar
+          </button>
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
             ESC
           </kbd>
         </div>
 
         {/* Results */}
-        <div ref={listRef} className="max-h-72 overflow-y-auto custom-scrollbar py-2">
+        <div ref={listRef} className="flex-1 max-h-[58dvh] sm:max-h-72 overflow-y-auto custom-scrollbar py-2">
           {results.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Nenhum resultado para "{query}"</p>
@@ -156,12 +169,12 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
                   key={`${item.type}-${item.label}-${idx}`}
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors"
+                  className="w-full text-left px-3.5 sm:px-4 py-2.5 min-h-[48px] flex items-center gap-3 transition-colors"
                   style={{
                     backgroundColor: selectedIndex === idx ? 'var(--accent-light)' : 'transparent'
                   }}
                 >
-                  <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent)' }}>
+                  <div className="w-8 h-8 sm:w-7 sm:h-7 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent)' }}>
                     <item.icon size={15} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -182,7 +195,7 @@ export default function GlobalSearch({ isOpen, onClose, patients = [], onNavigat
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
+        <div className="hidden sm:flex items-center justify-between px-4 py-2 shrink-0" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
           <div className="flex items-center gap-3 text-[10px]" style={{ color: 'var(--text-muted)' }}>
             <span className="flex items-center gap-1">
               <kbd className="px-1 py-0.5 rounded text-[9px] font-mono" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>↑↓</kbd> navegar

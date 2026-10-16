@@ -31,7 +31,7 @@ export default function Badge({ children, variant = 'neutral', size = 'sm', clas
 
   return (
     <span 
-      className={`${baseClasses} ${variantClasses[variant] || ''} ${sizes[size] || sizes.sm} ${className}`}
+      className={`${baseClasses} max-w-full truncate ${variantClasses[variant] || ''} ${sizes[size] || sizes.sm} ${className}`}
       style={customStyle}
     >
       {children}

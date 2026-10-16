@@ -19,21 +19,39 @@ export default function Select({
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const selectedOption = options.find(o => (typeof o === 'string' ? o : o.value) === value);
   const displayLabel = selectedOption ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label) : placeholder;
 
   const sizeClasses = {
-    sm: "min-h-[28px] px-2 py-1 text-[11px]",
-    md: "min-h-[38px] px-3 py-2 text-sm"
+    sm: "min-h-[32px] px-2.5 py-1 text-xs",
+    md: "min-h-[42px] px-3 py-2 text-sm"
+  };
+
+  const handleKeyDown = (e) => {
+    if (disabled) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setIsOpen((prev) => !prev);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
   };
 
   return (
     <div ref={containerRef} className={`relative ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div 
+        role="combobox"
+        aria-expanded={isOpen}
+        tabIndex={disabled ? -1 : 0}
         onClick={() => !disabled && setIsOpen(!isOpen)}
+        onKeyDown={handleKeyDown}
         className={`ds-input cursor-pointer flex items-center justify-between w-full bg-[var(--bg-card)] ${sizeClasses[size]}`}
       >
         <span className={`truncate ${!value ? "text-[var(--text-muted)]" : "text-[var(--text-primary)]"}`}>
@@ -51,7 +69,8 @@ export default function Select({
       
       {isOpen && (
         <div 
-          className="absolute z-50 w-full min-w-[120px] mt-1 bg-[var(--bg-card)] rounded-xl shadow-xl overflow-hidden py-1"
+          role="listbox"
+          className="absolute left-0 right-0 z-50 w-full min-w-[140px] mt-1 bg-[var(--bg-card)] rounded-xl shadow-xl overflow-hidden py-1"
           style={{ border: '1px solid var(--border)' }}
         >
           <div className="max-h-60 overflow-y-auto custom-scrollbar">
@@ -63,12 +82,14 @@ export default function Select({
               return (
                 <div 
                   key={i}
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={(e) => {
                     e.stopPropagation();
                     onChange(val);
                     setIsOpen(false);
                   }}
-                  className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center ${isSelected ? 'font-bold' : 'font-medium'}`}
+                  className={`px-3 py-2.5 sm:py-2 min-h-[42px] sm:min-h-0 text-sm cursor-pointer transition-colors flex items-center ${isSelected ? 'font-bold' : 'font-medium'}`}
                   style={{ 
                     backgroundColor: isSelected ? 'var(--accent-light)' : 'transparent',
                     color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',

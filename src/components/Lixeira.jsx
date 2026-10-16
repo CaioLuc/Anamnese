@@ -71,10 +71,10 @@ export default function Lixeira({ onPatientRestored }) {
   );
 
   return (
-    <div className="animate-in fade-in duration-500 w-full h-full flex flex-col p-6 sm:p-10 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-heading font-bold tracking-tight flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-          <Trash2 size={32} style={{ color: 'var(--text-muted)' }} />
+    <div className="animate-in fade-in duration-500 w-full h-full flex flex-col py-1 sm:p-6 max-w-4xl mx-auto">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight flex items-center gap-2.5 sm:gap-3" style={{ color: 'var(--text-primary)' }}>
+          <Trash2 size={28} className="shrink-0" style={{ color: 'var(--text-muted)' }} />
           Lixeira
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
@@ -85,7 +85,7 @@ export default function Lixeira({ onPatientRestored }) {
       {isLoading ? (
         <Spinner />
       ) : deletados.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center py-12">
           <div className="text-center max-w-sm">
             <div className="w-20 h-20 mx-auto mb-4 rounded-3xl flex items-center justify-center" style={{ backgroundColor: 'var(--status-success-bg)' }}>
               <Trash2 size={40} style={{ color: 'var(--status-success)' }} />
@@ -112,25 +112,25 @@ export default function Lixeira({ onPatientRestored }) {
                     opacity: isRestoring ? 0.6 : 1
                 }}
               >
-                <div className="flex items-center gap-4 min-w-0">
+                <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
                   {/* Avatar */}
                   <div 
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0"
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-bold text-base sm:text-lg shrink-0"
                     style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
                   >
                     {pac.nome?.charAt(0)?.toUpperCase() || '?'}
                   </div>
 
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{pac.nome}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
                       Excluído em {pac.deletedDate?.toLocaleDateString('pt-BR') || '—'}
                       {pac.clinica && ` · ${pac.clinica}`}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 shrink-0 pl-16 sm:pl-0">
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2.5 sm:pt-0 border-t sm:border-t-0" style={{ borderColor: 'var(--border)' }}>
                   {/* Badge de urgência */}
                   <Badge variant={getUrgencyColor(pac.diasRestantes)}>
                     {pac.diasRestantes <= 0 ? 'Expirando' : `${pac.diasRestantes}d restante${pac.diasRestantes > 1 ? 's' : ''}`}

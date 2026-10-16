@@ -60,10 +60,15 @@ export default function AnamneseStepper({ steps, active, onActiveChange, onSelec
   useLayoutEffect(() => {
     const posicionar = () => {
       const botao = botoesRef.current[active];
-      if (botao) setMarcador({ x: botao.offsetLeft, w: botao.offsetWidth });
+      if (!botao) return;
+      setMarcador({ x: botao.offsetLeft, w: botao.offsetWidth });
+      const container = botao.parentElement;
+      if (container && typeof container.scrollTo === 'function') {
+        const left = Math.max(0, botao.offsetLeft - container.clientWidth / 2 + botao.offsetWidth / 2);
+        container.scrollTo({ left, behavior: 'smooth' });
+      }
     };
     posicionar();
-    botoesRef.current[active]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     window.addEventListener('resize', posicionar);
     return () => window.removeEventListener('resize', posicionar);
   }, [active]);
@@ -71,10 +76,10 @@ export default function AnamneseStepper({ steps, active, onActiveChange, onSelec
   return (
     <nav
       aria-label="Etapas da anamnese"
-      className="sticky top-0 z-30 pt-2 border-b"
+      className="sticky top-0 z-30 pt-1.5 sm:pt-2 border-b -mx-1 px-1 sm:mx-0 sm:px-0"
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}
     >
-      <div className="relative flex gap-1 overflow-x-auto pb-3 px-1 custom-scrollbar">
+      <div className="relative flex items-center gap-1 overflow-x-auto no-scrollbar pb-2.5 sm:pb-3 px-0.5">
         {steps.map((s, i) => {
           const ativo = active === i;
           const completo = completos[i];
@@ -86,18 +91,18 @@ export default function AnamneseStepper({ steps, active, onActiveChange, onSelec
               type="button"
               onClick={() => selecionar(i)}
               aria-current={ativo ? 'step' : undefined}
-              className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] sm:min-h-0 text-[11px] font-bold whitespace-nowrap rounded-lg transition-colors duration-200 hover:bg-[var(--bg-card)]"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 min-h-[38px] sm:min-h-0 text-[11px] font-bold whitespace-nowrap rounded-lg transition-colors duration-200 hover:bg-[var(--bg-card)] shrink-0"
               style={{ color: ativo ? 'var(--accent)' : completo ? 'var(--status-success-text)' : 'var(--text-secondary)' }}
             >
-              <Icone key={completo ? 'ok' : 'etapa'} size={15} className={`shrink-0 ${completo ? 'animate-in zoom-in' : ''}`} />
-              {s.label}
+              <Icone key={completo ? 'ok' : 'etapa'} size={14} className={`shrink-0 ${completo ? 'animate-in zoom-in' : ''}`} />
+              <span>{s.label}</span>
               {completo && <span className="sr-only">(completa)</span>}
             </button>
           );
         })}
         <span
           aria-hidden="true"
-          className="absolute bottom-1 left-0 h-[3px] w-px origin-left rounded-full transition-transform duration-300 ease-out-expo"
+          className="absolute bottom-1 left-0 h-[3px] w-px origin-left rounded-full transition-transform duration-300 ease-out"
           style={{ backgroundColor: 'var(--accent)', transform: `translateX(${marcador.x}px) scaleX(${marcador.w})` }}
         />
       </div>

@@ -36,29 +36,29 @@ function DynamicAnamneseEditor({ anamnese, onSaved, onCancel }) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col p-6" style={{ backgroundColor: 'var(--bg-card)' }}>
-       <div className="flex justify-between items-center mb-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
-         <div>
-           <h3 className="text-xl font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Editando Anamnese</h3>
-           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Atualize as informações desejadas e salve.</p>
+    <div className="w-full h-full flex flex-col p-3.5 sm:p-6" style={{ backgroundColor: 'var(--bg-card)' }}>
+       <div className="flex justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+         <div className="min-w-0">
+           <h3 className="text-lg sm:text-xl font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Editando Anamnese</h3>
+           <p className="text-xs sm:text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Atualize as informações desejadas e salve.</p>
          </div>
-         <button onClick={onCancel} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)' }}>
+         <button onClick={onCancel} aria-label="Cancelar edição" className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors shrink-0" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)' }}>
            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
          </button>
        </div>
        {error && <div className="mb-4 p-3 rounded-xl text-sm" style={{ backgroundColor: 'var(--status-danger-bg)', border: '1px solid var(--status-danger)', color: 'var(--status-danger-text)' }}>{error}</div>}
-       <div className="ds-card rounded-2xl p-6 flex-1 overflow-y-auto custom-scrollbar">
+       <div className="ds-card rounded-2xl p-4 sm:p-6 flex-1 overflow-y-auto custom-scrollbar">
          {anamnese.template_snapshot ? (
             <QuestionarioFiller template={anamnese.template_snapshot} respostas={respostas} onChange={setRespostas} readOnly={false} />
          ) : (
-            <div className="text-center p-8" style={{ color: 'var(--status-warning)' }}>
+            <div className="text-center p-6 sm:p-8" style={{ color: 'var(--status-warning)' }}>
                O template desta anamnese não pôde ser recuperado, por isso a edição foi desabilitada para evitar corrupção de dados.
             </div>
          )}
        </div>
-       <div className="mt-8 pt-4 flex justify-end gap-3" style={{ borderTop: '1px solid var(--border)' }}>
-         <button onClick={onCancel} className="ds-btn ds-btn-ghost px-5 py-2.5">Cancelar</button>
-         <button disabled={isSaving || !anamnese.template_snapshot} onClick={handleSave} className="ds-btn ds-btn-primary px-6 py-2.5 font-semibold disabled:opacity-50">
+       <div className="mt-6 sm:mt-8 pt-4 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3" style={{ borderTop: '1px solid var(--border)' }}>
+         <button onClick={onCancel} className="ds-btn ds-btn-ghost w-full sm:w-auto px-5 py-2.5">Cancelar</button>
+         <button disabled={isSaving || !anamnese.template_snapshot} onClick={handleSave} className="ds-btn ds-btn-primary w-full sm:w-auto px-6 py-2.5 font-semibold disabled:opacity-50">
             {isSaving ? 'Salvando...' : 'Salvar Alterações'}
          </button>
       </div>
@@ -91,6 +91,13 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   useEscapeKey(isOpen, onClose);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen && patient) {
       loadHistory();
       setActiveTab(initialTab);
@@ -103,12 +110,15 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   // Dados do profissional para cabeçalho/assinatura dos PDFs e documentos CFP
   useEffect(() => {
     if (!isOpen) return;
+    let active = true;
     lerPerfilPsicologo()
-      .then((perfil) => perfil && setProfissional({ nome: perfil.nome, crp: perfil.crp, cpf: perfil.cpf, clinica: perfil.clinica, cidade: perfil.cidade }))
+      .then((perfil) => { if (active && perfil) setProfissional({ nome: perfil.nome, crp: perfil.crp, cpf: perfil.cpf, clinica: perfil.clinica, cidade: perfil.cidade }); })
       .catch((err) => {
+        if (!active) return;
         logger.warn('Perfil do profissional indisponível para PDFs:', err);
         showToast({ type: 'warning', message: 'Não foi possível carregar seu perfil: PDFs sairão sem nome e CRP.' });
       });
+    return () => { active = false; };
   }, [isOpen, showToast]);
 
   const ABAS = [
@@ -237,45 +247,45 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
         role="dialog"
         aria-modal="true"
         aria-label={`Prontuário de ${patient.nome}`}
-        className="relative w-full max-w-6xl h-full sm:h-[90vh] ds-card flex flex-col overflow-hidden animate-in !rounded-none sm:!rounded-[var(--radius)]"
+        className="relative w-full max-w-6xl h-[100dvh] sm:h-[90dvh] ds-card flex flex-col overflow-hidden animate-in !rounded-none sm:!rounded-[var(--radius)] safe-top safe-bottom"
       >
         {/* Cabeçalho do prontuário */}
-        <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-4 flex items-start justify-between gap-3 shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
+        <div className="px-3.5 sm:px-6 pt-3.5 sm:pt-5 pb-3.5 sm:pb-4 flex items-start justify-between gap-2.5 sm:gap-3 shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-xl font-heading font-semibold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }} aria-hidden="true">
+            <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-lg sm:text-xl font-heading font-semibold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }} aria-hidden="true">
               {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{patient.nome}</h2>
-              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 mt-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-                {patient.cpf && <span className="inline-flex items-center gap-1.5"><IdCard size={14} aria-hidden="true" />{formatCPF(patient.cpf)}</span>}
-                {idade && <span className="inline-flex items-center gap-1.5"><Cake size={14} aria-hidden="true" />{idade}</span>}
-                {patient.telefone && <span className="inline-flex items-center gap-1.5"><Phone size={14} aria-hidden="true" />{patient.telefone}</span>}
+              <h2 className="text-lg sm:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{patient.nome}</h2>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs sm:text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                {patient.cpf && <span className="inline-flex items-center gap-1"><IdCard size={13} aria-hidden="true" />{formatCPF(patient.cpf)}</span>}
+                {idade && <span className="inline-flex items-center gap-1"><Cake size={13} aria-hidden="true" />{idade}</span>}
+                {patient.telefone && <span className="inline-flex items-center gap-1"><Phone size={13} aria-hidden="true" />{patient.telefone}</span>}
                 {patient.valor_sessao && (
-                  <span className="inline-flex items-center gap-1.5 tabular"><Wallet size={14} aria-hidden="true" />R$ {parseFloat(patient.valor_sessao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} por sessão</span>
+                  <span className="inline-flex items-center gap-1 tabular"><Wallet size={13} aria-hidden="true" />R$ {parseFloat(patient.valor_sessao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <button onClick={handleExportCompleteRecord} disabled={isLoading} className="ds-btn ds-btn-secondary hidden md:inline-flex" title="Baixar o prontuário completo em PDF">
               <FileDown size={16} /> Prontuário em PDF
             </button>
-            <button onClick={handleExportCompleteRecord} disabled={isLoading} className="ds-btn ds-btn-ghost !px-2.5 md:hidden" aria-label="Baixar o prontuário completo em PDF">
+            <button onClick={handleExportCompleteRecord} disabled={isLoading} className="ds-btn ds-btn-ghost !px-2 min-w-[40px] min-h-[40px] md:hidden" aria-label="Baixar o prontuário completo em PDF">
               <FileDown size={19} />
             </button>
-            <button onClick={() => onEditRequest && onEditRequest(patient)} className="ds-btn ds-btn-ghost !px-2.5" aria-label="Editar dados do paciente" title="Editar dados do paciente">
+            <button onClick={() => onEditRequest && onEditRequest(patient)} className="ds-btn ds-btn-ghost !px-2 min-w-[40px] min-h-[40px]" aria-label="Editar dados do paciente" title="Editar dados do paciente">
               <Pencil size={18} />
             </button>
-            <button onClick={onClose} className="ds-btn ds-btn-ghost !px-2.5" aria-label="Fechar prontuário" title="Fechar (Esc)">
+            <button onClick={onClose} className="ds-btn ds-btn-ghost !px-2 min-w-[40px] min-h-[40px]" aria-label="Fechar prontuário" title="Fechar (Esc)">
               <X size={20} />
             </button>
           </div>
         </div>
 
         {/* Abas */}
-        <div className="flex gap-1 px-3 sm:px-6 shrink-0 overflow-x-auto" role="tablist" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="flex gap-1 px-3 sm:px-6 shrink-0 overflow-x-auto no-scrollbar scroll-smooth" role="tablist" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
           {ABAS.map((aba) => (
             <button
               key={aba.id}
@@ -294,7 +304,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
         </div>
 
         {/* Body Content */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 custom-scrollbar" style={{ backgroundColor: 'var(--bg-card)' }}>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <svg className="w-8 h-8 animate-spin mb-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -303,7 +313,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
           ) : (
             <>
               {activeTab === 'evolucoes' && (
-                <div className="space-y-6">
+                <div className="space-y-5 sm:space-y-6">
                   {sessoes.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)' }}>
                       <svg className="mx-auto h-10 w-10 mb-3" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -313,36 +323,38 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                       <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Este paciente ainda não teve evoluções salvas.</p>
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-5 sm:space-y-6">
                       {/* Mood Chart */}
-                      <div className="ds-card p-5">
+                      <div className="ds-card p-3.5 sm:p-5">
                         <MoodChart sessoes={sessoes} />
                       </div>
                       {/* Timeline */}
-                      <div className="relative ml-4 space-y-8 pb-4" style={{ borderLeft: '1px solid var(--border)' }}>
+                      <div className="relative ml-2 sm:ml-4 space-y-6 sm:space-y-8 pb-4" style={{ borderLeft: '1px solid var(--border)' }}>
                       {sessoes.map((sessao) => (
-                        <div key={sessao.id} className="relative pl-8">
+                        <div key={sessao.id} className="relative pl-4 sm:pl-8">
                           {/* Timeline dot */}
                           <div className="absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)', boxShadow: '0 0 0 4px var(--bg-card)' }}></div>
                           
-                          <div className="ds-card p-5">
-                            <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+                          <div className="ds-card p-3.5 sm:p-5">
+                            <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2.5 pb-3.5 sm:pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
                               <div>
                                 <h4 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                                   {sessao.data_sessao ? sessao.data_sessao.split('-').reverse().join('/') : new Date(sessao.createdAt?.toDate() || Date.now()).toLocaleDateString('pt-BR')}
                                 </h4>
-                                <span className="text-xs mt-1 block" style={{ color: 'var(--text-muted)' }}>ID Sessão: {sessao.id.substring(0,8)}</span>
+                                <span className="text-xs mt-0.5 block" style={{ color: 'var(--text-muted)' }}>ID Sessão: {sessao.id.substring(0,8)}</span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                  <button onClick={() => gerarPdfSessao(sessao)} className="p-1.5 rounded-lg transition-colors shadow-sm" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info)', border: '1px solid var(--status-info)' }} title="Exportar Sessão para PDF">
-                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                  </button>
-                                  <button onClick={() => setEditingSessao({ ...sessao })} className="p-1.5 rounded-lg transition-colors shadow-sm" style={{ backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', border: '1px solid var(--status-warning)' }} title="Editar Evolução">
-                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                  </button>
-                                  <button onClick={() => handleExcluirSessao(sessao)} className="p-1.5 rounded-lg transition-colors shadow-sm" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '1px solid var(--status-danger)' }} title="Apagar Evolução">
-                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                  </button>
+                              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                  <div className="flex items-center gap-1.5">
+                                    <button onClick={() => gerarPdfSessao(sessao)} aria-label="Exportar sessão para PDF" className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg transition-colors shadow-sm" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info)', border: '1px solid var(--status-info)' }} title="Exportar Sessão para PDF">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    </button>
+                                    <button onClick={() => setEditingSessao({ ...sessao })} aria-label="Editar evolução" className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg transition-colors shadow-sm" style={{ backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', border: '1px solid var(--status-warning)' }} title="Editar Evolução">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    </button>
+                                    <button onClick={() => handleExcluirSessao(sessao)} aria-label="Apagar evolução" className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg transition-colors shadow-sm" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '1px solid var(--status-danger)' }} title="Apagar Evolução">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                  </div>
                                   <span className="ds-badge" style={{
                                     backgroundColor: sessao.status === 'Presente' ? 'var(--status-success-bg)' : sessao.status === 'Faltou' ? 'var(--status-danger-bg)' : 'var(--status-warning-bg)',
                                     color: sessao.status === 'Presente' ? 'var(--status-success-text)' : sessao.status === 'Faltou' ? 'var(--status-danger-text)' : 'var(--status-warning-text)',
@@ -387,9 +399,9 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                     />
                                   </div>
                                 </div>
-                                <div className="flex justify-end gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-                                  <button onClick={() => setEditingSessao(null)} className="ds-btn ds-btn-ghost px-4 py-2 text-sm">Cancelar</button>
-                                  <button onClick={handleSalvarEdicaoSessao} disabled={isSavingSessao} className="ds-btn ds-btn-primary px-5 py-2 text-sm font-semibold disabled:opacity-50">
+                                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                                  <button onClick={() => setEditingSessao(null)} className="ds-btn ds-btn-ghost w-full sm:w-auto px-4 py-2 text-sm">Cancelar</button>
+                                  <button onClick={handleSalvarEdicaoSessao} disabled={isSavingSessao} className="ds-btn ds-btn-primary w-full sm:w-auto px-5 py-2 text-sm font-semibold disabled:opacity-50">
                                     {isSavingSessao ? 'Salvando...' : 'Salvar Edição'}
                                   </button>
                                 </div>
@@ -435,36 +447,36 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                 <ErrorBoundary>
                   <div className="ds-card rounded-2xl flex items-start justify-center">
                      {anamneses.length > 0 && !isEditingAnamnese ? (
-                         <div className="w-full text-left p-6 sm:p-10 overflow-y-auto custom-scrollbar">
-                           <div className="flex justify-between items-center mb-8 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
-                              <div>
-                                 <h3 className="text-xl font-heading font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                     Anamnese Registrada
+                         <div className="w-full text-left p-4 sm:p-8 overflow-y-auto custom-scrollbar">
+                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 sm:mb-8 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+                              <div className="min-w-0">
+                                 <h3 className="text-lg sm:text-xl font-heading font-bold flex flex-wrap items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                     <span>Anamnese Registrada</span>
                                      <span className="ds-badge text-[10px] uppercase font-bold">
                                          {currentAnamnese.tipo === 'adolescente' ? 'Infantil / Adolescente' : (currentAnamnese.tipo === 'dinamico' ? (currentAnamnese.questionario_nome || 'Personalizada') : 'Adulto')}
                                      </span>
                                  </h3>
-                                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Criada em: {new Date(currentAnamnese.createdAt?.toDate() || Date.now()).toLocaleDateString()}</p>
+                                 <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Criada em: {new Date(currentAnamnese.createdAt?.toDate() || Date.now()).toLocaleDateString()}</p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                 <button onClick={() => setIsEditingAnamnese(true)} className="ds-btn ds-btn-secondary flex items-center gap-2 px-3 py-2 text-sm" title="Editar">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                    <span className="hidden sm:block">Editar</span>
+                                 <button onClick={() => setIsEditingAnamnese(true)} className="ds-btn ds-btn-secondary flex-1 sm:flex-none flex items-center gap-2 px-3 py-2 text-xs sm:text-sm" title="Editar">
+                                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    <span>Editar</span>
                                  </button>
-                                 <button onClick={gerarPdfAnamnese} className="ds-btn flex items-center gap-2 px-3 py-2 text-sm" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info)', border: '1px solid var(--status-info)' }} title="Exportar">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    <span className="hidden sm:block">Exportar</span>
+                                 <button onClick={gerarPdfAnamnese} className="ds-btn flex-1 sm:flex-none flex items-center gap-2 px-3 py-2 text-xs sm:text-sm" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info)', border: '1px solid var(--status-info)' }} title="Exportar">
+                                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    <span>Exportar</span>
                                  </button>
-                                 <button onClick={() => setConfirmDeleteAnamnese({ isOpen: true, anamnese: currentAnamnese })} className="ds-btn ds-btn-danger flex items-center gap-2 px-3 py-2 text-sm" title="Excluir">
+                                 <button onClick={() => setConfirmDeleteAnamnese({ isOpen: true, anamnese: currentAnamnese })} aria-label="Excluir anamnese" className="ds-btn ds-btn-danger flex items-center gap-2 px-3 py-2 text-sm shrink-0" title="Excluir">
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                  </button>
                               </div>
                            </div>
   
                            {/* Exibição da Anamnese Estruturada ou Dinâmica */}
-                           <div className="space-y-6 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                           <div className="space-y-5 sm:space-y-6 text-sm" style={{ color: 'var(--text-secondary)' }}>
                              {anamneses[0].tipo === 'dinamico' ? (
-                                 <div className="ds-card p-6">
+                                 <div className="ds-card p-4 sm:p-6">
                                     {anamneses[0].template_snapshot ? (
                                         <QuestionarioFiller 
                                             template={anamneses[0].template_snapshot} 
@@ -486,9 +498,9 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                              ) : (
                                <>
                                  {/* Compartilhado: Seção 0 e 1 */}
-                                 <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                     <div className="ds-card p-4 rounded-xl">
-                                      <span className="block text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Psicólogo Pruvio</span>
+                                      <span className="block text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--text-secondary)' }}>Psicólogo Prévio</span>
                                       <span className="font-semibold">{anamneses[0].psicologo_previo ? 'Sim' : 'Não'}</span>
                                     </div>
                                     <div className="ds-card p-4 rounded-xl">
@@ -497,7 +509,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                     </div>
                                  </div>
   
-                                 <div className="ds-card p-5 rounded-xl space-y-3">
+                                 <div className="ds-card p-4 sm:p-5 rounded-xl space-y-3">
                                     <h4 className="text-brand-400 font-semibold mb-2">Estrutura Familiar</h4>
                                     <p className="break-words"><span style={{ color: 'var(--text-secondary)' }}>Pai:</span> {anamneses[0].nome_pai} ({anamneses[0].idade_pai} anos - {anamneses[0].profissao_pai})</p>
                                     <p className="break-words"><span style={{ color: 'var(--text-secondary)' }}>Mãe:</span> {anamneses[0].nome_mae} ({anamneses[0].idade_mae} anos - {anamneses[0].profissao_mae})</p>
@@ -507,7 +519,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
   
                                  {/* Especifico: Desenvolvimento (Adolescente) */}
                                  {anamneses[0].tipo === 'adolescente' && (
-                                     <div className="bg-brand-500/5 border border-brand-500/20 p-5 rounded-xl space-y-4">
+                                     <div className="bg-brand-500/5 border border-brand-500/20 p-4 sm:p-5 rounded-xl space-y-4">
                                         <h4 className="text-brand-400 font-semibold mb-2">Desenvolvimento Infanto-Juvenil e Escola</h4>
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
@@ -538,13 +550,13 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                  )}
   
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                   <div className="ds-card p-5 rounded-xl">
+                                   <div className="ds-card p-4 sm:p-5 rounded-xl">
                                       <h4 className="text-brand-400 font-semibold mb-2">Motivo da Consulta e Dinâmicas</h4>
                                       <p className="whitespace-pre-wrap break-words"><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs mt-2">Motivo:</strong>{anamneses[0].motivo_consulta}</p>
                                       <p className="mt-2 whitespace-pre-wrap text-sm break-words" style={{ color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs">Histórico:</strong>{anamneses[0].historico_queixa}</p>
                                       <p className="mt-2 whitespace-pre-wrap text-sm break-words" style={{ color: 'var(--text-secondary)' }}><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs">Dinâmica Familiar:</strong>{anamneses[0].dinamica_familiar}</p>
                                    </div>
-                                   <div className="ds-card p-5 rounded-xl">
+                                   <div className="ds-card p-4 sm:p-5 rounded-xl">
                                       <h4 className="text-red-400 font-semibold mb-2">Quadro Clínico</h4>
                                       <p className="whitespace-pre-wrap break-words"><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs mt-2">Sintomas Atuais:</strong>{anamneses[0].sintomas_apresentados}</p>
                                       <p className="whitespace-pre-wrap break-words"><strong style={{ color: 'var(--text-secondary)' }} className="block text-xs mt-2">Agravantes:</strong>{anamneses[0].fatores_agravantes}</p>
@@ -557,7 +569,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                    </div>
                                  </div>
   
-                                 <div className="ds-card p-5 rounded-xl">
+                                 <div className="ds-card p-4 sm:p-5 rounded-xl">
                                     <h4 className="text-emerald-400 font-semibold mb-2">Parecer e Observações Profissionais</h4>
                                     <p className="whitespace-pre-wrap break-words">{anamneses[0].observacoes_gerais}</p>
                                  </div>
@@ -566,14 +578,14 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                            </div>
                          </div>
                       ) : (!selectedFormType && !selectedTemplate && !isEditingAnamnese) ? (
-                          <div className="w-full h-full flex items-center justify-center p-6">
+                          <div className="w-full h-full flex items-center justify-center p-5 sm:p-6">
                               <div className="max-w-md w-full text-center">
-                                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-brand-500/10 flex items-center justify-center">
-                                    <svg className="w-10 h-10 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-2xl bg-brand-500/10 flex items-center justify-center">
+                                    <svg className="w-8 h-8 sm:w-10 sm:h-10 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
                                   </div>
-                                  <h3 className="text-xl font-heading font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Nenhuma anamnese registrada</h3>
+                                  <h3 className="text-lg sm:text-xl font-heading font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Nenhuma anamnese registrada</h3>
                                   <p className="mb-6 text-sm" style={{ color: 'var(--text-secondary)' }}>Inicie a ficha deste paciente criando e preenchendo uma anamnese.</p>
                                   <button
                                     onClick={() => setShowTemplateSelector(true)}
@@ -598,19 +610,20 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                           </div>
   
                       ) : selectedTemplate ? (
-                          <div className="w-full p-6 h-full overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--bg-card)' }}>
-                            <div className="flex items-center justify-between mb-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
-                              <div>
-                                <h3 className="text-xl font-heading font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                  <span>{selectedTemplate.icone}</span> {selectedTemplate.nome}
+                          <div className="w-full p-4 sm:p-6 h-full overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--bg-card)' }}>
+                            <div className="flex items-start sm:items-center justify-between gap-3 mb-5 sm:mb-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+                              <div className="min-w-0">
+                                <h3 className="text-lg sm:text-xl font-heading font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                  <span>{selectedTemplate.icone}</span> <span className="truncate">{selectedTemplate.nome}</span>
                                 </h3>
                                 {selectedTemplate.descricao && (
-                                  <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>{selectedTemplate.descricao}</p>
+                                  <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>{selectedTemplate.descricao}</p>
                                 )}
                               </div>
                               <button
                                 onClick={() => { setSelectedTemplate(null); setTemplateRespostas({}); setAnamneseSaveError(''); }}
-                                className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)' }}
+                                aria-label="Fechar modelo"
+                                className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors shrink-0" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-primary)' }}
                               >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -624,7 +637,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                               </div>
                             )}
   
-                            <div className="ds-card rounded-2xl p-6">
+                            <div className="ds-card rounded-2xl p-4 sm:p-6">
                               <QuestionarioFiller
                                 template={selectedTemplate}
                                 respostas={templateRespostas}
@@ -632,10 +645,10 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                               />
                             </div>
   
-                            <div className="mt-8 pt-4 flex justify-end items-center gap-3" style={{ borderTop: '1px solid var(--border)' }}>
+                            <div className="mt-6 sm:mt-8 pt-4 flex flex-col-reverse sm:flex-row justify-end items-stretch sm:items-center gap-2.5 sm:gap-3" style={{ borderTop: '1px solid var(--border)' }}>
                               <button
                                 onClick={() => { setSelectedTemplate(null); setTemplateRespostas({}); setAnamneseSaveError(''); }}
-                                className="ds-btn ds-btn-ghost px-5 py-2.5 text-sm font-medium"
+                                className="ds-btn ds-btn-ghost w-full sm:w-auto px-5 py-2.5 text-sm font-medium"
                               >
                                 Cancelar
                               </button>
@@ -663,7 +676,7 @@ export default function PatientProfileModal({ isOpen, onClose, patient, initialT
                                   }
                                 }}
                                 disabled={isSavingAnamnese}
-                                className="ds-btn ds-btn-primary inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold shadow-md disabled:opacity-50"
+                                className="ds-btn ds-btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold shadow-md disabled:opacity-50"
                               >
                                 {isSavingAnamnese ? (
                                   <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Salvando...</>

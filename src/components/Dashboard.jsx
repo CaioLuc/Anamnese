@@ -28,10 +28,10 @@ const PERIODOS = [
 function Painel({ titulo, acao, onAcao, children, className = '' }) {
   return (
     <section className={`ds-card overflow-hidden ${className}`}>
-      <header className="px-5 py-4 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
-        <h2 className="text-[17px] font-semibold" style={{ color: 'var(--text-primary)' }}>{titulo}</h2>
+      <header className="px-4 sm:px-5 py-3.5 sm:py-4 flex items-center justify-between gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h2 className="text-base sm:text-[17px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{titulo}</h2>
         {acao && (
-          <button onClick={onAcao} className="text-sm font-semibold inline-flex items-center gap-0.5 min-h-[36px] hover:underline" style={{ color: 'var(--accent)' }}>
+          <button onClick={onAcao} className="text-sm font-semibold inline-flex items-center gap-0.5 min-h-[36px] shrink-0 hover:underline" style={{ color: 'var(--accent)' }}>
             {acao} <ChevronRight size={15} />
           </button>
         )}
@@ -44,7 +44,7 @@ function Painel({ titulo, acao, onAcao, children, className = '' }) {
 function Vazio({ icon, texto, acao, onAcao }) {
   const Icon = icon;
   return (
-    <div className="px-5 py-9 text-center">
+    <div className="px-4 sm:px-5 py-8 sm:py-9 text-center">
       <Icon size={26} className="mx-auto mb-2.5" style={{ color: 'var(--text-muted)' }} />
       <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{texto}</p>
       {acao && (
@@ -140,13 +140,13 @@ export default function DashboardSummary({ patients, isLoading, onNavigate, perf
   ];
 
   return (
-    <div className="w-full space-y-6 animate-in">
+    <div className="w-full space-y-5 sm:space-y-6 animate-in">
 
       {avisoGlobal && (
-        <div className="p-4 rounded-[var(--radius)] flex items-start gap-3" role="status" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info-text)' }}>
+        <div className="p-3.5 sm:p-4 rounded-[var(--radius)] flex items-start gap-3" role="status" style={{ backgroundColor: 'var(--status-info-bg)', color: 'var(--status-info-text)' }}>
           <Info size={18} className="shrink-0 mt-0.5" />
-          <p className="text-sm leading-relaxed flex-1">{avisoGlobal}</p>
-          <button onClick={() => setAvisoGlobal('')} className="shrink-0 -m-1 p-1 rounded" aria-label="Dispensar aviso">
+          <p className="text-sm leading-relaxed flex-1 break-words">{avisoGlobal}</p>
+          <button onClick={() => setAvisoGlobal('')} className="shrink-0 -m-1 p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg" aria-label="Dispensar aviso">
             <X size={16} />
           </button>
         </div>
@@ -154,30 +154,30 @@ export default function DashboardSummary({ patients, isLoading, onNavigate, perf
 
       {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{dataExtenso}</p>
-          <h1 className="mt-1 text-[1.85rem] sm:text-[2.2rem] leading-tight font-medium" style={{ color: 'var(--text-primary)' }}>
+        <div className="min-w-0">
+          <p className="text-xs sm:text-sm" style={{ color: 'var(--text-muted)' }}>{dataExtenso}</p>
+          <h1 className="mt-1 text-[1.6rem] sm:text-[2.2rem] leading-tight font-medium break-words" style={{ color: 'var(--text-primary)' }}>
             {saudacao}{primeiroNome ? `, ${primeiroNome}` : ''}.
           </h1>
-          <p className="mt-1.5 text-[15px]" style={{ color: 'var(--text-secondary)' }}>
+          <p className="mt-1 text-sm sm:text-[15px]" style={{ color: 'var(--text-secondary)' }}>
             {agendaHoje.length
               ? `Você tem ${agendaHoje.length} ${agendaHoje.length === 1 ? 'atendimento' : 'atendimentos'} na agenda de hoje.`
               : 'Nenhum atendimento na agenda de hoje.'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => onNavigate('pacientes', { addPatient: true })} className="ds-btn ds-btn-secondary">
-            <UserPlus size={17} /> Novo paciente
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full md:w-auto">
+          <button onClick={() => onNavigate('pacientes', { addPatient: true })} className="ds-btn ds-btn-secondary px-3 sm:px-4 text-xs sm:text-sm">
+            <UserPlus size={16} className="shrink-0" /> <span className="truncate">Novo paciente</span>
           </button>
-          <button onClick={() => onNavigate('nova-sessao')} className="ds-btn ds-btn-primary">
-            <FilePlus2 size={17} /> Registrar sessão
+          <button onClick={() => onNavigate('nova-sessao')} className="ds-btn ds-btn-primary px-3 sm:px-4 text-xs sm:text-sm">
+            <FilePlus2 size={16} className="shrink-0" /> <span className="truncate">Registrar sessão</span>
           </button>
         </div>
       </div>
 
       {/* Resumo do período */}
-      <section className="ds-card" aria-label="Resumo do período">
-        <div className="flex items-center justify-between gap-3 px-5 pt-4">
+      <section className="ds-card overflow-hidden" aria-label="Resumo do período">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 pt-3.5 sm:pt-4">
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Resumo</h2>
           <div className="ds-segmented">
             {PERIODOS.map(p => (
@@ -189,11 +189,11 @@ export default function DashboardSummary({ patients, isLoading, onNavigate, perf
           {resumo.map((item, i) => (
             <div
               key={item.label}
-              className={`px-5 py-4 ${i % 2 === 1 ? 'border-l' : ''} ${i >= 2 ? 'border-t lg:border-t-0' : ''} ${i === 2 ? 'lg:border-l' : ''}`}
+              className={`px-3.5 sm:px-5 py-3.5 sm:py-4 min-w-0 ${i % 2 === 1 ? 'border-l' : ''} ${i >= 2 ? 'border-t lg:border-t-0' : ''} ${i === 2 ? 'lg:border-l' : ''}`}
               style={{ borderColor: 'var(--border)' }}
             >
-              <dt className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{item.label}</dt>
-              <dd className="mt-1 text-2xl font-semibold tabular" style={{ color: 'var(--text-primary)' }}>
+              <dt className="text-xs sm:text-[13px] truncate" style={{ color: 'var(--text-muted)' }}>{item.label}</dt>
+              <dd className="mt-1 text-xl sm:text-2xl font-semibold tabular truncate" style={{ color: 'var(--text-primary)' }}>
                 {item.valor === null ? <Skeleton className="h-7 w-16 mt-1" /> : item.valor}
               </dd>
             </div>
@@ -211,13 +211,13 @@ export default function DashboardSummary({ patients, isLoading, onNavigate, perf
               {agendaHoje.map(ag => {
                 const st = STATUS_AGENDA[ag.status] || STATUS_AGENDA.agendado;
                 return (
-                  <li key={ag.id} className="flex items-center gap-4 px-5 py-3.5" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <span className="w-14 shrink-0 text-[15px] font-semibold tabular" style={{ color: 'var(--text-primary)' }}>{ag.hora}</span>
+                  <li key={ag.id} className="flex items-center gap-2.5 sm:gap-4 px-4 sm:px-5 py-3.5" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <span className="w-12 sm:w-14 shrink-0 text-sm sm:text-[15px] font-semibold tabular" style={{ color: 'var(--text-primary)' }}>{ag.hora}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[15px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{nomeDoPaciente(ag.id_paciente, ag.nome_paciente)}</p>
-                      <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{ag.duracao_min || 50} min{ag.origem === 'publico' ? ' · pelo link público' : ''}</p>
+                      <p className="text-sm sm:text-[15px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{nomeDoPaciente(ag.id_paciente, ag.nome_paciente)}</p>
+                      <p className="text-xs sm:text-[13px] truncate" style={{ color: 'var(--text-muted)' }}>{ag.duracao_min || 50} min{ag.origem === 'publico' ? ' · pelo link público' : ''}</p>
                     </div>
-                    <Badge variant={st.variant} size="md">{st.label}</Badge>
+                    <Badge variant={st.variant} size="md" className="shrink-0">{st.label}</Badge>
                   </li>
                 );
               })}
@@ -228,42 +228,42 @@ export default function DashboardSummary({ patients, isLoading, onNavigate, perf
         {/* Pendências */}
         <Painel titulo="Pendências">
           {isLoadingStats ? (
-            <div className="p-5"><Skeleton count={3} /></div>
+            <div className="p-4 sm:p-5"><Skeleton count={3} /></div>
           ) : semAnamnese.length === 0 && aReceber.length === 0 ? (
             <Vazio icon={CheckCircle2} texto="Tudo em dia por aqui." />
           ) : (
             <ul>
               {semAnamnese.length > 0 && (
                 <li style={{ borderBottom: '1px solid var(--border)' }}>
-                  <button onClick={() => onNavigate('pacientes')} className="w-full flex items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-[var(--bg-secondary)]">
+                  <button onClick={() => onNavigate('pacientes')} className="w-full flex items-start gap-3 px-4 sm:px-5 py-3.5 sm:py-4 text-left transition-colors hover:bg-[var(--bg-secondary)]">
                     <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--warm-light)', color: 'var(--warm)' }}>
                       <ClipboardList size={17} />
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      <span className="block text-sm sm:text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {semAnamnese.length} {semAnamnese.length === 1 ? 'paciente sem anamnese' : 'pacientes sem anamnese'}
                       </span>
-                      <span className="block text-[13px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <span className="block text-xs sm:text-[13px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
                         {semAnamnese.slice(0, 3).map(p => (p.nome || '').split(' ')[0]).join(', ')}{semAnamnese.length > 3 ? '…' : ''}
                       </span>
                     </span>
-                    <ChevronRight size={17} className="mt-2" style={{ color: 'var(--text-muted)' }} />
+                    <ChevronRight size={17} className="mt-2 shrink-0" style={{ color: 'var(--text-muted)' }} />
                   </button>
                 </li>
               )}
               {aReceber.length > 0 && (
                 <li style={{ borderBottom: '1px solid var(--border)' }}>
-                  <button onClick={() => onNavigate('financas')} className="w-full flex items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-[var(--bg-secondary)]">
+                  <button onClick={() => onNavigate('financas')} className="w-full flex items-start gap-3 px-4 sm:px-5 py-3.5 sm:py-4 text-left transition-colors hover:bg-[var(--bg-secondary)]">
                     <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)' }}>
                       <Wallet size={17} />
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-[15px] font-semibold tabular" style={{ color: 'var(--text-primary)' }}>R$ {formatCurrency(totalAReceber)} a receber</span>
-                      <span className="block text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <span className="block text-sm sm:text-[15px] font-semibold tabular truncate" style={{ color: 'var(--text-primary)' }}>R$ {formatCurrency(totalAReceber)} a receber</span>
+                      <span className="block text-xs sm:text-[13px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
                         {aReceber.length} {aReceber.length === 1 ? 'sessão sem baixa' : 'sessões sem baixa'}
                       </span>
                     </span>
-                    <ChevronRight size={17} className="mt-2" style={{ color: 'var(--text-muted)' }} />
+                    <ChevronRight size={17} className="mt-2 shrink-0" style={{ color: 'var(--text-muted)' }} />
                   </button>
                 </li>
               )}
@@ -275,25 +275,25 @@ export default function DashboardSummary({ patients, isLoading, onNavigate, perf
       {/* Sessões registradas hoje (sem conteúdo clínico na tela inicial) */}
       <Painel titulo="Registradas hoje" acao="Ver pacientes" onAcao={() => onNavigate('pacientes')}>
         {isLoadingStats ? (
-          <div className="p-5"><Skeleton count={2} /></div>
+          <div className="p-4 sm:p-5"><Skeleton count={2} /></div>
         ) : sessoesHoje.length === 0 ? (
           <Vazio icon={Clock} texto="Nenhuma evolução registrada hoje." acao="Registrar sessão" onAcao={() => onNavigate('nova-sessao')} />
         ) : (
-          <ul className="grid sm:grid-cols-2">
+          <ul className="grid grid-cols-1 sm:grid-cols-2">
             {sessoesHoje.map(s => {
               const paciente = patients.find(p => p.id === s.id_paciente);
               return (
-                <li key={s.id}>
+                <li key={s.id} className="min-w-0">
                   <button
                     onClick={() => paciente && onNavigate('pacientes', { openPatient: paciente })}
-                    className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-[var(--bg-secondary)]"
+                    className="w-full flex items-center gap-3 px-4 sm:px-5 py-3.5 text-left transition-colors hover:bg-[var(--bg-secondary)]"
                     style={{ borderBottom: '1px solid var(--border)' }}
                   >
                     <span className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
                       {nomeDoPaciente(s.id_paciente).charAt(0).toUpperCase()}
                     </span>
-                    <span className="flex-1 min-w-0 text-[15px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{nomeDoPaciente(s.id_paciente, 'Paciente removido')}</span>
-                    {s.status && <Badge variant={s.status === 'Presente' ? 'success' : s.status === 'Faltou' ? 'danger' : 'warning'} size="md">{s.status}</Badge>}
+                    <span className="flex-1 min-w-0 text-sm sm:text-[15px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{nomeDoPaciente(s.id_paciente, 'Paciente removido')}</span>
+                    {s.status && <Badge variant={s.status === 'Presente' ? 'success' : s.status === 'Faltou' ? 'danger' : 'warning'} size="md" className="shrink-0">{s.status}</Badge>}
                   </button>
                 </li>
               );

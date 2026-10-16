@@ -26,9 +26,14 @@ function ToastItem({ toast, onRemove }) {
     return () => cancelAnimationFrame(timer);
   }, []);
 
+  useEffect(() => {
+    if (!isExiting) return;
+    const t = setTimeout(() => onRemove(toast.id), 200);
+    return () => clearTimeout(t);
+  }, [isExiting, onRemove, toast.id]);
+
   const handleRemove = () => {
     setIsExiting(true);
-    setTimeout(() => onRemove(toast.id), 200);
   };
 
   const styles = STYLE_MAP[toast.type] || STYLE_MAP.info;
@@ -36,7 +41,7 @@ function ToastItem({ toast, onRemove }) {
   return (
     <div
       role="alert"
-      className={`flex items-start gap-3 p-4 rounded-lg max-w-sm w-full transition-all duration-200 ease-out ${
+      className={`flex items-start gap-3 p-3.5 sm:p-4 rounded-xl max-w-full sm:max-w-sm w-full transition-all duration-200 ease-out ${
         isVisible && !isExiting
           ? 'translate-x-0 opacity-100'
           : 'translate-x-full opacity-0'
@@ -52,13 +57,13 @@ function ToastItem({ toast, onRemove }) {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>
+        <p className="text-sm font-medium leading-snug break-words" style={{ color: 'var(--text-primary)' }}>
           {toast.message}
         </p>
         {toast.action && (
           <button
             onClick={() => { toast.action.onClick(); handleRemove(); }}
-            className="mt-2 text-xs font-semibold transition-colors duration-150"
+            className="mt-2 py-1 text-xs font-semibold transition-colors duration-150"
             style={{ color: 'var(--accent)' }}
           >
             {toast.action.label}
@@ -69,11 +74,11 @@ function ToastItem({ toast, onRemove }) {
       {/* Close */}
       <button
         onClick={handleRemove}
-        className="shrink-0 p-0.5 transition-colors duration-150"
+        className="shrink-0 -mr-1 -mt-1 p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg transition-colors duration-150"
         style={{ color: 'var(--text-muted)' }}
         aria-label="Fechar notificação"
       >
-        <X size={14} />
+        <X size={15} />
       </button>
     </div>
   );
@@ -89,9 +94,9 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[999] flex flex-col gap-2 pointer-events-none">
+    <div className="fixed top-3 inset-x-3 sm:left-auto sm:top-4 sm:right-4 z-[999] flex flex-col items-end gap-2 pointer-events-none safe-top">
       {toasts.map(toast => (
-        <div key={toast.id} className="pointer-events-auto">
+        <div key={toast.id} className="pointer-events-auto w-full sm:w-auto flex justify-end">
           <ToastItem toast={toast} onRemove={removeToast} />
         </div>
       ))}

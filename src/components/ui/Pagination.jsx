@@ -39,21 +39,26 @@ export default function Pagination({ currentPage, totalPages, totalItems, startI
       className="flex items-center justify-between px-4 py-3 sm:px-6"
       style={{ borderTop: '1px solid var(--border)' }}
     >
-      {/* Mobile: simple prev/next */}
-      <div className="flex justify-between flex-1 sm:hidden">
+      {/* Mobile: simple prev/next + page indicator */}
+      <div className="flex items-center justify-between gap-2 flex-1 sm:hidden">
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="ds-btn ds-btn-secondary py-1.5"
+          className="ds-btn ds-btn-secondary py-1.5 px-3 text-xs"
         >
+          <ChevronLeft size={16} />
           Anterior
         </button>
+        <span className="text-xs font-medium tabular" style={{ color: 'var(--text-secondary)' }}>
+          Pág. <strong style={{ color: 'var(--text-primary)' }}>{currentPage}</strong> de <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
+        </span>
         <button
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="ds-btn ds-btn-secondary py-1.5 ml-3"
+          className="ds-btn ds-btn-secondary py-1.5 px-3 text-xs"
         >
           Próximo
+          <ChevronRight size={16} />
         </button>
       </div>
 

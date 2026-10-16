@@ -182,11 +182,11 @@ export default function EmitirDocumentoModal({
       subtitle={subtitles[tipo]}
       size="lg"
       footer={
-        <div className="flex justify-end gap-3 w-full">
-          <Button variant="ghost" onClick={onClose} disabled={isGenerating}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 w-full">
+          <Button variant="ghost" className="w-full sm:w-auto justify-center" onClick={onClose} disabled={isGenerating}>
             Cancelar
           </Button>
-          <Button onClick={handleGerarDocumento} isLoading={isGenerating}>
+          <Button className="w-full sm:w-auto justify-center" onClick={handleGerarDocumento} isLoading={isGenerating}>
             <Download size={16} />
             Gerar e Baixar PDF
           </Button>

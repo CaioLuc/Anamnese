@@ -15,7 +15,7 @@ export default function Card({ children, className = '', ...props }) {
 export function CardHeader({ children, className = '' }) {
   return (
     <div 
-      className={`px-5 py-4 ${className}`}
+      className={`px-4 py-3.5 sm:px-5 sm:py-4 ${className}`}
       style={{ 
         borderBottom: '1px solid var(--border)',
         backgroundColor: 'var(--bg-secondary)'
@@ -31,7 +31,7 @@ export function CardHeader({ children, className = '' }) {
  */
 export function CardBody({ children, className = '' }) {
   return (
-    <div className={`p-5 ${className}`}>
+    <div className={`p-4 sm:p-5 ${className}`}>
       {children}
     </div>
   );

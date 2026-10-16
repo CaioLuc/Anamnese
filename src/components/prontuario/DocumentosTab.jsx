@@ -60,11 +60,11 @@ export default function DocumentosTab({ patient, sessoes = [], psicologo = {} })
   return (
     <div className="space-y-6">
       {/* CFP Compliance Banner */}
-      <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] flex items-start gap-3">
+      <div className="p-3.5 sm:p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] flex items-start gap-3">
         <div className="p-2 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] shrink-0">
           <ShieldCheck size={20} />
         </div>
-        <div>
+        <div className="min-w-0">
           <h4 className="text-sm font-heading font-semibold text-[var(--text-primary)]">
             Emissão em Conformidade com a Resolução CFP nº 06/2019
           </h4>
@@ -76,14 +76,14 @@ export default function DocumentosTab({ patient, sessoes = [], psicologo = {} })
       </div>
 
       {/* Grid de Modelos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
         {DOC_TYPES.map((doc) => {
           const Icon = doc.icon;
           return (
-            <Card key={doc.id} className="p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <Card key={doc.id} className="p-4 sm:p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] text-[var(--text-primary)]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] text-[var(--text-primary)] shrink-0">
                     <Icon size={22} style={{ color: doc.color }} />
                   </div>
                   <Badge variant={doc.badgeVariant}>{doc.artigo}</Badge>
@@ -99,7 +99,7 @@ export default function DocumentosTab({ patient, sessoes = [], psicologo = {} })
               </div>
 
               <div className="pt-4 mt-4 border-t border-[var(--border)] flex justify-end">
-                <Button size="sm" onClick={() => handleOpenEmitir(doc.id)}>
+                <Button size="sm" className="w-full sm:w-auto justify-center" onClick={() => handleOpenEmitir(doc.id)}>
                   Emitir {doc.title.split(' ')[0]}
                 </Button>
               </div>

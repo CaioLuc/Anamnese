@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useEffect } from 'react';
 import { useEscapeKey } from '../hooks/useKeyboard';
 import { Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 
@@ -21,23 +21,30 @@ export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCan
   const cancelar = () => { if (!isLoading && onCancel) onCancel(); };
   useEscapeKey(isOpen, cancelar);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const isDanger = variant === 'danger';
   const Icone = isDanger ? Trash2 : AlertTriangle;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: 'var(--overlay)' }} onClick={cancelar}>
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-3 sm:p-4 safe-bottom" style={{ backgroundColor: 'var(--overlay)' }} onClick={cancelar}>
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={tituloId}
-        className="ds-card relative w-full max-w-sm p-6 animate-in"
+        className="ds-card relative w-full max-w-sm max-h-[90dvh] overflow-y-auto custom-scrollbar p-5 sm:p-6 animate-in slide-in-from-bottom-6 sm:zoom-in-95"
         style={{ boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="w-11 h-11 rounded-full flex items-center justify-center mb-4"
+          className="w-11 h-11 rounded-full flex items-center justify-center mb-4 shrink-0"
           style={{ backgroundColor: isDanger ? 'var(--status-danger-bg)' : 'var(--status-warning-bg)', color: isDanger ? 'var(--status-danger)' : 'var(--status-warning)' }}
         >
           <Icone size={20} />

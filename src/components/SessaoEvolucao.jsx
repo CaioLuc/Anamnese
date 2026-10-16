@@ -191,10 +191,10 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
       </div>
 
       {/* Sem overflow-hidden: ele prenderia a barra de ações fixa e cortaria a lista de pacientes */}
-      <div className="ds-card p-6 sm:p-10 sm:pb-0 pb-0 relative">
+      <div className="ds-card p-4 sm:p-8 lg:p-10 sm:pb-0 lg:pb-0 pb-0 relative">
         
         {statusMessage.text && (
-          <div className="mb-8 p-4 rounded-lg border flex items-start gap-3 transition-all" style={{
+          <div className="mb-6 sm:mb-8 p-4 rounded-lg border flex items-start gap-3 transition-all" style={{
             backgroundColor: statusMessage.type === 'success' ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
             borderColor: statusMessage.type === 'success' ? 'var(--status-success)' : 'var(--status-danger)',
             color: statusMessage.type === 'success' ? 'var(--status-success-text)' : 'var(--status-danger-text)'
@@ -209,12 +209,12 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           </div>
         )}
 
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
           
           {/* Sessão 1: Cabeçalho */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 rounded-xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 rounded-xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
             {/* Paciente - Campo com Busca */}
-            <div className="lg:col-span-1">
+            <div className="sm:col-span-2 lg:col-span-1">
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Paciente *</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -225,7 +225,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                   value={patientSearch}
                   onChange={(e) => { setPatientSearch(e.target.value); setShowDropdown(true); setFormData(prev => ({...prev, id_paciente: ''})); }}
                   onFocus={() => setShowDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 180)}
                   placeholder="Buscar paciente..."
                   disabled={isLoadingPatients}
                   required
@@ -237,12 +237,13 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                       <button
                         key={p.id}
                         type="button"
-                        onMouseDown={() => handleSelectPatient(p)}
-                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors hover:bg-brand-50 dark:hover:bg-brand-900/20"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleSelectPatient(p)}
+                        className="w-full text-left px-4 py-2.5 min-h-[44px] text-sm flex items-center gap-3 transition-colors hover:bg-brand-50 dark:hover:bg-brand-900/20"
                         style={{ color: 'var(--text-primary)' }}
                       >
                         <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>{p?.nome?.charAt(0)?.toUpperCase() || '?'}</span>
-                        {p.nome}
+                        <span className="truncate">{p.nome}</span>
                       </button>
                     ))}
                   </div>
@@ -300,13 +301,13 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
             </div>
 
             {/* Pagamento Efetuado */}
-            <div className="flex flex-col justify-end pb-1 lg:col-span-2">
+            <div className="flex flex-col justify-end pb-1 sm:col-span-2 lg:col-span-2">
               <label className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                 <input
                   type="checkbox"
                   checked={formData.pago}
                   onChange={(e) => setFormData({ ...formData, pago: e.target.checked })}
-                  className="w-5 h-5 rounded"
+                  className="w-5 h-5 rounded shrink-0"
                   style={{ accentColor: 'var(--accent)' }}
                 />
                 <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Marcar como Pago</span>
@@ -334,18 +335,18 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
           </div>
 
           {/* Mood Rating */}
-          <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
+          <div className="p-4 sm:p-6 rounded-xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
             <Tooltip text="A nota de humor reflete a percepção clínica do terapeuta sobre o estado emocional do paciente durante a sessão. 1 = aparentemente em sofrimento intenso, 10 = bem-estar evidente." showIcon>
               <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
                 Como você percebeu o paciente hoje?
-                <span className="ml-2 font-normal text-xs" style={{ color: 'var(--text-secondary)' }}>(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
+                <span className="block sm:inline sm:ml-2 font-normal text-xs mt-0.5 sm:mt-0" style={{ color: 'var(--text-secondary)' }}>(Nota de Humor: 1 = Muito ruim · 10 = Excelente)</span>
               </label>
             </Tooltip>
-            {/* Um marcador desliza até a nota: a mudança fica visível sem trocar 10 caixas de cor */}
-            <div role="group" aria-label="Nota de humor de 1 a 10" className="relative grid grid-cols-10 rounded-xl border p-1" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            {/* Em sm+ o marcador desliza pelas 10 colunas; no celular 5x2 garante alvos >= 44px */}
+            <div role="group" aria-label="Nota de humor de 1 a 10" className="relative grid grid-cols-5 sm:grid-cols-10 gap-1 sm:gap-0 rounded-xl border p-1" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
               <span
                 aria-hidden="true"
-                className="absolute top-1 bottom-1 left-1 rounded-lg transition-[transform,background-color] duration-300 ease-out-expo"
+                className="hidden sm:block absolute top-1 bottom-1 left-1 rounded-lg transition-[transform,background-color] duration-300 ease-out-expo"
                 style={{
                   width: 'calc((100% - 0.5rem) / 10)',
                   transform: `translateX(${(formData.humor - 1) * 100}%)`,
@@ -359,26 +360,29 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                   <button key={val} type="button"
                     aria-pressed={isSelected}
                     onClick={() => setFormData(prev => ({ ...prev, humor: val }))}
-                    className="relative h-11 rounded-lg text-sm font-bold tabular transition-colors duration-200"
-                    style={{ color: isSelected ? '#FFFFFF' : corHumor(val) }}
+                    className={`relative h-11 rounded-lg text-sm font-bold tabular transition-colors duration-200 ${isSelected ? 'sm:!bg-transparent' : ''}`}
+                    style={{
+                      color: isSelected ? '#FFFFFF' : corHumor(val),
+                      backgroundColor: isSelected ? corHumor(val) : undefined,
+                    }}
                   >
                     {val}
                   </button>
                 );
               })}
             </div>
-            <div className="flex justify-between items-baseline mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              <span>Sofrimento intenso</span>
-              <span className="text-xs font-semibold" style={{ color: corHumor(formData.humor) }} aria-live="polite">
+            <div className="flex justify-between items-baseline gap-2 mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <span className="truncate">Sofrimento intenso</span>
+              <span className="text-xs font-semibold shrink-0" style={{ color: corHumor(formData.humor) }} aria-live="polite">
                 {formData.humor} · {rotuloHumor(formData.humor)}
               </span>
-              <span>Bem-estar evidente</span>
+              <span className="truncate text-right">Bem-estar evidente</span>
             </div>
           </div>
 
           {/* Sessão 2: Observações */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <Tooltip text="Descreva os temas principais abordados, intervenções realizadas e percepções clínicas relevantes. Quanto mais detalhado, melhor para acompanhamento futuro." showIcon>
                 <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Observações gerais *</label>
               </Tooltip>
@@ -416,7 +420,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
                     setIsGeneratingIA(false);
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all disabled:opacity-40 text-white"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] text-xs font-bold rounded-lg transition-all disabled:opacity-40 text-white"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}
               >
                 {isGeneratingIA ? (
@@ -439,7 +443,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
             </div>
             {isGeneratingIA && (
               <div className="mb-3 p-3 rounded-xl border flex items-start gap-3 animate-pulse" style={{ backgroundColor: 'var(--status-info-bg)', borderColor: 'var(--status-info)' }}>
-                <svg className="w-5 h-5 animate-spin" style={{ color: 'var(--status-info)' }} fill="none" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 animate-spin shrink-0" style={{ color: 'var(--status-info)' }} fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
@@ -500,32 +504,32 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
 
           {/* Botões */}
           {/* Fixa no rodapé: salvar continua ao alcance enquanto se escreve uma evolução longa */}
-          <div className="sticky bottom-0 z-10 -mx-6 sm:-mx-10 px-6 sm:px-10 py-4 rounded-b-ds flex flex-col sm:flex-row items-center justify-between gap-4 safe-bottom" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>
+          <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-8 lg:-mx-10 px-4 sm:px-8 lg:px-10 py-3.5 sm:py-4 rounded-b-ds flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 safe-bottom" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>
             <p className="text-xs max-w-sm hidden md:block" style={{ color: 'var(--text-secondary)' }}>
               A evolução entra no prontuário do paciente e segue a guarda mínima de 5 anos (CFP 01/2009). <span className="whitespace-nowrap">Ctrl+S salva.</span>
             </p>
             
-            <div className="flex w-full sm:w-auto items-center gap-3">
+            <div className="flex w-full sm:w-auto items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={handleExportPDF}
                 disabled={!formData.id_paciente || !formData.observacoes}
-                className="ds-btn ds-btn-secondary flex-1 sm:flex-none py-3"
+                className="ds-btn ds-btn-secondary flex-1 sm:flex-none py-3 min-h-[44px]"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Exportar PDF
+                <span>Exportar PDF</span>
               </button>
 
               <button 
                 type="submit" 
                 disabled={isSubmitting || patients.length === 0}
-                className="ds-btn ds-btn-primary flex-1 sm:flex-none py-3"
+                className="ds-btn ds-btn-primary flex-1 sm:flex-none py-3 min-h-[44px]"
               >
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>

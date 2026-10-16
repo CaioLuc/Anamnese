@@ -86,16 +86,27 @@ export default function Layout({
   // Atalhos de teclado globais (H7)
   useKeyboard([
     { key: 'k', ctrl: true, action: () => setShowSearch(true) },
-    { key: 'Escape', action: () => { setShowSearch(false); setShowHelp(false); } },
+    { key: 'Escape', action: () => { setShowSearch(false); setShowHelp(false); setIsSidebarOpen(false); } },
   ]);
 
   const status = perfil ? verificarStatusAssinatura(perfil) : null;
   const nomeExibicao = perfil?.nome?.trim() || userEmail || 'Usuário';
   const inicial = nomeExibicao.charAt(0).toUpperCase();
+  const isSecondaryRoute = !ABAS_MOBILE.some((aba) => aba.id === currentPath);
 
   const irPara = (id) => {
     onNavigate(id);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
+
+  const abrirBusca = () => {
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+    setShowSearch(true);
+  };
+
+  const abrirAjuda = () => {
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+    setShowHelp(true);
   };
 
   const handleLogout = async () => {
@@ -109,12 +120,12 @@ export default function Layout({
   const ThemeIcon = theme === 'dark' ? Sun : Moon;
 
   return (
-    <div className="flex w-full h-full overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <div className="flex w-full h-[100dvh] min-h-[100dvh] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
 
       {/* Fundo escuro do menu (celular) */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-30 md:hidden animate-in"
+          className="fixed inset-0 z-30 md:hidden animate-in fade-in"
           style={{ backgroundColor: 'var(--overlay)' }}
           onClick={() => setIsSidebarOpen(false)}
           aria-hidden="true"
@@ -124,15 +135,15 @@ export default function Layout({
       {/* ============ SIDEBAR ============ */}
       <aside
         className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          fixed md:static inset-y-0 left-0 z-40 flex flex-col w-[264px] md:w-[248px] shrink-0 transition-transform duration-300 ease-out-expo`}
+          fixed md:static inset-y-0 left-0 z-40 flex flex-col w-[264px] max-w-[82vw] md:w-[248px] shrink-0 transition-transform duration-300 ease-out safe-top safe-bottom`}
         style={{ backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)' }}
         aria-label="Navegação principal"
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
+        <div className="flex items-center justify-between px-4 sm:px-5 pt-4 sm:pt-5 pb-3.5">
           <Marca />
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="md:hidden ds-btn ds-btn-ghost !px-2"
+            className="md:hidden ds-btn ds-btn-ghost !px-2.5 min-w-[44px] min-h-[44px]"
             aria-label="Fechar menu"
           >
             <X size={18} />
@@ -149,8 +160,8 @@ export default function Layout({
             Registrar sessão
           </button>
           <button
-            onClick={() => setShowSearch(true)}
-            className="w-full flex items-center gap-2.5 px-3 rounded-[var(--radius-sm)] text-sm transition-colors min-h-[40px]"
+            onClick={abrirBusca}
+            className="w-full flex items-center gap-2.5 px-3 rounded-[var(--radius-sm)] text-sm transition-colors min-h-[42px]"
             style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
           >
             <Search size={16} />
@@ -179,19 +190,19 @@ export default function Layout({
                         aria-current={isActive ? 'page' : undefined}
                       >
                         <Icon size={18} strokeWidth={isActive ? 2.1 : 1.7} />
-                        {item.name}
+                        <span className="truncate">{item.name}</span>
                       </button>
                     );
                   })}
                   {grupo.titulo === 'Conta' && (
                     <>
-                      <button onClick={() => setShowHelp(true)} className="ds-nav-item">
+                      <button onClick={abrirAjuda} className="ds-nav-item">
                         <HelpCircle size={18} strokeWidth={1.7} />
-                        Central de ajuda
+                        <span className="truncate">Central de ajuda</span>
                       </button>
                       <button onClick={toggleTheme} className="ds-nav-item" aria-pressed={theme === 'dark'}>
                         <ThemeIcon size={18} strokeWidth={1.7} />
-                        {theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+                        <span className="truncate">{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
                       </button>
                     </>
                   )}
@@ -228,7 +239,7 @@ export default function Layout({
             </div>
             <button
               onClick={() => setConfirmLogout(true)}
-              className="ds-btn ds-btn-ghost !px-2 !min-h-[36px]"
+              className="ds-btn ds-btn-ghost !px-2.5 min-w-[40px] min-h-[40px]"
               aria-label="Sair do sistema"
               title="Sair"
             >
@@ -242,25 +253,25 @@ export default function Layout({
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra superior (celular) */}
         <header
-          className="h-14 md:hidden sticky top-0 z-20 shrink-0 flex items-center px-2 gap-1"
+          className="min-h-[56px] md:hidden sticky top-0 z-20 shrink-0 flex items-center px-2 gap-1 safe-top"
           style={{ backgroundColor: 'var(--bg-primary)', borderBottom: '1px solid var(--border)' }}
         >
-          <button onClick={() => setIsSidebarOpen(true)} className="ds-btn ds-btn-ghost !px-2.5" aria-label="Abrir menu">
+          <button onClick={() => setIsSidebarOpen(true)} className="ds-btn ds-btn-ghost !px-2.5 min-w-[44px] min-h-[44px]" aria-label="Abrir menu">
             <Menu size={20} />
           </button>
-          <div className="flex-1 flex justify-center">
+          <div className="flex-1 flex justify-center min-w-0">
             <Marca compacta />
           </div>
-          <button onClick={() => setShowSearch(true)} className="ds-btn ds-btn-ghost !px-2.5" aria-label="Buscar">
+          <button onClick={abrirBusca} className="ds-btn ds-btn-ghost !px-2.5 min-w-[44px] min-h-[44px]" aria-label="Buscar">
             <Search size={20} />
           </button>
         </header>
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col">
           {fullHeight ? (
-            <div className="flex-1 flex flex-col overflow-hidden pb-[72px] md:pb-0">{children}</div>
+            <div className="flex-1 flex flex-col overflow-hidden pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
           ) : (
-            <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-28 md:pb-10">{children}</div>
+            <div className="max-w-7xl mx-auto w-full px-3.5 sm:px-6 lg:px-8 pt-4 sm:pt-7 pb-[calc(80px+env(safe-area-inset-bottom))] md:pb-10">{children}</div>
           )}
         </main>
 
@@ -278,7 +289,7 @@ export default function Layout({
                 <button
                   key={aba.id}
                   onClick={() => irPara(aba.id)}
-                  className="flex flex-col items-center justify-center gap-0.5 h-[60px] text-[11px] font-semibold"
+                  className="flex flex-col items-center justify-center gap-0.5 h-[60px] px-0.5 text-[11px] font-semibold active:scale-95 transition-transform min-w-0"
                   style={{ color: ativo ? 'var(--accent)' : 'var(--text-muted)' }}
                   aria-current={ativo ? 'page' : undefined}
                 >
@@ -289,17 +300,18 @@ export default function Layout({
                   >
                     <Icon size={aba.destaque ? 18 : 20} strokeWidth={ativo || aba.destaque ? 2.2 : 1.8} />
                   </span>
-                  {aba.name}
+                  <span className="truncate max-w-full">{aba.name}</span>
                 </button>
               );
             })}
             <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex flex-col items-center justify-center gap-0.5 h-[60px] text-[11px] font-semibold"
-              style={{ color: 'var(--text-muted)' }}
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
+              aria-expanded={isSidebarOpen}
+              className="flex flex-col items-center justify-center gap-0.5 h-[60px] px-0.5 text-[11px] font-semibold active:scale-95 transition-transform min-w-0"
+              style={{ color: isSidebarOpen || isSecondaryRoute ? 'var(--accent)' : 'var(--text-muted)' }}
             >
               <span className="h-8 w-8 flex items-center justify-center"><MoreHorizontal size={20} /></span>
-              Mais
+              <span className="truncate max-w-full">Mais</span>
             </button>
           </div>
         </nav>

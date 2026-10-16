@@ -99,20 +99,20 @@ export default function Pacientes({
 
   return (
     <div className="w-full">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-heading font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Pacientes cadastrados</h2>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 sm:mb-8 gap-3.5 sm:gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h2 className="text-2xl sm:text-3xl font-heading font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Pacientes cadastrados</h2>
             <Badge variant="neutral">
               {patients.length} {patients.length === 1 ? 'paciente' : 'pacientes'}
             </Badge>
           </div>
-          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Gerencie sua lista de pacientes e acompanhe as evoluções psicoterapêuticas.</p>
+          <p className="mt-1 text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>Gerencie sua lista de pacientes e acompanhe as evoluções psicoterapêuticas.</p>
         </div>
         <Button 
           onClick={() => setIsPatientModalOpen(true)} 
           variant="primary"
-          className="flex-shrink-0"
+          className="w-full sm:w-auto flex-shrink-0 justify-center"
         >
           <Plus size={18} />
           Adicionar Paciente
@@ -122,7 +122,7 @@ export default function Pacientes({
       <div className="ds-card overflow-hidden">
         {/* Barra de Busca Exclusiva */}
         <div 
-          className="p-4 sm:p-6 flex items-center justify-between gap-4 flex-col sm:flex-row"
+          className="p-3.5 sm:p-6 flex items-stretch sm:items-center justify-between gap-3 sm:gap-4 flex-col sm:flex-row"
           style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}
         >
             <div className="relative w-full sm:max-w-md">
@@ -137,25 +137,27 @@ export default function Pacientes({
                     className="ds-input pl-10"
                 />
             </div>
-            {clinicas.length > 0 && (
-              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-                <select
-                  value={filterClinica}
-                  onChange={(e) => { setFilterClinica(e.target.value); setCurrentPage(1); }}
-                  className="ds-input"
-                >
-                  <option value="">Todos os locais</option>
-                  {clinicas.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+              {clinicas.length > 0 && (
+                <div className="flex-1 sm:flex-initial">
+                  <select
+                    value={filterClinica}
+                    onChange={(e) => { setFilterClinica(e.target.value); setCurrentPage(1); }}
+                    className="ds-input"
+                  >
+                    <option value="">Todos os locais</option>
+                    {clinicas.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              )}
+              <div className="text-xs sm:text-sm shrink-0 font-medium" style={{ color: 'var(--text-muted)' }}>
+                  {filteredPatients.length} {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}
               </div>
-            )}
-            <div className="text-sm shrink-0" style={{ color: 'var(--text-muted)' }}>
-                {filteredPatients.length} {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}
             </div>
         </div>
 
         {isLoading ? (
-          <div className="p-6 space-y-4">
+          <div className="p-4 sm:p-6 space-y-4">
             <Skeleton variant="card" count={3} />
           </div>
         ) : patients.length === 0 ? (
@@ -166,103 +168,183 @@ export default function Pacientes({
             actionLabel="Novo Paciente"
             onAction={() => setIsPatientModalOpen(true)}
           />
+        ) : paginatedPatients.length === 0 ? (
+          <div className="px-4 py-12 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Nenhum paciente encontrado com base na busca: "{searchTerm}"
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-xs uppercase tracking-wider font-semibold" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                  <th className="px-6 py-4 whitespace-nowrap">Paciente</th>
-                  <th className="px-6 py-4 whitespace-nowrap text-center">CPF</th>
-                  <th className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">Idade / Nasc.</th>
-                  <th className="px-6 py-4 whitespace-nowrap hidden md:table-cell">Contato</th>
-                  <th className="px-6 py-4 whitespace-nowrap text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody style={{ borderTop: '1px solid var(--border)' }}>
-                {paginatedPatients.length === 0 ? (
-                    <tr>
-                        <td colSpan="5" className="px-6 py-12 text-center" style={{ color: 'var(--text-secondary)' }}>
-                            Nenhum paciente encontrado com base na busca: "{searchTerm}"
-                        </td>
-                    </tr>
-                ) : paginatedPatients.map((patient) => {
-                  // Simple age calculation
-                  const dobStr = (patient.data_nascimento || '').includes('T') ? patient.data_nascimento : (patient.data_nascimento || '') + 'T12:00:00';
-                  const dob = new Date(dobStr);
-                  const today = new Date();
-                  let age = today.getFullYear() - dob.getFullYear();
+          <div>
+            {/* Mobile: Cards empilháveis (<768px) */}
+            <div className="md:hidden divide-y" style={{ borderColor: 'var(--border)' }}>
+              {paginatedPatients.map((patient) => {
+                const dobStr = patient.data_nascimento
+                  ? (patient.data_nascimento.includes('T') ? patient.data_nascimento : `${patient.data_nascimento}T12:00:00`)
+                  : '';
+                const dob = dobStr ? new Date(dobStr) : null;
+                const today = new Date();
+                let age = dob && !isNaN(dob.getTime()) ? today.getFullYear() - dob.getFullYear() : -1;
+                if (dob && age >= 0) {
                   const m = today.getMonth() - dob.getMonth();
-                  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) { age--; }
+                  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+                }
 
-                  return (
-                    <tr 
-                      key={patient.id} 
-                      onClick={() => openPatientProfile(patient)}
-                      className="transition-colors group cursor-pointer"
-                      style={{ borderBottom: '1px solid var(--border)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 mr-4">
-                            <div className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
-                              {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
+                return (
+                  <div
+                    key={patient.id}
+                    onClick={() => openPatientProfile(patient)}
+                    className="p-4 flex flex-col gap-3 transition-colors active:bg-[var(--bg-secondary)] cursor-pointer"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div
+                        className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                        style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
+                      >
+                        {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                          {patient.nome}
+                        </p>
+                        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                          {patient.clinica || 'Sem local definido'}
+                          {age >= 0 ? ` · ${age} anos` : ''}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                          {patient.cpf && (
+                            <Badge variant="neutral" size="sm">{formatCPF(patient.cpf)}</Badge>
+                          )}
+                          {patient.telefone && (
+                            <span className="inline-flex items-center text-xs" style={{ color: 'var(--text-secondary)' }}>
+                              <Phone size={12} className="mr-1 shrink-0" />
+                              {patient.telefone}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1 justify-center"
+                        onClick={(e) => openAnamnesisModal(patient, e)}
+                      >
+                        <FileText size={14} />
+                        Anamnese
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className="!px-3"
+                        onClick={(e) => handleExcluirPaciente(patient, e)}
+                        title="Remover Paciente"
+                        aria-label={`Remover ${patient.nome}`}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop/Tablet: Tabela (>=768px) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wider font-semibold" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    <th className="px-6 py-4 whitespace-nowrap">Paciente</th>
+                    <th className="px-6 py-4 whitespace-nowrap text-center">CPF</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Idade / Nasc.</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Contato</th>
+                    <th className="px-6 py-4 whitespace-nowrap text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody style={{ borderTop: '1px solid var(--border)' }}>
+                  {paginatedPatients.map((patient) => {
+                    const dobStr = patient.data_nascimento
+                      ? (patient.data_nascimento.includes('T') ? patient.data_nascimento : `${patient.data_nascimento}T12:00:00`)
+                      : '';
+                    const dob = dobStr ? new Date(dobStr) : null;
+                    const today = new Date();
+                    let age = dob && !isNaN(dob.getTime()) ? today.getFullYear() - dob.getFullYear() : -1;
+                    if (dob && age >= 0) {
+                      const m = today.getMonth() - dob.getMonth();
+                      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+                    }
+
+                    return (
+                      <tr 
+                        key={patient.id} 
+                        onClick={() => openPatientProfile(patient)}
+                        className="transition-colors group cursor-pointer"
+                        style={{ borderBottom: '1px solid var(--border)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 mr-4">
+                              <div className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                                {patient?.nome?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold transition-colors truncate max-w-[260px]" style={{ color: 'var(--text-primary)' }}>
+                                {patient.nome}
+                              </div>
+                              <div className="text-xs mt-0.5 truncate max-w-[260px]" style={{ color: 'var(--text-secondary)' }}>{patient.clinica || 'Sem local definido'}</div>
                             </div>
                           </div>
-                          <div>
-                            <div className="text-sm font-semibold transition-colors" style={{ color: 'var(--text-primary)' }}>
-                              {patient.nome}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <Badge variant="neutral">
+                            {patient.cpf ? formatCPF(patient.cpf) : '-'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{age >= 0 ? `${age} anos` : '-'}</div>
+                          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{!dob || isNaN(dob.getTime()) ? '—' : dob.toLocaleDateString()}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {patient.telefone ? (
+                            <div className="flex items-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                              <Phone size={14} className="mr-1.5" />
+                              {patient.telefone}
                             </div>
-                            <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{patient.clinica || 'Sem local definido'}</div>
+                          ) : (
+                            <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Não informado</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end gap-2">
+                              <Button 
+                                variant="secondary"
+                                size="sm"
+                                onClick={(e) => openAnamnesisModal(patient, e)}
+                              >
+                                <FileText size={14} />
+                                Nova Anamnese
+                              </Button>
+                              <Button 
+                                variant="danger"
+                                size="sm"
+                                className="px-2"
+                                onClick={(e) => handleExcluirPaciente(patient, e)}
+                                title="Remover Paciente"
+                                aria-label={`Remover ${patient.nome}`}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <Badge variant="neutral">
-                          {patient.cpf ? formatCPF(patient.cpf) : '-'}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                        <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{age >= 0 ? `${age} anos` : '-'}</div>
-                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{isNaN(dob.getTime()) ? '—' : dob.toLocaleDateString()}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                        {patient.telefone ? (
-                          <div className="flex items-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            <Phone size={14} className="mr-1.5" />
-                            {patient.telefone}
-                          </div>
-                        ) : (
-                          <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Não informado</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                            <Button 
-                              variant="secondary"
-                              size="sm"
-                              onClick={(e) => openAnamnesisModal(patient, e)}
-                            >
-                              <FileText size={14} />
-                              Nova Anamnese
-                            </Button>
-                            <Button 
-                              variant="danger"
-                              size="sm"
-                              className="px-2"
-                              onClick={(e) => handleExcluirPaciente(patient, e)}
-                              title="Remover Paciente"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             
             {/* Pagination Controls */}
             <Pagination
