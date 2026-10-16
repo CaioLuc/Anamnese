@@ -26,14 +26,14 @@ function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao, dup
   const totalSecoes = (template.campos || []).filter(c => c.tipo === 'section').length;
 
   return (
-    <div className="ds-card p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:border-brand-300 dark:hover:border-brand-500/50 group" style={{ backgroundColor: 'var(--bg-card)' }}>
+    <div className="ds-card p-4 sm:p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:border-brand-300 dark:hover:border-brand-500/50 group" style={{ backgroundColor: 'var(--bg-card)' }}>
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 transition-colors">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 transition-colors shrink-0">
             {renderQuestionarioIcon(template.icone, isPadrao)}
           </div>
           <div>
-            <h3 className="font-heading font-semibold text-sm leading-tight" style={{ color: 'var(--text-primary)' }}>{template.nome}</h3>
+            <h3 className="font-heading font-semibold text-sm leading-tight break-words" style={{ color: 'var(--text-primary)' }}>{template.nome}</h3>
             {isPadrao && (
               <span className="inline-block mt-1">
                   <Badge variant="info">Padrão</Badge>
@@ -63,7 +63,7 @@ function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao, dup
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1"
+            className="flex-1 max-sm:min-h-[44px]"
             onClick={() => onEditar(template)}
           >
             <Edit2 size={14} />
@@ -73,7 +73,7 @@ function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao, dup
         <Button
           variant="secondary"
           size="sm"
-          className="flex-1"
+          className="flex-1 max-sm:min-h-[44px]"
           onClick={() => onDuplicar(template)}
           disabled={!!duplicandoId}
         >
@@ -84,8 +84,9 @@ function TemplateCard({ template, onEditar, onDuplicar, onDeletar, isPadrao, dup
           <Button
             variant="danger"
             size="sm"
-            className="px-2"
+            className="px-2 max-sm:min-h-[44px] max-sm:min-w-[44px]"
             onClick={() => onDeletar(template)}
+            aria-label={`Excluir ${template.nome}`}
           >
             <Trash2 size={16} />
           </Button>
@@ -186,7 +187,7 @@ export default function Questionarios() {
   const todosFiltrados = [
     ...TEMPLATES_PADRAO,
     ...customTemplates
-  ].filter(t => !busca || t.nome.toLowerCase().includes(busca.toLowerCase()));
+  ].filter(t => !busca || (t.nome || '').toLowerCase().includes(busca.toLowerCase()));
 
   if (showBuilder) {
     return (
@@ -210,13 +211,13 @@ export default function Questionarios() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-1">
           <div>
-            <h1 className="text-3xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Questionários</h1>
+            <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Questionários</h1>
             <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Crie e gerencie seus modelos de anamnese personalizados</p>
           </div>
-          <Button onClick={handleNovoTemplate} className="flex-shrink-0">
+          <Button onClick={handleNovoTemplate} className="flex-shrink-0 w-full sm:w-auto">
             <Plus size={18} />
             Novo Questionário
           </Button>
@@ -224,7 +225,7 @@ export default function Questionarios() {
       </div>
 
       {/* Busca */}
-      <div className="flex-shrink-0 px-6 pb-4">
+      <div className="flex-shrink-0 px-4 sm:px-6 pb-4">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -238,7 +239,7 @@ export default function Questionarios() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 custom-scrollbar">
         {isLoading ? (
           <Spinner />
         ) : erroCarregamento ? (

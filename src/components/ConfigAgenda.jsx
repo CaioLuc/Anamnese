@@ -133,9 +133,13 @@ export default function ConfigAgenda({ onClose }) {
 
   const handleCopy = () => {
     if (!publicUrl) return;
-    navigator.clipboard.writeText(publicUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    // writeText rejeita fora de HTTPS ou sem permissão: antes mostrava "Copiado!" mesmo falhando
+    (navigator.clipboard?.writeText(publicUrl) ?? Promise.reject(new Error('Clipboard indisponível')))
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => showToast({ type: 'error', message: 'Não foi possível copiar. Selecione o link e copie manualmente.' }));
   };
 
   if (isLoading) {
@@ -152,31 +156,31 @@ export default function ConfigAgenda({ onClose }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Configurar Agenda Pública</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Configurar Agenda Pública</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Defina seus horários e gere um link para seus pacientes agendarem online.</p>
         </div>
-        <button onClick={onClose} className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+        <button onClick={onClose} aria-label="Fechar configuração" className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
           <X size={20} />
         </button>
       </div>
 
       {/* Link Público */}
-      <div className="ds-card p-5 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+      <div className="ds-card p-4 sm:p-5 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
         <h3 className="text-sm font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Link Público</h3>
 
         <div>
           <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Seu slug (URL personalizada)</label>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="w-full sm:flex-1 min-w-0 flex items-center rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
               <span className="px-3 text-xs py-2.5 whitespace-nowrap" style={{ color: 'var(--text-muted)', borderRight: '1px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>/agendar/</span>
               <input
                 type="text"
                 value={slug}
                 onChange={e => handleSlugChange(e.target.value)}
                 placeholder="dra-maria"
-                className="flex-1 px-3 py-2.5 bg-transparent text-sm focus:outline-none"
+                className="flex-1 min-w-0 px-3 py-2.5 bg-transparent text-sm focus:outline-none"
                 style={{ color: 'var(--text-primary)' }}
               />
             </div>
@@ -196,7 +200,7 @@ export default function ConfigAgenda({ onClose }) {
 
         {publicUrl && slugStatus === 'ok' && (
           <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)' }}>
-            <span className="text-xs truncate flex-1 font-mono" style={{ color: 'var(--accent)' }}>{publicUrl}</span>
+            <span className="text-xs truncate flex-1 min-w-0 font-mono" style={{ color: 'var(--accent)' }}>{publicUrl}</span>
             <Button size="sm" onClick={handleCopy}>
               {copied ? 'Copiado!' : 'Copiar'}
             </Button>
@@ -226,7 +230,7 @@ export default function ConfigAgenda({ onClose }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Duração da sessão (min)</label>
             <input
@@ -250,7 +254,7 @@ export default function ConfigAgenda({ onClose }) {
       </div>
 
       {/* Horários de Trabalho */}
-      <div className="ds-card p-5 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+      <div className="ds-card p-4 sm:p-5 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
         <h3 className="text-sm font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Horários de Atendimento</h3>
         <div className="space-y-2">
           {DIAS.map(dia => {
@@ -258,7 +262,7 @@ export default function ConfigAgenda({ onClose }) {
             return (
               <div 
                 key={dia.id} 
-                className={`flex items-center gap-3 p-3 rounded-xl transition-all`}
+                className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-xl transition-all`}
                 style={{ 
                     backgroundColor: d.ativo ? 'var(--bg-secondary)' : 'transparent',
                     border: `1px solid ${d.ativo ? 'var(--border)' : 'transparent'}`,
@@ -285,18 +289,22 @@ export default function ConfigAgenda({ onClose }) {
                   <span className="text-sm font-medium w-20" style={{ color: 'var(--text-primary)' }}>{dia.label}</span>
                 </button>
                 {d.ativo && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <input type="time" value={d.inicio} onChange={e => updateDia(dia.id, 'inicio', e.target.value)}
-                      className="ds-input py-1.5 px-2 text-xs" />
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>até</span>
-                    <input type="time" value={d.fim} onChange={e => updateDia(dia.id, 'fim', e.target.value)}
-                      className="ds-input py-1.5 px-2 text-xs" />
-                    <span className="text-[10px] mx-1" style={{ color: 'var(--text-muted)' }}>Intervalo:</span>
-                    <input type="time" value={d.intervalo_inicio} onChange={e => updateDia(dia.id, 'intervalo_inicio', e.target.value)}
-                      className="ds-input py-1.5 px-2 text-xs" />
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>-</span>
-                    <input type="time" value={d.intervalo_fim} onChange={e => updateDia(dia.id, 'intervalo_fim', e.target.value)}
-                      className="ds-input py-1.5 px-2 text-xs" />
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 w-full sm:w-auto">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <input type="time" aria-label={`${dia.label}: início`} value={d.inicio} onChange={e => updateDia(dia.id, 'inicio', e.target.value)}
+                        className="ds-input py-1.5 px-2 text-xs flex-1 sm:flex-none min-w-0" />
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>até</span>
+                      <input type="time" aria-label={`${dia.label}: fim`} value={d.fim} onChange={e => updateDia(dia.id, 'fim', e.target.value)}
+                        className="ds-input py-1.5 px-2 text-xs flex-1 sm:flex-none min-w-0" />
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <span className="text-[10px] shrink-0" style={{ color: 'var(--text-muted)' }}>Intervalo:</span>
+                      <input type="time" aria-label={`${dia.label}: início do intervalo`} value={d.intervalo_inicio} onChange={e => updateDia(dia.id, 'intervalo_inicio', e.target.value)}
+                        className="ds-input py-1.5 px-2 text-xs flex-1 sm:flex-none min-w-0" />
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>-</span>
+                      <input type="time" aria-label={`${dia.label}: fim do intervalo`} value={d.intervalo_fim} onChange={e => updateDia(dia.id, 'intervalo_fim', e.target.value)}
+                        className="ds-input py-1.5 px-2 text-xs flex-1 sm:flex-none min-w-0" />
+                    </div>
                   </div>
                 )}
               </div>
@@ -307,11 +315,11 @@ export default function ConfigAgenda({ onClose }) {
 
       {/* Actions */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Button onClick={handleSave} disabled={isSaving || erroCarregar}>
+        <Button className="w-full sm:w-auto" onClick={handleSave} disabled={isSaving || erroCarregar}>
           {isSaving ? 'Salvando...' : 'Salvar Configuração'}
         </Button>
         {erroCarregar && (
-          <span className="text-sm flex items-center gap-2" role="alert" style={{ color: 'var(--status-danger)' }}>
+          <span className="text-sm flex flex-wrap items-center gap-2" role="alert" style={{ color: 'var(--status-danger)' }}>
             Falha ao carregar a configuração.
             <Button size="sm" variant="secondary" onClick={() => setTentativaLoad(n => n + 1)}>Tentar novamente</Button>
           </span>

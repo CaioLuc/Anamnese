@@ -213,7 +213,11 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
   };
 
   const handleCancelar2FA = async () => {
-    await logoutFirebaseUser();
+    try {
+      await logoutFirebaseUser();
+    } catch {
+      setError('Não foi possível sair. Verifique sua conexão e tente de novo.');
+    }
   };
 
   const handleSolicitarRedefinicao = async (e) => {
@@ -245,7 +249,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
   };
 
   return (
-    <div className="min-h-full w-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="min-h-[100dvh] w-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
 
       {/* Painel da marca (desktop) */}
       <aside
@@ -282,10 +286,10 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
       </aside>
 
       {/* Formulários */}
-      <main className="flex-1 flex flex-col justify-center px-5 py-10 sm:px-10">
+      <main className="flex-1 flex flex-col justify-center px-4 py-8 sm:px-10 sm:py-10">
         <div className="w-full max-w-[400px] mx-auto">
 
-          <div className="lg:hidden flex items-center gap-2.5 mb-10">
+          <div className="lg:hidden flex items-center gap-2.5 mb-8 sm:mb-10">
             <img src={logo} alt="" className="w-9 h-9" />
             <span className="font-heading text-lg font-semibold tracking-[0.08em]" style={{ color: 'var(--text-primary)' }}>CARITAS</span>
           </div>
@@ -295,7 +299,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
 
           {(viewState === 'login' || viewState === 'cadastro') && (
             <>
-              <h2 className="text-[1.9rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>
+              <h2 className="text-[1.6rem] sm:text-[1.9rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>
                 {viewState === 'login' ? 'Bem-vinda(o) de volta' : 'Crie sua conta'}
               </h2>
               <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -304,7 +308,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
                   : 'Depois do cadastro, você escolhe o plano e ativa o acesso.'}
               </p>
 
-              <div className="ds-segmented w-full mt-7 mb-6">
+              <div className="ds-segmented w-full mt-6 sm:mt-7 mb-6">
                 <button type="button" aria-pressed={viewState === 'login'} className="flex-1" onClick={() => trocarAba('login')}>
                   Entrar
                 </button>
@@ -331,7 +335,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
                   <button
                     type="button"
                     onClick={() => { setResetEmail(email); setError(''); setResetSuccess(''); setViewState('recuperar_senha'); }}
-                    className="text-xs font-semibold mb-1.5 hover:underline"
+                    className="text-xs font-semibold mb-1.5 min-h-[44px] sm:min-h-0 inline-flex items-center hover:underline"
                     style={{ color: 'var(--accent)' }}
                   >
                     Esqueci minha senha
@@ -387,13 +391,13 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
               <div className="w-12 h-12 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
                 <MailCheck size={24} />
               </div>
-              <h2 className="text-[1.75rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>
+              <h2 className="text-[1.5rem] sm:text-[1.75rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>
                 Confirme que é você
               </h2>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }} aria-live="polite">
                 {enviandoCodigo && !enviadoPara
                   ? 'Enviando o código para o seu e-mail…'
-                  : <>Enviamos um código de 6 dígitos para <strong style={{ color: 'var(--text-primary)' }}>{enviadoPara || email}</strong>. Ele vale por 10 minutos.</>}
+                  : <>Enviamos um código de 6 dígitos para <strong className="break-all" style={{ color: 'var(--text-primary)' }}>{enviadoPara || email}</strong>. Ele vale por 10 minutos.</>}
               </p>
 
               <form onSubmit={handleVerificar2FA} className="mt-7 space-y-5">
@@ -410,7 +414,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
                     value={codigo2FA}
                     onChange={(e) => setCodigo2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="––––––"
-                    className="ds-input text-center !text-[1.6rem] tracking-[0.5em] font-bold !min-h-[56px] tabular"
+                    className="ds-input text-center !text-[1.6rem] tracking-[0.35em] sm:tracking-[0.5em] font-bold !min-h-[56px] tabular"
                   />
                 </div>
 
@@ -431,12 +435,12 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
                   {isSubmitting ? <><Loader2 size={17} className="animate-spin" /> Verificando…</> : 'Verificar e entrar'}
                 </Button>
 
-                <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-1">
                   <button
                     type="button"
                     onClick={solicitarCodigo}
                     disabled={reenviarEm > 0 || enviandoCodigo}
-                    className="text-sm font-semibold flex items-center gap-1.5 min-h-[40px] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="text-sm font-semibold flex items-center gap-1.5 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
                     style={{ color: 'var(--accent)' }}
                   >
                     <RefreshCw size={14} className={enviandoCodigo ? 'animate-spin' : ''} />
@@ -445,7 +449,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
                   <button
                     type="button"
                     onClick={handleCancelar2FA}
-                    className="text-sm font-medium min-h-[40px] hover:underline"
+                    className="text-sm font-medium min-h-[44px] hover:underline"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     Usar outra conta
@@ -460,7 +464,7 @@ export default function Login({ pending2FAUser, on2FASuccess }) {
               <div className="w-12 h-12 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: 'var(--warm-light)', color: 'var(--warm)' }}>
                 <KeyRound size={22} />
               </div>
-              <h2 className="text-[1.75rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>Redefinir senha</h2>
+              <h2 className="text-[1.5rem] sm:text-[1.75rem] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>Redefinir senha</h2>
               <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Enviaremos um link para você cadastrar uma nova senha.
               </p>

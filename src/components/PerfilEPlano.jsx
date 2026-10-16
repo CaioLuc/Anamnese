@@ -199,10 +199,10 @@ export default function PerfilEPlano({ onProfileUpdated }) {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {/* Header Institucional */}
-      <div className="ds-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-l-[var(--accent)]">
+      <div className="ds-card p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-l-[var(--accent)]">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-heading font-bold text-[var(--text-primary)]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="text-xl sm:text-2xl font-heading font-bold text-[var(--text-primary)]">
               Meu Perfil & Plano de Assinatura
             </h1>
             <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full uppercase tracking-wider ${
@@ -247,10 +247,10 @@ export default function PerfilEPlano({ onProfileUpdated }) {
       </div>
 
       {/* Navegação de Abas */}
-      <div className="flex border-b border-[var(--border)] gap-2 overflow-x-auto pb-1">
+      <div className="flex border-b border-[var(--border)] gap-2 overflow-x-auto snap-x pb-1">
         <button
           onClick={() => setActiveTab('perfil')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all border-b-2 ${
+          className={`shrink-0 snap-start whitespace-nowrap flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium rounded-t-lg transition-all border-b-2 ${
             activeTab === 'perfil'
               ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-card)]'
               : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -260,7 +260,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
         </button>
         <button
           onClick={() => setActiveTab('planos')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all border-b-2 ${
+          className={`shrink-0 snap-start whitespace-nowrap flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium rounded-t-lg transition-all border-b-2 ${
             activeTab === 'planos'
               ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-card)]'
               : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -270,7 +270,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
         </button>
         <button
           onClick={() => setActiveTab('pagamento')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all border-b-2 ${
+          className={`shrink-0 snap-start whitespace-nowrap flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium rounded-t-lg transition-all border-b-2 ${
             activeTab === 'pagamento'
               ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-card)]'
               : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -280,7 +280,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
         </button>
         <button
           onClick={() => setActiveTab('faturas')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all border-b-2 ${
+          className={`shrink-0 snap-start whitespace-nowrap flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium rounded-t-lg transition-all border-b-2 ${
             activeTab === 'faturas'
               ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-card)]'
               : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -292,7 +292,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
       {/* CONTEÚDO DA ABA 1: DADOS CADASTRAIS */}
       {activeTab === 'perfil' && (
-        <form onSubmit={handleSalvarPerfil} className="ds-card p-6 space-y-6">
+        <form onSubmit={handleSalvarPerfil} className="ds-card p-4 sm:p-6 space-y-6">
           <div className="border-b border-[var(--border)] pb-4">
             <h2 className="text-lg font-heading font-semibold text-[var(--text-primary)]">
               Informações Profissionais
@@ -419,7 +419,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
             <button
               type="submit"
               disabled={isSaving}
-              className="ds-btn ds-btn-primary px-6 py-2.5 flex items-center gap-2"
+              className="ds-btn ds-btn-primary w-full sm:w-auto px-6 py-2.5 flex items-center justify-center gap-2"
             >
               {isSaving ? <RefreshCw className="animate-spin" size={16} /> : <Check size={16} />}
               Salvar Dados Cadastrais
@@ -432,7 +432,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
       {activeTab === 'planos' && (
         <div className="space-y-6">
           <div className="text-center max-w-xl mx-auto space-y-2">
-            <h2 className="text-2xl font-heading font-bold text-[var(--text-primary)]">
+            <h2 className="text-xl sm:text-2xl font-heading font-bold text-[var(--text-primary)]">
               Escolha o Plano Ideal para a sua Prática Clínica
             </h2>
             <p className="text-sm text-[var(--text-secondary)]">
@@ -447,7 +447,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
               return (
                 <div
                   key={plano.id}
-                  className={`ds-card p-6 flex flex-col justify-between relative transition-all duration-200 ${
+                  className={`ds-card p-5 sm:p-6 flex flex-col justify-between relative transition-all duration-200 ${
                     plano.destaque
                       ? 'border-2 border-[var(--accent)] shadow-lg shadow-[var(--accent)]/5'
                       : 'border border-[var(--border)]'
@@ -517,6 +517,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                           setActiveTab('pagamento');
                           setMostrarFormCartao(true);
                           setPixPlanoSelecionado(plano.id);
+                          setPixData(null);
                         }}
                         className={`w-full py-2.5 px-4 text-xs font-semibold rounded-lg transition-all text-center flex items-center justify-center gap-2 ${
                           plano.destaque
@@ -539,7 +540,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
       {activeTab === 'pagamento' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Coluna 1: Cartão de Crédito Recorrente */}
-          <div className="ds-card p-6 space-y-6">
+          <div className="ds-card p-4 sm:p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
               <div>
                 <h2 className="text-lg font-heading font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -559,13 +560,13 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                     {perfil.cartaoInfo.bandeira || 'Crédito'}
                   </div>
                   <div className="w-10 h-7 rounded bg-amber-400/80 mb-6" />
-                  <div className="text-lg font-mono tracking-widest mb-4">
+                  <div className="text-base sm:text-lg font-mono tracking-wider sm:tracking-widest mb-4 whitespace-nowrap">
                     •••• •••• •••• {perfil.cartaoInfo.ultimos4}
                   </div>
                   <div className="flex justify-between items-end text-xs">
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase">Titular</div>
-                      <div className="font-semibold uppercase">{perfil.cartaoInfo.nomeTitular}</div>
+                      <div className="font-semibold uppercase break-words">{perfil.cartaoInfo.nomeTitular}</div>
                     </div>
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase">Validade</div>
@@ -574,7 +575,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 pt-2">
                   <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
                     <Check size={14} />
                     {perfil.proximoVencimento
@@ -709,7 +710,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                   <span>O número completo do cartão e o CVV não são armazenados; guardamos apenas bandeira, 4 últimos dígitos, titular e validade.</span>
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
                   {perfil?.cartaoInfo && (
                     <button
                       type="button"
@@ -733,7 +734,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
           </div>
 
           {/* Coluna 2: Pagamento Mensal via PIX */}
-          <div className="ds-card p-6 space-y-6">
+          <div className="ds-card p-4 sm:p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
               <div>
                 <h2 className="text-lg font-heading font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -746,7 +747,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
             </div>
 
             {!pixData ? (
-              <div className="text-center py-8 space-y-4">
+              <div className="text-center py-4 sm:py-8 space-y-4">
                 <div className="text-left">
                   <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                     CPF/CNPJ do Titular
@@ -775,7 +776,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                 <button
                   onClick={() => handleGerarPix(planoSelecionadoId)}
                   disabled={pixLoading || !cartaoForm.cpfCnpj}
-                  className="ds-btn ds-btn-primary px-6 py-2.5 inline-flex items-center gap-2"
+                  className="ds-btn ds-btn-primary w-full sm:w-auto px-6 py-2.5 inline-flex items-center justify-center gap-2"
                 >
                   <QrCode size={16} /> Gerar QR Code PIX
                 </button>
@@ -783,7 +784,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
             ) : (
               <div className="space-y-4">
                 <div className="flex flex-col items-center p-4 bg-white rounded-xl shadow-inner border border-slate-200">
-                  <QRCodeSVG value={pixData.copiaECola} size={180} level="M" />
+                  <QRCodeSVG value={pixData.copiaECola} size={180} level="M" className="w-full max-w-[180px] h-auto" />
                   <span className="text-[11px] text-slate-500 mt-2 font-mono">
                     Valor: R$ {pixData.valor.toFixed(2)}
                   </span>
@@ -798,7 +799,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
                       type="text"
                       readOnly
                       value={pixData.copiaECola}
-                      className="ds-input font-mono text-xs flex-1 truncate"
+                      className="ds-input font-mono text-xs flex-1 min-w-0 truncate"
                     />
                     <button
                       onClick={copiarPix}
@@ -829,7 +830,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
 
       {/* CONTEÚDO DA ABA 4: HISTÓRICO DE MENSALIDADES */}
       {activeTab === 'faturas' && (
-        <div className="ds-card p-6 space-y-4">
+        <div className="ds-card p-4 sm:p-6 space-y-4">
           <div className="border-b border-[var(--border)] pb-4">
             <h2 className="text-lg font-heading font-semibold text-[var(--text-primary)]">
               Extrato de Mensalidades
@@ -849,7 +850,7 @@ export default function PerfilEPlano({ onProfileUpdated }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full min-w-[560px] text-left text-xs border-collapse whitespace-nowrap">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
                     <th className="py-3 px-3">Código</th>

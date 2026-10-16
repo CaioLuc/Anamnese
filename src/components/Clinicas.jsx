@@ -56,7 +56,7 @@ export default function Clinicas() {
       }
       // Verificar se já existe com mesmo nome (case insensitive)
       const nomeLimpo = nomeClinica.trim();
-      const exists = clinicas.some(c => c.nome.toLowerCase() === nomeLimpo.toLowerCase());
+      const exists = clinicas.some(c => (c.nome || '').toLowerCase() === nomeLimpo.toLowerCase());
       if (exists) {
         throw new Error('Local de atendimento já cadastrado com este nome.');
       }
@@ -73,6 +73,7 @@ export default function Clinicas() {
 
   const handleDelete = async (id) => {
     setConfirmDelete({ isOpen: false, clinica: null });
+    setError('');
     try {
       await deletarClinica(id);
       await loadClinicas();
@@ -92,15 +93,15 @@ export default function Clinicas() {
 
   return (
     <>
-    <div className="animate-in fade-in duration-500 w-full h-full flex flex-col p-6 sm:p-10 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Locais de Atendimento</h2>
+    <div className="animate-in fade-in duration-500 w-full h-full flex flex-col p-4 sm:p-10 max-w-4xl mx-auto">
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Locais de Atendimento</h2>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
           Gerencie suas clínicas ou locais de atendimento. Eles aparecerão na lista ao cadastrar novos pacientes.
         </p>
       </div>
 
-      <div className="ds-card p-6 sm:p-8 mb-8" style={{ backgroundColor: 'var(--bg-card)' }}>
+      <div className="ds-card p-4 sm:p-8 mb-6 sm:mb-8" style={{ backgroundColor: 'var(--bg-card)' }}>
         <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nome do Local/Clínica</label>
@@ -121,7 +122,7 @@ export default function Clinicas() {
             {isSubmitting ? 'Adicionando...' : <><Plus size={18} /> Adicionar Local</>}
           </Button>
         </form>
-        {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+        {error && <p role="alert" className="mt-3 text-sm text-red-500">{error}</p>}
       </div>
 
       <div className="ds-card overflow-hidden flex-1 flex flex-col min-h-0" style={{ backgroundColor: 'var(--bg-card)' }}>
@@ -137,16 +138,16 @@ export default function Clinicas() {
             <p style={{ color: 'var(--text-secondary)' }}>Nenhum local cadastrado ainda.</p>
           </div>
         ) : (
-          <ul className="flex-1 overflow-y-auto custom-scrollbar" style={{ divideColor: 'var(--border)', divideWidth: '0.5px', divideStyle: 'solid' }}>
+          <ul className="flex-1 overflow-y-auto custom-scrollbar">
             {clinicas.map(c => (
-              <li key={c.id} className="flex items-center justify-between p-5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderBottom: '1px solid var(--border)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+              <li key={c.id} className="flex items-center justify-between gap-3 p-4 sm:p-5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderBottom: '1px solid var(--border)' }}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
                     <Building2 size={20} />
                   </div>
-                  <div>
-                    <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{c.nome}</h4>
-                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Adicionado em {c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : 'recentemente'}</span>
+                  <div className="min-w-0">
+                    <h4 className="font-semibold break-words" style={{ color: 'var(--text-primary)' }}>{c.nome}</h4>
+                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Adicionado em {c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString('pt-BR') : 'recentemente'}</span>
                   </div>
                 </div>
                 <Button 
@@ -154,7 +155,8 @@ export default function Clinicas() {
                   size="sm"
                   onClick={() => setConfirmDelete({ isOpen: true, clinica: c })}
                   title="Remover"
-                  className="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+                  aria-label={`Remover ${c.nome}`}
+                  className="shrink-0 max-sm:min-h-[44px] max-sm:min-w-[44px] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
                   style={{ color: 'var(--status-danger)' }}
                 >
                   <Trash2 size={20} />

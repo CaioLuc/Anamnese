@@ -90,14 +90,14 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'var(--overlay)' }}>
-      <div className="ds-card relative w-full max-w-lg flex flex-col max-h-[80vh]" style={{ borderRadius: '16px' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="selecionar-template-titulo" className="ds-card relative w-full max-w-lg flex flex-col max-h-[85dvh]" style={{ borderRadius: '16px' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h2 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Escolher Questionário</h2>
+            <h2 id="selecionar-template-titulo" className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Escolher Questionário</h2>
             <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Selecione o modelo para esta anamnese</p>
           </div>
-          <button onClick={onClose} className="transition-colors" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={onClose} aria-label="Fechar" className="shrink-0 -mr-2 -mt-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors" style={{ color: 'var(--text-muted)' }}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -105,7 +105,7 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
         </div>
 
         {/* Busca */}
-        <div className="px-6 py-3 flex-shrink-0">
+        <div className="px-4 sm:px-6 py-3 flex-shrink-0">
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -121,7 +121,7 @@ export default function SelecionarTemplateModal({ isOpen, onClose, onSelecionar 
         </div>
 
         {/* Lista */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-2 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 space-y-2 custom-scrollbar">
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
               <svg className="w-7 h-7 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">

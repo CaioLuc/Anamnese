@@ -66,7 +66,8 @@ export default function OnboardingOverlay({ onComplete }) {
   const handleComplete = () => {
     setIsVisible(false);
     setTimeout(() => {
-      localStorage.setItem('caritas_onboarding_done', 'true');
+      // Navegação privada pode bloquear o storage: sem o try o tour nunca fechava
+      try { localStorage.setItem('caritas_onboarding_done', 'true'); } catch { /* tour volta no próximo acesso */ }
       onComplete();
     }, 300);
   };
@@ -75,24 +76,24 @@ export default function OnboardingOverlay({ onComplete }) {
   const isLast = currentStep === ONBOARDING_STEPS.length - 1;
 
   return (
-    <div className={`fixed inset-0 z-[500] flex items-center justify-center p-6 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div role="dialog" aria-modal="true" aria-labelledby="onboarding-titulo" className={`fixed inset-0 z-[500] flex items-center justify-center p-4 sm:p-6 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md" />
 
       {/* Card */}
-      <div className={`relative w-full max-w-md ds-card overflow-hidden transition-all duration-500 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`} style={{ borderRadius: '24px' }}>
+      <div className={`relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto ds-card transition-all duration-500 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`} style={{ borderRadius: '24px' }}>
         {/* Gradient accent top */}
         <div className="h-1" style={{ background: 'linear-gradient(to right, var(--accent), var(--status-info), var(--status-success))' }} />
 
         {/* Content */}
-        <div className="p-8 text-center">
+        <div className="p-6 sm:p-8 text-center">
           {/* Icon */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4 sm:mb-6">
             {step.icon}
           </div>
 
           {/* Texts */}
-          <h2 className="text-xl font-heading font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+          <h2 id="onboarding-titulo" className="text-xl font-heading font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
             {step.title}
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -101,9 +102,9 @@ export default function OnboardingOverlay({ onComplete }) {
         </div>
 
         {/* Footer */}
-        <div className="px-8 pb-8">
+        <div className="px-6 sm:px-8 pb-6 sm:pb-8">
           {/* Progress Dots */}
-          <div className="flex justify-center gap-2 mb-6">
+          <div className="flex justify-center gap-2 mb-4 sm:mb-6" aria-hidden="true">
             {ONBOARDING_STEPS.map((_, idx) => (
               <div
                 key={idx}
@@ -126,7 +127,7 @@ export default function OnboardingOverlay({ onComplete }) {
           <div className="flex gap-3">
             <button
               onClick={handleComplete}
-              className="flex-1 py-3 text-sm font-medium transition-colors rounded-xl"
+              className="flex-1 py-3 min-h-[44px] text-sm font-medium transition-colors rounded-xl"
               style={{ color: 'var(--text-muted)' }}
             >
               Pular tour

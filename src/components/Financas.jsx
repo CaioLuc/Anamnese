@@ -220,7 +220,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       setTimeout(() => setPixSaved(false), 3000);
     } catch (e) {
       logger.error('Erro ao salvar config PIX:', e);
-      alert('Erro ao salvar. Tente novamente.');
+      showToast({ type: 'error', message: 'Erro ao salvar a configuração do PIX. Tente novamente.' });
     } finally {
       setSavingPix(false);
     }
@@ -319,7 +319,7 @@ export default function Financas({ patients, isLoadingPatients }) {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [periodo, filterPago, sortBy]);
+  }, [periodo, filterPago, sortBy, customStart, customEnd]);
 
   // KPIs
   const stats = useMemo(() => {
@@ -399,7 +399,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       {/* Header & Filtros */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-heading font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Financeiro</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Financeiro</h2>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Controle de faturamento, receitas e inadimplências.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
@@ -408,7 +408,7 @@ export default function Financas({ patients, isLoadingPatients }) {
               <button
                 key={p.id}
                 onClick={() => setPeriodo(p.id)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex-shrink-0"
+                className="px-3 py-1.5 max-sm:min-h-[40px] rounded-xl text-xs font-bold transition-all whitespace-nowrap flex-shrink-0"
                 style={{
                   backgroundColor: periodo === p.id ? 'var(--accent)' : 'transparent',
                   color: periodo === p.id ? '#FFFFFF' : 'var(--text-secondary)',
@@ -461,22 +461,23 @@ export default function Financas({ patients, isLoadingPatients }) {
       <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
         <button
           onClick={() => setShowPixConfig(!showPixConfig)}
-          className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+          aria-expanded={showPixConfig}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/5"
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-xl shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-bold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
                 <QrCode size={16} className="text-[var(--accent)]" /> Configurações do PIX
               </p>
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
                 {pixConfig?.pix_chave ? `Chave: ${pixConfig.pix_chave}` : 'Configure sua chave para cobrar pacientes'}
               </p>
             </div>
           </div>
-          <svg className={`w-5 h-5 transition-transform duration-200 ${showPixConfig ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-5 h-5 shrink-0 transition-transform duration-200 ${showPixConfig ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
@@ -550,7 +551,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <FinCard 
           label="Previsão Total" 
           value={stats.total} 
@@ -585,7 +586,7 @@ export default function Financas({ patients, isLoadingPatients }) {
       {sessoesPeriodo.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Bar Chart */}
-          <div className="ds-card p-5">
+          <div className="ds-card p-4 sm:p-5">
             <h3 className="font-bold text-sm mb-4 uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Recebido vs Pendente</h3>
             <div className="h-52 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -606,7 +607,7 @@ export default function Financas({ patients, isLoadingPatients }) {
 
           {/* Pie Chart - Payment Methods */}
           {pieData.length > 0 && (
-            <div className="ds-card p-5">
+            <div className="ds-card p-4 sm:p-5">
               <h3 className="font-bold text-sm mb-4 uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Formas de Pagamento</h3>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -636,7 +637,7 @@ export default function Financas({ patients, isLoadingPatients }) {
             <button
               key={f.id}
               onClick={() => setFilterPago(f.id)}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+              className="px-3 py-1.5 max-sm:min-h-[40px] rounded-lg text-[11px] font-bold transition-all"
               style={{
                 backgroundColor: filterPago === f.id ? 'var(--accent)' : 'transparent',
                 color: filterPago === f.id ? '#FFFFFF' : 'var(--text-secondary)'
@@ -690,8 +691,8 @@ export default function Financas({ patients, isLoadingPatients }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
+            <table className="w-full text-sm text-left max-sm:block">
+              <thead className="text-[10px] uppercase tracking-wider max-sm:hidden" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
                 <tr>
                   <th className="px-5 py-3 font-semibold">Data</th>
                   <th className="px-5 py-3 font-semibold">Paciente</th>
@@ -701,7 +702,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                   <th className="px-5 py-3 font-semibold text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody style={{ borderColor: 'var(--border)' }} className="divide-y">
+              <tbody style={{ borderColor: 'var(--border)' }} className="divide-y max-sm:block">
                 {paginatedSessoes.map(s => {
                   const p = patients.find(pt => pt.id === s.id_paciente);
                   const isUpdating = updatingId === s.id;
@@ -709,26 +710,26 @@ export default function Financas({ patients, isLoadingPatients }) {
                   const isEditing = editingPayment === s.id;
                   
                   return (
-                    <tr key={s.id} className={`transition-colors ${isUpdating ? 'opacity-50' : ''}`}>
-                      <td className="px-5 py-3.5 font-medium whitespace-nowrap text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <tr key={s.id} className={`transition-colors max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3 ${isUpdating ? 'opacity-50' : ''}`}>
+                      <td className="px-5 py-3.5 max-sm:p-0 max-sm:order-3 font-medium whitespace-nowrap text-xs" style={{ color: 'var(--text-secondary)' }}>
                         {formatDateBR(s.data_sessao)}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <div className="flex items-center gap-2.5">
+                      <td className="px-5 py-3.5 max-sm:p-0 max-sm:order-1 max-sm:min-w-0 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5 min-w-0">
                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
                              {p?.nome?.charAt(0)?.toUpperCase() || '?'}
                            </div>
-                           <span className="font-medium text-xs" style={{ color: 'var(--text-primary)' }}>{p?.nome || <span className="italic" style={{ color: 'var(--text-muted)' }}>Removido</span>}</span>
+                           <span className="font-medium text-xs max-sm:truncate" style={{ color: 'var(--text-primary)' }}>{p?.nome || <span className="italic" style={{ color: 'var(--text-muted)' }}>Removido</span>}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 font-bold whitespace-nowrap text-xs" style={{ color: valor === 0 ? 'var(--status-warning)' : 'var(--text-primary)' }}>
+                      <td className="px-5 py-3.5 max-sm:p-0 max-sm:order-2 max-sm:text-right font-bold whitespace-nowrap text-xs" style={{ color: valor === 0 ? 'var(--status-warning)' : 'var(--text-primary)' }}>
                         {valor === 0 ? (
                           <span className="italic" style={{ color: 'var(--status-warning)' }}>Sem valor</span>
                         ) : (
                           `R$ ${formatCurrency(valor)}`
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <td className="px-5 py-3.5 max-sm:p-0 max-sm:order-4 max-sm:text-right text-center whitespace-nowrap">
                         <span className="ds-badge" style={{
                           backgroundColor: s.pago ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
                           color: s.pago ? 'var(--status-success-text)' : 'var(--status-danger-text)',
@@ -738,7 +739,7 @@ export default function Financas({ patients, isLoadingPatients }) {
                           {s.pago ? 'Pago' : 'Pendente'}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap overflow-visible">
+                      <td className={`px-5 py-3.5 max-sm:p-0 max-sm:order-5 max-sm:col-span-2 whitespace-nowrap overflow-visible ${s.pago ? '' : 'max-sm:hidden'}`}>
                         {s.pago ? (
                           <Select
                             value={s.forma_pagamento || ''}
@@ -753,9 +754,9 @@ export default function Financas({ patients, isLoadingPatients }) {
                           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                      <td className="px-5 py-3.5 max-sm:p-0 max-sm:order-6 max-sm:col-span-2 whitespace-nowrap text-right">
                         {!s.pago && !isEditing ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 max-sm:flex-wrap">
                             <button
                               onClick={() => setEditingPayment(s.id)}
                               disabled={isUpdating}
@@ -776,15 +777,16 @@ export default function Financas({ patients, isLoadingPatients }) {
                             )}
                             <button
                               onClick={() => handleRecibo(s)}
-                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all flex items-center justify-center"
+                              className="ds-btn text-[11px] font-bold px-2 py-1.5 max-sm:min-h-[44px] max-sm:min-w-[44px] transition-all flex items-center justify-center"
                               style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
                               title="Gerar Recibo PDF"
+                              aria-label="Gerar recibo em PDF"
                             >
                               <FileText size={14} />
                             </button>
                           </div>
                         ) : !s.pago && isEditing ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 max-sm:flex-wrap">
                             {FORMAS_PAGAMENTO.slice(0, 3).map(f => (
                               <button
                                 key={f}
@@ -805,19 +807,20 @@ export default function Financas({ patients, isLoadingPatients }) {
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 max-sm:flex-wrap">
                             <button
                               onClick={() => handleTogglePago(s)}
                               disabled={isUpdating}
-                              className="ds-btn ds-btn-ghost text-[11px] font-bold px-3 py-1.5 transition-all disabled:opacity-50"
+                              className="ds-btn ds-btn-ghost text-[11px] font-bold px-3 py-1.5 max-sm:min-h-[44px] transition-all disabled:opacity-50"
                             >
                               Desfazer
                             </button>
                             <button
                               onClick={() => handleRecibo(s)}
-                              className="ds-btn text-[11px] font-bold px-2 py-1.5 transition-all flex items-center justify-center"
+                              className="ds-btn text-[11px] font-bold px-2 py-1.5 max-sm:min-h-[44px] max-sm:min-w-[44px] transition-all flex items-center justify-center"
                               style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
                               title="Gerar Recibo PDF"
+                              aria-label="Gerar recibo em PDF"
                             >
                               <FileText size={14} />
                             </button>

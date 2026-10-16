@@ -100,15 +100,15 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col justify-center items-center p-4 md:p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="min-h-[100dvh] w-full flex flex-col justify-center items-center p-4 md:p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="max-w-2xl w-full space-y-6">
         
         {/* Banner de status */}
-        <div className="ds-card p-6 text-center space-y-3 border-t-4 border-t-amber-500 shadow-xl">
+        <div className="ds-card p-4 sm:p-6 text-center space-y-3 border-t-4 border-t-amber-500 shadow-xl">
           <div className="w-14 h-14 rounded-full bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center">
             <ShieldAlert size={28} />
           </div>
-          <h1 className="text-2xl font-heading font-bold text-[var(--text-primary)]">
+          <h1 className="text-xl sm:text-2xl font-heading font-bold text-[var(--text-primary)]">
             {contaNova ? 'Ative sua conta' : 'Regularização de Mensalidade'}
           </h1>
           <p className="text-sm text-[var(--text-secondary)] max-w-lg mx-auto">
@@ -124,9 +124,9 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
         </div>
 
         {/* Card de Pagamento Imediato */}
-        <div className="ds-card p-6 space-y-6 shadow-xl">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
-            <div>
+        <div className="ds-card p-4 sm:p-6 space-y-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
+            <div className="min-w-0">
               <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                 Selecione seu Plano
               </span>
@@ -137,7 +137,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                     setPlanoId(e.target.value);
                     setPixData(null);
                   }}
-                  className="ds-input font-medium text-sm"
+                  className="ds-input w-full font-medium text-sm"
                 >
                   {PLANOS_CONTRATAVEIS.map((p) => (
                     <option key={p.id} value={p.id}>{p.nome} ({formatarPrecoPlano(p)})</option>
@@ -146,7 +146,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
               </div>
               <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
                 Clínica com equipe? Valor sob consulta:{' '}
-                <a href={`mailto:${CONTATO_COMERCIAL}`} className="text-[var(--accent)] font-semibold hover:underline">
+                <a href={`mailto:${CONTATO_COMERCIAL}`} className="text-[var(--accent)] font-semibold hover:underline break-all">
                   {CONTATO_COMERCIAL}
                 </a>
               </p>
@@ -157,7 +157,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
               <button
                 type="button"
                 onClick={() => setMetodo('cartao')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded-md text-xs font-medium transition-all ${
                   metodo === 'cartao'
                     ? 'bg-[var(--accent)] text-white shadow-sm'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -170,7 +170,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                 onClick={() => {
                   setMetodo('pix');
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded-md text-xs font-medium transition-all ${
                   metodo === 'pix'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -199,7 +199,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
           {/* Checkout com Cartão de Crédito */}
           {metodo === 'cartao' && (
             <form onSubmit={handlePagarCartao} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                     Telefone (com DDD)
@@ -339,7 +339,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
               {pixData && (
                 <>
                   <div className="flex flex-col items-center p-4 bg-white rounded-xl shadow-inner border border-slate-200">
-                    <QRCodeSVG value={pixData.copiaECola} size={190} level="M" />
+                    <QRCodeSVG value={pixData.copiaECola} size={190} level="M" className="w-full max-w-[190px] h-auto" />
                     <span className="text-xs text-slate-600 mt-2 font-mono font-semibold">
                       Valor: R$ {pixData.valor.toFixed(2)}
                     </span>
@@ -354,7 +354,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
                         type="text"
                         readOnly
                         value={pixData.copiaECola}
-                        className="ds-input font-mono text-xs flex-1 truncate"
+                        className="ds-input font-mono text-xs flex-1 min-w-0 truncate"
                       />
                       <button
                         type="button"
@@ -381,7 +381,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
         </div>
 
         {/* Rodapé com logout */}
-        <div className="flex justify-between items-center text-xs text-[var(--text-muted)] px-2">
+        <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-2 text-xs text-[var(--text-muted)] px-2">
           <div className="flex items-center gap-1">
             <HeartPulse size={14} className="text-[var(--accent)]" />
             <span>CARITAS — Gestão Clínica & Saúde Mental</span>
@@ -389,7 +389,7 @@ export default function AssinaturaPendente({ perfil, statusAssinatura, onPagamen
 
           <button
             onClick={() => logoutFirebaseUser()}
-            className="flex items-center gap-1.5 hover:text-[var(--text-primary)] transition-colors underline"
+            className="flex items-center gap-1.5 min-h-[44px] hover:text-[var(--text-primary)] transition-colors underline"
           >
             <LogOut size={14} /> Encerrar Sessão
           </button>
