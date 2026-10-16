@@ -313,7 +313,7 @@ export default function SessaoEvolucao({ patients, isLoadingPatients, preSelecte
               </label>
 
               {formData.pago && (
-                <div className="mt-3 relative animate-in slide-in-from-top-2 duration-200">
+                <div className="mt-3 relative z-10 animate-in slide-in-from-top-2 duration-200">
                   <Select
                     value={formData.forma_pagamento}
                     onChange={(val) => setFormData({ ...formData, forma_pagamento: val })}
