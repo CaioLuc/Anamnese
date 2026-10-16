@@ -3,9 +3,10 @@ import { Ban, Mail, LogOut } from 'lucide-react';
 
 export default function ContaBloqueada() {
   return (
-    <div className="h-full w-full flex flex-col justify-center items-center p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      
-      <div className="max-w-md w-full text-center">
+    // O App envolve esta tela em h-screen overflow-hidden: ela mesma rola, senão "Sair" some em telas baixas
+    <div className="h-full w-full overflow-y-auto flex flex-col items-center p-4 sm:p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
+
+      <div className="max-w-md w-full text-center my-auto">
         <div 
           className="w-16 h-16 mx-auto mb-6 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: 'var(--status-danger-bg)' }}
@@ -21,7 +22,7 @@ export default function ContaBloqueada() {
           Entre em contato com o suporte para regularizar seu acesso.
         </p>
 
-        <div className="ds-card p-5 mb-6" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <div className="ds-card p-4 sm:p-5 mb-6" style={{ backgroundColor: 'var(--bg-card)' }}>
           <div className="flex items-center gap-3 text-left">
             <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--accent-light)' }}>
               <Mail size={18} style={{ color: 'var(--accent)' }} />
@@ -35,7 +36,7 @@ export default function ContaBloqueada() {
 
         <button
           onClick={() => logoutFirebaseUser()}
-          className="ds-btn ds-btn-secondary gap-2 px-6 py-2.5"
+          className="ds-btn ds-btn-secondary gap-2 px-6 py-2.5 min-h-[44px]"
         >
           <LogOut size={16} />
           Sair

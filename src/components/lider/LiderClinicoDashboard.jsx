@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Modal from '../ui/Modal';
 import EmptyState from '../ui/EmptyState';
+import ConfirmDialog from '../ConfirmDialog';
 import {
   MAX_PSICOLOGOS_EQUIPE,
   MAX_PACIENTES_POR_PSICOLOGO,
@@ -29,6 +30,9 @@ import {
   Zap,
 } from 'lucide-react';
 
+// Abaixo de md cada linha da tabela vira um cartão; o rótulo da coluna vem do data-label
+const TD_MOBILE = 'max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:px-0 max-md:py-1.5 max-md:text-left max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:font-semibold max-md:before:text-[var(--text-muted)]';
+
 export default function LiderClinicoDashboard() {
   const { showToast } = useToast();
   const [equipe, setEquipe] = useState(() => obterEquipeLider());
@@ -36,6 +40,7 @@ export default function LiderClinicoDashboard() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [selectedPsicologoParaTriagem, setSelectedPsicologoParaTriagem] = useState({});
+  const [membroParaRemover, setMembroParaRemover] = useState(null);
 
   // Form de novo membro
   const [novoNome, setNovoNome] = useState('');
@@ -76,12 +81,12 @@ export default function LiderClinicoDashboard() {
     }
   };
 
-  const handleRemoverMembro = (id, nome) => {
-    if (confirm(`Remover ${nome} da equipe supervisionada?`)) {
-      removerMembroEquipe(id);
-      showToast({ type: 'info', message: `${nome} removido da equipe.` });
-      carregarDados();
-    }
+  const handleRemoverMembro = () => {
+    const { id, nome } = membroParaRemover;
+    setMembroParaRemover(null);
+    removerMembroEquipe(id);
+    showToast({ type: 'info', message: `${nome} removido da equipe.` });
+    carregarDados();
   };
 
   const handleEncaminhar = (triagemId) => {
@@ -111,12 +116,12 @@ export default function LiderClinicoDashboard() {
   };
 
   return (
-    <div className="w-full space-y-8 animate-in fade-in duration-200">
+    <div className="w-full space-y-6 sm:space-y-8 animate-in fade-in duration-200">
       {/* Top Banner / Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-3xl font-heading font-bold text-[var(--text-primary)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-[var(--text-primary)]">
               Liderança Clínica & Supervisão
             </h2>
             <Badge variant="info">
@@ -128,12 +133,12 @@ export default function LiderClinicoDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {equipe.length >= MAX_PSICOLOGOS_EQUIPE ? (
             <Button
               variant="secondary"
               onClick={() => setIsUpgradeModalOpen(true)}
-              className="shrink-0"
+              className="shrink-0 w-full sm:w-auto"
             >
               <Zap size={18} className="text-amber-500" />
               Expandir Equipe (Upgrade)
@@ -141,7 +146,7 @@ export default function LiderClinicoDashboard() {
           ) : (
             <Button
               onClick={() => setIsAddModalOpen(true)}
-              className="shrink-0"
+              className="shrink-0 w-full sm:w-auto"
             >
               <UserPlus size={18} />
               Adicionar Psicólogo
@@ -252,9 +257,9 @@ export default function LiderClinicoDashboard() {
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse max-md:block">
                 <thead>
-                  <tr className="text-xs uppercase tracking-wider font-semibold bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-muted)]">
+                  <tr className="max-md:hidden text-xs uppercase tracking-wider font-semibold bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-muted)]">
                     <th className="px-6 py-4">Profissional / CRP</th>
                     <th className="px-6 py-4">Especialidade</th>
                     <th className="px-6 py-4">Carga / Capacidade</th>
@@ -263,7 +268,7 @@ export default function LiderClinicoDashboard() {
                     <th className="px-6 py-4 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border)]">
+                <tbody className="divide-y divide-[var(--border)] max-md:block">
                   {equipe.map((psi) => {
                     const cap = psi.maxPacientes || MAX_PACIENTES_POR_PSICOLOGO;
                     const ocupacao = Math.round(((psi.pacientesAtivos || 0) / cap) * 100);
@@ -271,16 +276,17 @@ export default function LiderClinicoDashboard() {
                     const isLotado = (psi.pacientesAtivos || 0) >= cap;
 
                     return (
-                      <tr key={psi.id} className="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-                        <td className="px-6 py-4">
+                      <tr key={psi.id} className="max-md:block max-md:px-4 max-md:py-3 hover:bg-[var(--bg-secondary)]/50 transition-colors">
+                        <td className="px-6 py-4 max-md:block max-md:px-0 max-md:pt-0 max-md:pb-2">
                           <div className="font-medium text-sm text-[var(--text-primary)]">{psi.nome}</div>
-                          <div className="text-xs text-[var(--text-muted)]">{psi.crp} • {psi.email}</div>
+                          <div className="text-xs text-[var(--text-muted)] break-all">{psi.crp} • {psi.email}</div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
+                        <td data-label="Especialidade" className={`px-6 py-4 text-sm text-[var(--text-secondary)] ${TD_MOBILE}`}>
                           {psi.especialidade}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-between text-xs mb-1">
+                        <td data-label="Carga" className={`px-6 py-4 ${TD_MOBILE}`}>
+                          <div>
+                          <div className="flex items-center justify-between gap-2 text-xs mb-1">
                             <span className="font-medium text-[var(--text-primary)]">
                               {psi.pacientesAtivos} / {cap}
                             </span>
@@ -296,11 +302,12 @@ export default function LiderClinicoDashboard() {
                               style={{ width: `${Math.min(ocupacao, 100)}%` }}
                             />
                           </div>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-center text-sm font-semibold text-[var(--text-primary)]">
+                        <td data-label="Sessões / mês" className={`px-6 py-4 text-center text-sm font-semibold text-[var(--text-primary)] ${TD_MOBILE}`}>
                           {psi.sessoesMes || 0}
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td data-label="Conformidade" className={`px-6 py-4 text-center ${TD_MOBILE}`}>
                           {temPendencia ? (
                             <Badge variant="danger">
                               {psi.evolucoesPendentes} pendência(s)
@@ -309,7 +316,7 @@ export default function LiderClinicoDashboard() {
                             <Badge variant="success">Em dia</Badge>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td data-label="Ações" className={`px-6 py-4 text-right ${TD_MOBILE}`}>
                           <div className="flex items-center justify-end gap-2">
                             {temPendencia && (
                               <Button
@@ -317,6 +324,8 @@ export default function LiderClinicoDashboard() {
                                 size="sm"
                                 onClick={() => handleNotificarPendencia(psi)}
                                 title="Notificar sobre anotações pendentes"
+                                aria-label={`Notificar ${psi.nome} sobre anotações pendentes`}
+                                className="max-md:min-h-[44px] max-md:min-w-[44px]"
                               >
                                 <Bell size={14} />
                               </Button>
@@ -324,9 +333,10 @@ export default function LiderClinicoDashboard() {
                             <Button
                               variant="danger"
                               size="sm"
-                              className="px-2"
-                              onClick={() => handleRemoverMembro(psi.id, psi.nome)}
+                              className="px-2 max-md:min-h-[44px] max-md:min-w-[44px]"
+                              onClick={() => setMembroParaRemover({ id: psi.id, nome: psi.nome })}
                               title="Remover da Equipe"
+                              aria-label={`Remover ${psi.nome} da equipe`}
                             >
                               <Trash2 size={14} />
                             </Button>
@@ -360,9 +370,9 @@ export default function LiderClinicoDashboard() {
           ) : (
             <div className="divide-y divide-[var(--border)]">
               {triagem.map((t) => (
-                <div key={t.id} className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div key={t.id} className="p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div className="space-y-1 max-w-lg">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-heading font-bold text-sm text-[var(--text-primary)]">
                         {t.nome}
                       </span>
@@ -375,9 +385,10 @@ export default function LiderClinicoDashboard() {
                     <p className="text-xs text-[var(--text-secondary)]">{t.queixaResumo}</p>
                   </div>
 
-                  <div className="flex items-center gap-2 w-full md:w-auto">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
                     <select
-                      className="ds-input text-xs py-1.5"
+                      aria-label={`Psicólogo de destino para ${t.nome}`}
+                      className="ds-input text-xs py-1.5 min-w-0 sm:flex-1 md:flex-none"
                       value={selectedPsicologoParaTriagem[t.id] || ''}
                       onChange={(e) =>
                         setSelectedPsicologoParaTriagem({
@@ -398,7 +409,7 @@ export default function LiderClinicoDashboard() {
                       })}
                     </select>
 
-                    <Button size="sm" onClick={() => handleEncaminhar(t.id)}>
+                    <Button size="sm" className="shrink-0 max-sm:min-h-[44px]" onClick={() => handleEncaminhar(t.id)}>
                       Encaminhar
                       <ArrowRight size={14} />
                     </Button>
@@ -418,15 +429,15 @@ export default function LiderClinicoDashboard() {
         subtitle={`Vagas preenchidas: ${equipe.length} de ${MAX_PSICOLOGOS_EQUIPE}`}
         size="md"
         footer={
-          <div className="flex justify-end gap-3 w-full">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
             <Button variant="ghost" onClick={() => setIsAddModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleAdicionarMembro}>Salvar Membro</Button>
+            <Button type="submit" form="form-adicionar-membro">Salvar Membro</Button>
           </div>
         }
       >
-        <form onSubmit={handleAdicionarMembro} className="space-y-4 py-2">
+        <form id="form-adicionar-membro" onSubmit={handleAdicionarMembro} className="space-y-4 py-2">
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
               Nome Completo do(a) Psicólogo(a) *
@@ -506,13 +517,13 @@ export default function LiderClinicoDashboard() {
         title="Expandir a equipe"
         subtitle="O Plano Clínica & Equipe é negociado conforme o tamanho da clínica"
         footer={
-          <div className="flex justify-end gap-3 w-full">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
             <Button variant="ghost" onClick={() => setIsUpgradeModalOpen(false)}>
               Fechar
             </Button>
             <a
               href={`mailto:${CONTATO_COMERCIAL}?subject=${encodeURIComponent('CARITAS — Expansão de equipe')}`}
-              className="ds-btn ds-btn-primary inline-flex items-center gap-2"
+              className="ds-btn ds-btn-primary inline-flex items-center justify-center gap-2"
             >
               <Zap size={16} />
               Falar com a equipe
@@ -533,6 +544,16 @@ export default function LiderClinicoDashboard() {
           </p>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!membroParaRemover}
+        title="Remover da equipe"
+        message={`Remover ${membroParaRemover?.nome} da equipe supervisionada?`}
+        confirmText="Remover"
+        onConfirm={handleRemoverMembro}
+        onCancel={() => setMembroParaRemover(null)}
+        variant="danger"
+      />
     </div>
   );
 }

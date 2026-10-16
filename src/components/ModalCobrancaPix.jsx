@@ -205,29 +205,32 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
     >
       <div
         ref={modalRef}
-        className="w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pix-modal-titulo"
+        className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"
         style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+        <div className="flex items-center justify-between gap-2 p-4 sm:p-5 pb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-xl shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
               <QrCode size={20} />
             </div>
-            <div>
-              <h2 className="text-base font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Cobrar via PIX</h2>
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            <div className="min-w-0">
+              <h2 id="pix-modal-titulo" className="text-base font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Cobrar via PIX</h2>
+              <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
                 {paciente?.nome || 'Paciente'} • {formatDateBR(sessao?.data_sessao)}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+          <button onClick={onClose} aria-label="Fechar" className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
             <X size={18} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-5 pb-5 space-y-4">
+        <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-4">
           {carregandoPix ? (
             <p className="p-4 text-sm font-medium flex items-center justify-center gap-1.5" style={{ color: 'var(--text-muted)' }} role="status">
               <Loader2 size={16} className="animate-spin" /> Carregando dados do PIX…
@@ -250,7 +253,7 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
 
               {/* QR Code */}
               <div className="flex justify-center">
-                <div className="p-4 rounded-xl bg-white">
+                <div className="p-3 sm:p-4 rounded-xl bg-white w-full max-w-[232px]">
                   <QRCodeSVG
                     value={payload}
                     size={200}
@@ -258,7 +261,7 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
                     fgColor="#000000"
                     level="M"
                     includeMargin={false}
-                    className="qr-code-svg"
+                    className="qr-code-svg block w-full h-auto"
                   />
                 </div>
               </div>
@@ -273,7 +276,7 @@ export default function ModalCobrancaPix({ isOpen, onClose, sessao, paciente, va
                     type="text"
                     value={payload}
                     readOnly
-                    className="ds-input flex-1 text-[11px] font-mono truncate"
+                    className="ds-input flex-1 min-w-0 text-[11px] font-mono truncate"
                     onClick={(e) => e.target.select()}
                   />
                   <button

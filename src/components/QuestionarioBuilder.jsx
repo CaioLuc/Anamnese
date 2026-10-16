@@ -107,13 +107,15 @@ function OpcoesEditor({ opcoes = [], onChange }) {
                 type="text"
                 value={opcao}
                 onChange={(e) => editOpcao(idx, e.target.value)}
-                className="flex-1 px-2 py-1.5 text-sm rounded-md transition-colors"
+                aria-label={`Opção ${idx + 1}`}
+                className="flex-1 min-w-0 px-2 py-1.5 text-sm rounded-md transition-colors"
                 style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               />
               <button
                 type="button"
                 onClick={() => removeOpcao(idx)}
-                className="transition-colors flex-shrink-0 hover:text-red-500"
+                aria-label={`Remover opção ${opcao || idx + 1}`}
+                className={`${TOQUE_44} transition-colors flex-shrink-0 hover:text-red-500`}
                 style={{ color: 'var(--text-muted)' }}
               >
                 <X size={16} />
@@ -131,13 +133,14 @@ function OpcoesEditor({ opcoes = [], onChange }) {
           onChange={(e) => setNovaOpcao(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOpcao(); } }}
           placeholder="Nova opção... (Enter para adicionar)"
-          className="flex-1 px-3 py-1.5 text-sm rounded-md border border-dashed transition-colors"
+          className="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-md border border-dashed transition-colors"
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
         />
         <Button
           type="button"
           onClick={addOpcao}
           size="sm"
+          className="shrink-0 max-sm:min-h-[44px]"
         >
           <Plus size={14} />
           Add
@@ -154,7 +157,7 @@ function CampoEditor({ campo, onChange, onRemover, onMover, isFirst, isLast }) {
   return (
     <div id={`campo-${campo.id}`} className="rounded-xl overflow-hidden transition-shadow scroll-my-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: expanded ? 'var(--shadow)' : 'none' }}>
       {/* Header do campo */}
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: expanded ? '1px solid var(--border)' : 'none' }}>
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2.5" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: expanded ? '1px solid var(--border)' : 'none' }}>
         <div className="flex flex-col gap-0.5">
           <button onClick={() => onMover('up')} disabled={isFirst} aria-label="Mover campo para cima" className={`${TOQUE_44} disabled:opacity-20 transition-colors`} style={{ color: 'var(--text-muted)' }}>
             <ChevronUp size={14} />
@@ -243,7 +246,7 @@ function CampoEditor({ campo, onChange, onRemover, onMover, isFirst, isLast }) {
 
           {/* Obrigatório */}
           {campo.tipo !== 'section' && (
-            <label className="flex items-center gap-2 cursor-pointer pt-2">
+            <label className="flex items-center gap-2 cursor-pointer pt-2 min-h-[44px] sm:min-h-0">
               <input
                 type="checkbox"
                 className="sr-only peer"
@@ -380,7 +383,7 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
     <div className="flex-1 flex flex-col h-full overflow-hidden" onClick={() => showEmojis && setShowEmojis(false)}>
       {/* Header */}
       <div 
-        className="flex-shrink-0 px-6 pt-6 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
         style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -389,7 +392,9 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setShowEmojis(s => !s); }}
-              className="w-10 h-10 flex items-center justify-center rounded-xl transition-transform hover:scale-105"
+              aria-label="Escolher ícone"
+              aria-expanded={showEmojis}
+              className="w-11 h-11 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-transform hover:scale-105"
               style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
               title="Escolher ícone"
             >
@@ -410,6 +415,8 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
                       onClick={() => { setIcone(item.id); setShowEmojis(false); }}
                       className={`p-2 rounded-xl transition-colors flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 ${icone === item.id ? 'ring-2 ring-brand-500' : ''}`}
                       title={item.label}
+                      aria-label={item.label}
+                      aria-pressed={icone === item.id}
                       style={{ color: 'var(--text-primary)' }}
                     >
                       <IconComp size={18} />
@@ -439,24 +446,24 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 flex-shrink-0">
-          <Button variant="ghost" onClick={() => (dirty ? setConfirmarDescarte(true) : onCancelar())}>
+          <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => (dirty ? setConfirmarDescarte(true) : onCancelar())}>
             Cancelar
           </Button>
-          <Button onClick={handleSalvar} disabled={isSaving}>
+          <Button className="flex-1 sm:flex-none" onClick={handleSalvar} disabled={isSaving}>
             {isSaving ? 'Salvando...' : template?.id ? 'Salvar Alterações' : 'Publicar'}
           </Button>
         </div>
       </div>
 
       {error && (
-        <div className="mx-6 mt-4 p-3 rounded-xl text-sm" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '1px solid var(--status-danger)' }}>
+        <div role="alert" className="mx-4 sm:mx-6 mt-4 p-3 rounded-xl text-sm" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '1px solid var(--status-danger)' }}>
           {error}
         </div>
       )}
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Campos list */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 custom-scrollbar" style={{ backgroundColor: 'var(--bg-primary)' }}>
           {campos.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-60 text-center border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)' }}>
               <Plus size={32} className="mb-2" style={{ color: 'var(--text-muted)' }} />
@@ -486,20 +493,20 @@ export default function QuestionarioBuilder({ template, onSalvar, onCancelar }) 
         </div>
 
         {/* Sidebar de tipos */}
-        {/* Abaixo de lg: painel em largura total sob a lista, com altura limitada para não esconder os campos */}
-        <div className="w-full lg:w-64 max-h-48 lg:max-h-none flex-shrink-0 overflow-y-auto p-4 custom-scrollbar" style={{ backgroundColor: 'var(--bg-secondary)', borderLeft: '1px solid var(--border)' }}>
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>Adicionar Campo</p>
-          <div className="space-y-1.5">
+        {/* Abaixo de lg: faixa horizontal com rolagem e snap sob a lista, sem esconder os campos */}
+        <div className="w-full lg:w-64 flex-shrink-0 lg:overflow-y-auto p-3 lg:p-4 custom-scrollbar border-t lg:border-t-0 lg:border-l" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
+          <p className="text-xs font-bold uppercase tracking-widest mb-2 lg:mb-4" style={{ color: 'var(--text-muted)' }}>Adicionar Campo</p>
+          <div className="flex gap-2 overflow-x-auto snap-x pb-1 lg:block lg:space-y-1.5 lg:overflow-visible lg:pb-0">
             {TIPOS_CAMPO.map((t) => (
               <button
                 key={t.tipo}
                 onClick={() => addCampo(t.tipo)}
-                className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl transition-colors duration-150 group hover:bg-[var(--bg-card)] active:scale-[0.99]"
+                className="shrink-0 snap-start lg:w-full text-left flex items-center lg:items-start gap-2 lg:gap-3 px-3 py-2.5 min-h-[44px] rounded-xl transition-colors duration-150 group hover:bg-[var(--bg-card)] active:scale-[0.99] max-lg:border max-lg:border-[var(--border)] max-lg:bg-[var(--bg-card)]"
               >
-                <t.icone size={18} className="mt-0.5" style={{ color: 'var(--text-muted)' }} />
+                <t.icone size={18} className="shrink-0 lg:mt-0.5" style={{ color: 'var(--text-muted)' }} />
                 <div>
-                  <p className="text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}>{t.label}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.desc}</p>
+                  <p className="text-sm font-medium transition-colors whitespace-nowrap lg:whitespace-normal" style={{ color: 'var(--text-primary)' }}>{t.label}</p>
+                  <p className="hidden lg:block text-xs" style={{ color: 'var(--text-muted)' }}>{t.desc}</p>
                 </div>
               </button>
             ))}

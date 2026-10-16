@@ -3,7 +3,7 @@ import { Check } from 'lucide-react';
 
 // Opção em forma de botão (radio, checkbox, escala): aria-pressed carrega o estado para leitores de tela
 const opcaoClasse = (ativa) =>
-  `min-h-[44px] sm:min-h-[36px] px-3 rounded-lg text-sm font-medium border transition-[background-color,border-color,color,transform] duration-150 ease-out-expo active:scale-[0.97] ${
+  `min-h-[44px] sm:min-h-[36px] max-w-full px-3 py-1.5 rounded-lg text-sm font-medium border transition-[background-color,border-color,color,transform] duration-150 ease-out-expo active:scale-[0.97] ${
     ativa
       ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-contrast)]'
       : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent)]'
@@ -150,17 +150,19 @@ function ScaleField({ campo, value, onChange }) {
   const max = campo.max ?? 10;
   // Teto de 21 botões, mesmo para templates antigos salvos fora da faixa
   const nums = Array.from({ length: Math.max(0, Math.min(max - min + 1, 21)) }, (_, i) => i + min);
+  // Celular: grade com linhas iguais (1–5 numa linha, 1–10 em 5+5) em vez de quebra irregular; até 6 por linha
+  const colunas = nums.length <= 6 ? nums.length : Math.ceil(nums.length / Math.ceil(nums.length / 6));
   return (
     <div role="group" aria-labelledby={id}>
       <Rotulo campo={campo} id={id} />
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="grid gap-1.5 sm:flex sm:flex-wrap" style={{ gridTemplateColumns: `repeat(${colunas}, minmax(0, 1fr))` }}>
         {nums.map((n) => (
           <button
             key={n}
             type="button"
             aria-pressed={value === n}
             onClick={() => onChange(value === n ? null : n)}
-            className={`${opcaoClasse(value === n)} w-11 sm:w-9 px-0 font-bold tabular`}
+            className={`${opcaoClasse(value === n)} w-full sm:w-9 px-0 font-bold tabular`}
           >
             {n}
           </button>

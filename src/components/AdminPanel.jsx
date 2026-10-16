@@ -23,6 +23,7 @@ import { confirmarPagamentoManual, alternarIsencaoPsicologo } from '../services/
 import { useToast } from '../contexts/ToastContext';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
+import ConfirmDialog from './ConfirmDialog';
 import { 
   Users, Activity, Bell, Download, LogOut, ShieldAlert, X,
   Search, ShieldCheck, Shield, Users as UsersIcon, FileText, Database,
@@ -63,7 +64,7 @@ function diasAte(val) {
 function StatCard({ label, value, colorType, icon }) {
   const Icon = icon;
   return (
-    <div className="ds-card p-5" style={{ backgroundColor: 'var(--bg-card)' }}>
+    <div className="ds-card p-4 sm:p-5" style={{ backgroundColor: 'var(--bg-card)' }}>
       <div className="flex items-center gap-3">
         <div 
           className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -71,7 +72,7 @@ function StatCard({ label, value, colorType, icon }) {
         >
           <Icon size={20} />
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-2xl font-heading font-extrabold" style={{ color: 'var(--text-primary)' }}>{value}</p>
           <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</p>
         </div>
@@ -121,6 +122,7 @@ function TrialBadge({ trialAte }) {
 // MODAL RAIO-X
 // ==========================================
 function RaioXModal({ psi, onClose }) {
+  const { showToast } = useToast();
   const [metricas, setMetricas] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [trialDate, setTrialDate] = useState('');
@@ -128,20 +130,29 @@ function RaioXModal({ psi, onClose }) {
   useEffect(() => {
     (async () => {
       setIsLoading(true);
-      const m = await getMetricasPsicologo(psi.id);
-      setMetricas(m);
       if (psi.trialAte) {
         const d = psi.trialAte?.toDate ? psi.trialAte.toDate() : new Date(psi.trialAte);
         if (!isNaN(d.getTime())) setTrialDate(d.toISOString().split('T')[0]);
       }
-      setIsLoading(false);
+      try {
+        setMetricas(await getMetricasPsicologo(psi.id));
+      } catch (e) {
+        logger.error('Erro ao carregar métricas do psicólogo:', e);
+      } finally {
+        setIsLoading(false);
+      }
     })();
   }, [psi.id]);
 
   const handleSaveTrial = async () => {
     if (!trialDate) return;
-    await atualizarTrialPsicologo(psi.id, trialDate);
-    alert('Vencimento atualizado!');
+    try {
+      await atualizarTrialPsicologo(psi.id, trialDate);
+      showToast({ type: 'success', message: 'Vencimento atualizado!' });
+    } catch (e) {
+      logger.error('Erro ao atualizar vencimento:', e);
+      showToast({ type: 'error', message: 'Não foi possível atualizar o vencimento.' });
+    }
   };
 
   const diasCriacao = diasDesde(psi.createdAt);
@@ -149,25 +160,25 @@ function RaioXModal({ psi, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-lg rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="raiox-titulo" className="relative w-full max-w-lg rounded-3xl shadow-2xl max-h-[85dvh] overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
         
         {/* Header */}
-        <div className="sticky top-0 z-10 p-6 pb-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-3">
+        <div className="sticky top-0 z-10 p-4 sm:p-6 pb-4 flex items-center justify-between gap-2" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center  font-bold text-lg shrink-0" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
               {(psi.email || '?')[0].toUpperCase()}
             </div>
-            <div>
-              <h3 className="font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{psi.nome || psi.email}</h3>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{psi.email}</p>
+            <div className="min-w-0">
+              <h3 id="raiox-titulo" className="font-heading font-bold truncate" style={{ color: 'var(--text-primary)' }}>{psi.nome || psi.email}</h3>
+              <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{psi.email}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={onClose} aria-label="Fechar" className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-muted)' }}>
             <X size={20} />
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-5">
           {/* Status Badges */}
           <div className="flex flex-wrap gap-2">
             <PlanoBadge plano={psi.plano} />
@@ -200,16 +211,16 @@ function RaioXModal({ psi, onClose }) {
               <RefreshCw className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} />
             </div>
           ) : metricas && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)' }}>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="rounded-xl p-3 sm:p-4 text-center" style={{ backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent)' }}>
                 <p className="text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{metricas.totalPacientes}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Pacientes</p>
               </div>
-              <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--status-info-bg)', border: '1px solid var(--status-info)' }}>
+              <div className="rounded-xl p-3 sm:p-4 text-center" style={{ backgroundColor: 'var(--status-info-bg)', border: '1px solid var(--status-info)' }}>
                 <p className="text-2xl font-extrabold" style={{ color: 'var(--status-info)' }}>{metricas.totalSessoes}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Sessões</p>
               </div>
-              <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
+              <div className="rounded-xl p-3 sm:p-4 text-center" style={{ backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning)' }}>
                 <p className="text-2xl font-extrabold" style={{ color: 'var(--status-warning)' }}>{metricas.totalAnamneses}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Anamneses</p>
               </div>
@@ -234,9 +245,9 @@ function RaioXModal({ psi, onClose }) {
                 type="date"
                 value={trialDate}
                 onChange={(e) => setTrialDate(e.target.value)}
-                className="ds-input flex-1"
+                className="ds-input flex-1 min-w-0"
               />
-              <Button onClick={handleSaveTrial}>Salvar</Button>
+              <Button className="shrink-0" onClick={handleSaveTrial}>Salvar</Button>
             </div>
           </div>
 
@@ -402,7 +413,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
       <DecideReportCard logs={logs} />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Total de Logs" value={stats.total} colorType="info" icon={Database} />
         <StatCard label="Ações Hoje" value={stats.hoje} colorType="success" icon={Activity} />
         <StatCard label="Usuários Ativos" value={stats.uniqueUsers} colorType="warning" icon={UsersIcon} />
@@ -432,7 +443,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
           ))}
         </select>
         <div className="flex gap-2">
-          <Button onClick={loadLogs} variant="secondary">
+          <Button onClick={loadLogs} variant="secondary" className="w-full sm:w-auto">
             <RefreshCw size={16} className={isLoadingLogs ? 'animate-spin' : ''} /> Atualizar
           </Button>
         </div>
@@ -441,7 +452,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
       {/* Results count */}
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         Mostrando {filtered.length} de {logs.length} registros
-        {(logFilterType || logFilterEmail) && <button onClick={() => { setLogFilterType(''); setLogFilterEmail(''); }} className="ml-2 hover:underline" style={{ color: 'var(--accent)' }}>Limpar filtros</button>}
+        {(logFilterType || logFilterEmail) && <button onClick={() => { setLogFilterType(''); setLogFilterEmail(''); }} className="ml-2 min-h-[44px] sm:min-h-0 hover:underline" style={{ color: 'var(--accent)' }}>Limpar filtros</button>}
       </p>
 
       {/* Logs List */}
@@ -456,7 +467,7 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
             <p>Nenhum log encontrado.</p>
           </div>
         ) : (
-          <div style={{ divideColor: 'var(--border)', divideWidth: '0.5px', divideStyle: 'solid' }}>
+          <div>
             {filtered.map(log => {
               const isExpanded = expandedLogId === log.id;
               const meta = log.metadata || {};
@@ -482,8 +493,8 @@ function AuditoriaTab({ logs, setLogs, isLoadingLogs, setIsLoadingLogs, logFilte
                           <Badge variant={meta.status === 'Presente' ? 'success' : 'danger'}>{meta.status}</Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{log.psicologoEmail || '—'}</span>
+                      <div className="flex flex-wrap items-center gap-x-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="font-medium break-all" style={{ color: 'var(--text-primary)' }}>{log.psicologoEmail || '—'}</span>
                         <span>·</span>
                         <span>{formatLogDate(log.createdAt)}</span>
                       </div>
@@ -602,12 +613,12 @@ function DecideReportCard({ logs }) {
   return (
     <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)', border: '2px solid var(--accent)' }}>
       {/* Header */}
-      <div className="p-5 flex items-start gap-4" style={{ background: 'linear-gradient(135deg, var(--accent-light), var(--bg-card))' }}>
-        <div className="p-3 rounded-2xl" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
+      <div className="p-4 sm:p-5 flex items-start gap-3 sm:gap-4" style={{ background: 'linear-gradient(135deg, var(--accent-light), var(--bg-card))' }}>
+        <div className="p-3 rounded-2xl shrink-0" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
         </div>
-        <div className="flex-1">
-          <h3 className="text-lg font-heading font-extrabold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-heading font-extrabold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
             <BarChart3 size={20} className="text-brand-500" /> Relatório de Usabilidade — Framework DECIDE
           </h3>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Gera 6 planilhas CSV completas para análise acadêmica dos testes de usabilidade com os participantes.</p>
@@ -615,7 +626,7 @@ function DecideReportCard({ logs }) {
       </div>
 
       {/* Config */}
-      <div className="p-5 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="p-4 sm:p-5 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Filtro de e-mail dos participantes</label>
@@ -628,8 +639,8 @@ function DecideReportCard({ logs }) {
             />
           </div>
           <div className="flex items-end gap-2">
-            <Button onClick={handlePreview} variant="secondary" icon={Search}>
-              Pré-visualizar
+            <Button onClick={handlePreview} variant="secondary" className="w-full sm:w-auto">
+              <Search size={16} /> Pré-visualizar
             </Button>
           </div>
         </div>
@@ -659,14 +670,14 @@ function DecideReportCard({ logs }) {
                 <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Planilhas incluídas no relatório:</p>
               </div>
               {preview.csvs.map((csv, i) => (
-                <div key={i} className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderTop: '1px solid var(--border)' }}>
-                  <div className="flex items-center gap-2">
+                <div key={i} className="flex items-center justify-between gap-2 px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5" style={{ borderTop: '1px solid var(--border)' }}>
+                  <div className="flex items-center gap-2 min-w-0">
                     <FileText size={16} className="text-slate-400 shrink-0" />
-                    <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{csv.name}</span>
+                    <span className="text-xs font-medium break-all" style={{ color: 'var(--text-primary)' }}>{csv.name}</span>
                   </div>
                   <button
                     onClick={() => handleDownloadSingleCSV(csv)}
-                    className="text-[10px] font-bold px-2 py-1 rounded-lg transition-colors inline-flex items-center gap-1"
+                    className="shrink-0 text-[10px] font-bold px-2 py-1 max-sm:min-h-[44px] rounded-lg transition-colors inline-flex items-center gap-1"
                     style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-light)' }}
                   >
                     <Download size={11} /> Baixar
@@ -713,6 +724,7 @@ function ClientesTab({ showToast }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [clienteParaRemover, setClienteParaRemover] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -774,7 +786,7 @@ function ClientesTab({ showToast }) {
   const handleSaveCliente = async (e) => {
     e.preventDefault();
     if (!formData.nomeClinica || !formData.emailLider) {
-      if (showToast) showToast('Preencha os campos obrigatórios', 'Nome da clínica e e-mail do líder são obrigatórios.', 'error');
+      showToast({ type: 'error', message: 'Nome da clínica e e-mail do líder são obrigatórios.' });
       return;
     }
 
@@ -799,23 +811,25 @@ function ClientesTab({ showToast }) {
       await salvarClienteClinica(payload);
       await carregarClientes();
       setIsModalOpen(false);
-      if (showToast) showToast('Cliente salvo com sucesso!', `Configurações da clínica ${payload.nomeClinica} atualizadas.`, 'success');
+      showToast({ type: 'success', message: `Configurações da clínica ${payload.nomeClinica} atualizadas.` });
     } catch (err) {
       logger.error('Erro ao salvar cliente:', err);
-      if (showToast) showToast('Erro ao salvar', 'Não foi possível salvar o cliente.', 'error');
+      showToast({ type: 'error', message: 'Não foi possível salvar o cliente.' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteCliente = async (id, nome) => {
-    if (!window.confirm(`Tem certeza que deseja remover o cliente "${nome}"?`)) return;
+  const handleDeleteCliente = async () => {
+    const { id, nome } = clienteParaRemover;
+    setClienteParaRemover(null);
     try {
       await deletarClienteClinica(id);
       await carregarClientes();
-      if (showToast) showToast('Cliente removido', `O contrato da clínica ${nome} foi removido.`, 'success');
+      showToast({ type: 'success', message: `O contrato da clínica ${nome} foi removido.` });
     } catch (e) {
       logger.error('Erro ao deletar cliente:', e);
+      showToast({ type: 'error', message: 'Não foi possível remover o cliente.' });
     }
   };
 
@@ -877,19 +891,19 @@ function ClientesTab({ showToast }) {
             return (
               <div 
                 key={c.id} 
-                className="ds-card p-5 transition-all hover:shadow-md"
+                className="ds-card p-4 sm:p-5 transition-all hover:shadow-md"
                 style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Info Clínica e Líder */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-w-0">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold  shadow-sm" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
                         <Building2 size={20} />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-heading font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-heading font-bold text-base break-words" style={{ color: 'var(--text-primary)' }}>
                             {c.nomeClinica}
                           </h4>
                           <Badge variant={c.status === 'ativo' ? 'success' : c.status === 'trial' ? 'warning' : 'danger'}>
@@ -905,30 +919,30 @@ function ClientesTab({ showToast }) {
                     </div>
 
                     {/* Email do Líder Clínico destacado */}
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg w-fit" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div className="flex flex-wrap items-center gap-x-2 px-3 py-1.5 rounded-lg max-w-full w-fit" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                       <Crown size={15} className="text-amber-500 shrink-0" />
                       <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Líder Clínico:</span>
-                      <span className="text-xs font-bold font-mono" style={{ color: 'var(--accent)' }}>{c.emailLider}</span>
+                      <span className="text-xs font-bold font-mono break-all" style={{ color: 'var(--accent)' }}>{c.emailLider}</span>
                     </div>
                   </div>
 
                   {/* Limites Contratados */}
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="rounded-xl p-3 text-center min-w-[120px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                    <div className="rounded-xl p-3 text-center flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                       <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Limite Psicólogos</p>
                       <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                         {psicologosCount} / <span style={{ color: 'var(--accent)' }}>{maxPsi}</span>
                       </p>
                     </div>
 
-                    <div className="rounded-xl p-3 text-center min-w-[130px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                    <div className="rounded-xl p-3 text-center flex-1 min-w-[130px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                       <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Pacientes / Psi</p>
                       <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                         <span style={{ color: 'var(--status-success)' }}>{maxPac}</span> max
                       </p>
                     </div>
 
-                    <div className="rounded-xl p-3 text-center min-w-[110px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                    <div className="rounded-xl p-3 text-center flex-1 min-w-[110px]" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                       <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Capacidade Total</p>
                       <p className="text-lg font-heading font-extrabold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                         {maxPsi * maxPac}
@@ -948,9 +962,10 @@ function ClientesTab({ showToast }) {
                       <Button 
                         size="sm" 
                         variant="ghost" 
-                        onClick={() => handleDeleteCliente(c.id, c.nomeClinica)}
+                        onClick={() => setClienteParaRemover({ id: c.id, nome: c.nomeClinica })}
                         style={{ color: 'var(--status-danger)' }}
                         title="Remover Contrato"
+                        aria-label={`Remover contrato de ${c.nomeClinica}`}
                       >
                         <Trash2 size={16} />
                       </Button>
@@ -982,14 +997,14 @@ function ClientesTab({ showToast }) {
       {/* Modal Criar / Editar Contrato */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="ds-card w-full max-w-xl p-6 shadow-2xl space-y-5" style={{ backgroundColor: 'var(--bg-card)' }}>
-            <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="cliente-modal-titulo" className="ds-card w-full max-w-xl max-h-[90dvh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-5" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="flex items-start justify-between gap-2 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
                   <Building2 size={20} />
                 </div>
                 <div>
-                  <h3 className="font-heading font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                  <h3 id="cliente-modal-titulo" className="font-heading font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
                     {editingCliente ? 'Ajustar Limites do Cliente' : 'Novo Contrato de Clínica & Líder'}
                   </h3>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -999,7 +1014,8 @@ function ClientesTab({ showToast }) {
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                aria-label="Fechar"
+                className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                 style={{ color: 'var(--text-muted)' }}
               >
                 <X size={20} />
@@ -1122,7 +1138,7 @@ function ClientesTab({ showToast }) {
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                 <Button 
                   type="button" 
                   variant="ghost" 
@@ -1142,6 +1158,16 @@ function ClientesTab({ showToast }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!clienteParaRemover}
+        title="Remover cliente"
+        message={`Tem certeza que deseja remover o cliente "${clienteParaRemover?.nome}"?`}
+        confirmText="Remover"
+        onConfirm={handleDeleteCliente}
+        onCancel={() => setClienteParaRemover(null)}
+        variant="danger"
+      />
     </div>
   );
 }
@@ -1212,11 +1238,11 @@ export default function AdminPanel() {
     setActionLoading(uid);
     try { 
       await confirmarPagamentoManual(uid, 30); 
-      showToast('Pagamento Regularizado', 'Assinatura liberada por 30 dias com sucesso.', 'success');
+      showToast({ type: 'success', message: 'Assinatura liberada por 30 dias com sucesso.' });
       await loadData(); 
     } catch (e) { 
       logger.error(e); 
-      showToast('Erro', 'Não foi possível atualizar assinatura.', 'error');
+      showToast({ type: 'error', message: 'Não foi possível atualizar assinatura.' });
     } finally { 
       setActionLoading(null); 
     }
@@ -1226,11 +1252,11 @@ export default function AdminPanel() {
     setActionLoading(uid);
     try { 
       await alternarIsencaoPsicologo(uid, !currentIsento); 
-      showToast('Isenção Atualizada', !currentIsento ? 'Cortesia concedida.' : 'Cortesia removida.', 'success');
+      showToast({ type: 'success', message: !currentIsento ? 'Cortesia concedida.' : 'Cortesia removida.' });
       await loadData(); 
     } catch (e) { 
       logger.error(e); 
-      showToast('Erro', 'Não foi possível alterar status.', 'error');
+      showToast({ type: 'error', message: 'Não foi possível alterar status.' });
     } finally { 
       setActionLoading(null); 
     }
@@ -1245,25 +1271,25 @@ export default function AdminPanel() {
     setIsDeletingProfile(true);
     try {
       await excluirPerfilPsicologo(profileToDelete.id, profileToDelete.email);
-      showToast('Perfil Excluído', `O perfil de ${profileToDelete.nome || profileToDelete.email} foi removido com sucesso.`, 'success');
+      showToast({ type: 'success', message: `O perfil de ${profileToDelete.nome || profileToDelete.email} foi removido com sucesso.` });
       setProfileToDelete(null);
       await loadData();
     } catch (err) {
       logger.error('Erro ao excluir perfil:', err);
-      showToast('Erro ao Excluir', 'Não foi possível excluir o perfil.', 'error');
+      showToast({ type: 'error', message: 'Não foi possível excluir o perfil.' });
     } finally {
       setIsDeletingProfile(false);
     }
   };
 
-  const handleSalvarAviso = async () => {
+  const handleSalvarAviso = async (mensagem = avisoGlobal) => {
     setAvisoSaving(true);
     try { 
-      await salvarAvisoGlobal(avisoGlobal); 
-      showToast('Aviso salvo!', 'O aviso global foi publicado com sucesso.', 'success');
+      await salvarAvisoGlobal(mensagem); 
+      showToast({ type: 'success', message: mensagem ? 'O aviso global foi publicado com sucesso.' : 'Aviso global desativado.' });
     } catch (e) { 
       logger.error(e); 
-      showToast('Erro ao Salvar', 'Você não tem permissão para isso ou houve falha na rede.', 'error');
+      showToast({ type: 'error', message: 'Você não tem permissão para isso ou houve falha na rede.' });
     } finally { 
       setAvisoSaving(false); 
     }
@@ -1291,13 +1317,13 @@ export default function AdminPanel() {
   return (
     <div className="h-full w-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <div className="px-6 py-4 flex items-center justify-between shrink-0" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
+      <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 shrink-0" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shrink-0" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)' }}>
             <ShieldAlert size={20} />
           </div>
-          <div>
-            <h1 className="text-lg font-heading font-extrabold" style={{ color: 'var(--text-primary)' }}>Painel Administrativo</h1>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-heading font-extrabold truncate" style={{ color: 'var(--text-primary)' }}>Painel Administrativo</h1>
             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Caritas — Gestão de Acessos</p>
           </div>
         </div>
@@ -1326,14 +1352,14 @@ export default function AdminPanel() {
           >
             <Download size={14} /> {isExporting ? 'Exportando...' : 'Dados Clínicos (CSV)'}
           </Button>
-          <Button onClick={() => logoutFirebaseUser()} variant="ghost" size="sm" style={{ color: 'var(--status-danger)' }}>
+          <Button onClick={() => logoutFirebaseUser()} variant="ghost" size="sm" className="shrink-0 max-sm:min-h-[44px]" style={{ color: 'var(--status-danger)' }}>
             <LogOut size={16} /> Sair
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="px-6 flex gap-1 shrink-0" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+      <div className="px-2 sm:px-6 flex gap-1 shrink-0 overflow-x-auto snap-x" style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
         {[
           { id: 'psicologos', label: 'Psicólogos', icon: Users },
           { id: 'clientes', label: 'Clientes & Líderes', icon: Building2 },
@@ -1343,7 +1369,7 @@ export default function AdminPanel() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2`}
+            className={`shrink-0 snap-start whitespace-nowrap px-3 sm:px-4 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors flex items-center gap-2`}
             style={{ 
                 borderColor: activeTab === tab.id ? 'var(--accent)' : 'transparent',
                 color: activeTab === tab.id ? 'var(--accent)' : 'var(--text-secondary)'
@@ -1355,12 +1381,12 @@ export default function AdminPanel() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6">
 
         {activeTab === 'psicologos' && (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
               <StatCard label="Total" value={stats.total} colorType="info" icon={Users} />
               <StatCard label="Ativos" value={stats.ativos} colorType="success" icon={CheckCircle2} />
               <StatCard label="Inativos" value={stats.inativos} colorType="danger" icon={XCircle} />
@@ -1378,7 +1404,7 @@ export default function AdminPanel() {
 
             {/* Table */}
             <div className="ds-card overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
-              <div className="px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
+              <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-2" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
                 <h3 className="font-heading font-bold" style={{ color: 'var(--text-primary)' }}>Psicólogos Cadastrados</h3>
                 <Button variant="ghost" size="sm" onClick={loadData}>
                   <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> Atualizar
@@ -1390,11 +1416,11 @@ export default function AdminPanel() {
               ) : filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12" style={{ color: 'var(--text-muted)' }}><p>Nenhum psicólogo encontrado.</p></div>
               ) : (
-                <div style={{ divideColor: 'var(--border)', divideWidth: '0.5px', divideStyle: 'solid' }}>
+                <div>
                   {filtered.map(psi => {
                     const diasLogin = diasDesde(psi.lastLogin || psi.updatedAt);
                     return (
-                      <div key={psi.id} className="p-5 transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5" onClick={() => setSelectedPsi(psi)} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <div key={psi.id} className="p-4 sm:p-5 transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5" onClick={() => setSelectedPsi(psi)} style={{ borderBottom: '1px solid var(--border)' }}>
                         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                           {/* Info */}
                           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1432,7 +1458,7 @@ export default function AdminPanel() {
                           </div>
 
                           {/* Actions */}
-                          <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                          <div className="flex flex-wrap items-center gap-2 lg:shrink-0" onClick={e => e.stopPropagation()}>
                             {actionLoading === psi.id ? (
                               <RefreshCw size={20} className="animate-spin" style={{ color: 'var(--accent)' }} />
                             ) : (
@@ -1461,7 +1487,7 @@ export default function AdminPanel() {
                                     <><Unlock size={11} className="mr-1" /> Ativar</>
                                   )}
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleExcluirPerfil(psi)} style={{ color: 'var(--status-danger)' }} title="Excluir Perfil do Psicólogo">
+                                <Button size="sm" variant="ghost" onClick={() => handleExcluirPerfil(psi)} style={{ color: 'var(--status-danger)' }} title="Excluir Perfil do Psicólogo" aria-label={`Excluir perfil de ${psi.nome || psi.email}`}>
                                   <Trash2 size={16} />
                                 </Button>
                               </>
@@ -1479,7 +1505,7 @@ export default function AdminPanel() {
 
         {activeTab === 'comunicacao' && (
           <div className="max-w-2xl mx-auto space-y-6">
-            <div className="ds-card p-6 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="ds-card p-4 sm:p-6 space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
               <div>
                 <h3 className="font-heading font-bold text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                     <Bell size={20} style={{ color: 'var(--accent)' }} /> Aviso Global
@@ -1493,11 +1519,11 @@ export default function AdminPanel() {
                 className="ds-input resize-none"
                 placeholder="Ex: Manutenção programada para domingo às 22h. O sistema ficará indisponível por 30 minutos."
               />
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-2">
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{avisoGlobal ? `${avisoGlobal.length} caracteres` : 'Aviso desativado'}</p>
                 <div className="flex gap-2">
-                  <Button variant="ghost" onClick={() => { setAvisoGlobal(''); handleSalvarAviso(); }}>Limpar</Button>
-                  <Button onClick={handleSalvarAviso} disabled={avisoSaving}>
+                  <Button variant="ghost" disabled={avisoSaving} onClick={() => { setAvisoGlobal(''); handleSalvarAviso(''); }}>Limpar</Button>
+                  <Button onClick={() => handleSalvarAviso()} disabled={avisoSaving}>
                     {avisoSaving ? 'Salvando...' : 'Publicar Aviso'}
                   </Button>
                 </div>
@@ -1539,7 +1565,7 @@ export default function AdminPanel() {
       {/* Modal Confirmar Exclusão de Perfil (CFP / LGPD) */}
       {profileToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="ds-card w-full max-w-md p-6 shadow-2xl space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <div role="dialog" aria-modal="true" className="ds-card w-full max-w-md max-h-[90dvh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4" style={{ backgroundColor: 'var(--bg-card)' }}>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)' }}>
                 <AlertTriangle size={22} />
@@ -1553,7 +1579,7 @@ export default function AdminPanel() {
                 </p>
                 <div className="mt-2 p-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                   <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{profileToDelete.nome || 'Sem nome'}</p>
-                  <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--accent)' }}>{profileToDelete.email}</p>
+                  <p className="text-xs font-mono mt-0.5 break-all" style={{ color: 'var(--accent)' }}>{profileToDelete.email}</p>
                 </div>
               </div>
             </div>
@@ -1567,7 +1593,7 @@ export default function AdminPanel() {
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
               <Button 
                 variant="ghost" 
                 onClick={() => setProfileToDelete(null)}

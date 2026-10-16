@@ -1,5 +1,5 @@
 import logger from '../utils/logger';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   criarAgendamento, criarAgendamentosEmLote, lerAgendamentos,
   atualizarAgendamento, deletarAgendamento, lerConfigAgenda
@@ -40,7 +40,9 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [agendamentos, setAgendamentos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedDay, setSelectedDay] = useState(null);
+  // Abre no dia de hoje: no celular a lista do dia aparece sem precisar tocar no calendário
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const painelDiaRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -214,6 +216,14 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
 
   const selectedDayAgendamentos = selectedDay ? getAgendamentosForDay(selectedDay) : [];
 
+  // Abaixo de xl o painel do dia fica embaixo do calendário: rola até ele para o toque ter efeito visível
+  const selecionarDia = (day) => {
+    setSelectedDay(day);
+    if (day && window.matchMedia('(max-width: 1279px)').matches) {
+      requestAnimationFrame(() => painelDiaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+  };
+
   // Recurring dates calculator
   const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   
@@ -262,30 +272,31 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
           <h1 className="text-3xl font-heading font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Agenda</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>Organize seus atendimentos</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setShowConfig(true)}>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => setShowConfig(true)}>
             <Settings size={18} />
             Configurar
           </Button>
-          <Button variant="primary" onClick={() => openNew()}>
+          <Button variant="primary" className="flex-1 sm:flex-none" onClick={() => openNew()}>
             <Plus size={18} />
-            Novo Agendamento
+            <span className="sm:hidden">Agendar</span>
+            <span className="hidden sm:inline">Novo Agendamento</span>
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Calendar */}
-        <div className="xl:col-span-2 ds-card p-6" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <div className="xl:col-span-2 ds-card p-3 sm:p-6" style={{ backgroundColor: 'var(--bg-card)' }}>
           {/* Month nav */}
-          <div className="flex items-center justify-between mb-6">
-            <button onClick={prevMonth} className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <button onClick={prevMonth} aria-label="Mês anterior" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
               <ChevronLeft size={20} />
             </button>
             <h2 className="text-lg font-heading font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>
               {monthName} {currentYear}
             </h2>
-            <button onClick={nextMonth} className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+            <button onClick={nextMonth} aria-label="Próximo mês" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
               <ChevronRight size={20} />
             </button>
           </div>
@@ -298,7 +309,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
           </div>
 
           {/* Days grid */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
             {/* Empty cells before first day */}
             {Array.from({ length: firstDayOfMonth }).map((_, i) => (
               <div key={`empty-${i}`} />
@@ -317,8 +328,10 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
               return (
                 <button
                   key={day}
-                  onClick={() => setSelectedDay(isSelected ? null : day)}
-                  className={`relative rounded-xl p-1.5 min-h-[56px] flex flex-col items-center text-xs font-semibold transition-all hover:bg-slate-100 dark:hover:bg-white/5`}
+                  onClick={() => selecionarDia(isSelected ? null : day)}
+                  aria-pressed={isSelected}
+                  aria-label={`${day} de ${monthName}${dayAgendamentos.length ? `, ${dayAgendamentos.length} agendamento(s)` : ''}`}
+                  className={`relative rounded-lg sm:rounded-xl p-0.5 sm:p-1.5 min-h-[48px] sm:min-h-[56px] min-w-0 flex flex-col items-center text-xs font-semibold transition-all hover:bg-slate-100 dark:hover:bg-white/5`}
                   style={{ ...selectedStyles, color: isToday ? 'var(--accent)' : 'var(--text-primary)' }}
                 >
                   <span 
@@ -359,7 +372,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
         </div>
 
         {/* Right panel: selected day or upcoming */}
-        <div className="ds-card p-5 flex flex-col" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <div ref={painelDiaRef} className="ds-card p-4 sm:p-5 flex flex-col scroll-mt-4" style={{ backgroundColor: 'var(--bg-card)' }}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
               {selectedDay
@@ -369,7 +382,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
             {selectedDay && (
               <button
                 onClick={() => openNew(selectedDay)}
-                className="text-xs font-semibold flex items-center gap-1 transition-colors"
+                className="text-xs font-semibold flex items-center gap-1 min-h-[44px] px-2 -mr-2 transition-colors"
                 style={{ color: 'var(--accent)' }}
               >
                 <Plus size={14} />
@@ -413,10 +426,10 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                             </span>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <Badge variant={sc.color}>{sc.label}</Badge>
-                        
-                        <div className="flex gap-1.5 mt-2 items-center">
+                      <Badge variant={sc.color} className="shrink-0">{sc.label}</Badge>
+                    </div>
+                    {/* Ações em linha própria: ao lado do nome espremiam o texto em telas de 320px */}
+                    <div className="flex flex-wrap justify-end gap-1.5 mt-3 items-center">
                           {ag.status !== 'realizado' && ag.status !== 'cancelado' && ag.data <= hoje && (
                             <button
                               onClick={async () => {
@@ -503,6 +516,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                               className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded transition-colors"
                               style={{ backgroundColor: 'var(--status-success-bg)', color: 'var(--status-success)', border: '1px solid var(--status-success)' }}
                               title="Enviar WhatsApp"
+                              aria-label="Enviar WhatsApp"
                             >
                               <MessageCircle size={14} />
                             </a>
@@ -512,6 +526,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                             className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded transition-colors"
                             style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
                             title="Editar"
+                            aria-label="Editar agendamento"
                           >
                             <Edit2 size={14} />
                           </button>
@@ -520,11 +535,10 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                             className="p-1.5 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded transition-colors"
                             style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
                             title="Excluir"
+                            aria-label="Excluir agendamento"
                           >
                             <Trash2 size={14} />
                           </button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 );
@@ -537,8 +551,8 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
       {/* Modal: Create/Edit */}
       {showModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{ backgroundColor: 'var(--overlay)' }}>
-          <div className="ds-card w-full max-w-lg max-h-[90dvh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--bg-card)' }}>
-            <h2 className="text-lg font-heading font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="agenda-modal-titulo" className="ds-card w-full max-w-lg max-h-[90dvh] overflow-y-auto p-4 sm:p-6 animate-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <h2 id="agenda-modal-titulo" className="text-lg font-heading font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>
               {editingId ? 'Editar Agendamento' : 'Novo Agendamento'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -580,7 +594,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
               </div>
 
               {/* Date + Time */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Data</label>
                   <input type="date" required value={form.data}
@@ -626,22 +640,28 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
               {/* Recurring toggle - only for new appointments */}
               {!editingId && (
                 <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div
-                      onClick={() => setIsRecurring(!isRecurring)}
-                      className="relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer"
+                  {/* Botão envolve trilho + rótulo: antes só o trilho respondia ao toque e não havia acesso por teclado */}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isRecurring}
+                    onClick={() => setIsRecurring(v => !v)}
+                    className="flex items-center gap-3 min-h-[44px] w-full text-left"
+                  >
+                    <span
+                      className="relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0"
                       style={{ backgroundColor: isRecurring ? 'var(--accent)' : 'var(--border)' }}
                     >
-                      <div
-                        className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                      <span
+                        className="absolute top-0.5 left-0 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
                         style={{ transform: isRecurring ? 'translateX(22px)' : 'translateX(2px)' }}
                       />
-                    </div>
-                    <div className="flex items-center gap-2">
+                    </span>
+                    <span className="flex items-center gap-2">
                       <Repeat size={16} style={{ color: isRecurring ? 'var(--accent)' : 'var(--text-secondary)' }} />
                       <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Agendamento Recorrente</span>
-                    </div>
-                  </label>
+                    </span>
+                  </button>
 
                   {isRecurring && (
                     <div className="space-y-3 pt-1">
@@ -705,7 +725,7 @@ export default function Agenda({ patients, onAtender, onRefreshPatients }) {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                 <Button variant="secondary" className="flex-1" type="button" onClick={() => setShowModal(false)}>
                   Cancelar
                 </Button>

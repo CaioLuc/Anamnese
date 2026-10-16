@@ -214,7 +214,7 @@ export default function AgendaPublica() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div className="min-h-[100dvh] flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <svg className="w-10 h-10 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -225,7 +225,7 @@ export default function AgendaPublica() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div className="min-h-[100dvh] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="text-center max-w-md">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--status-danger-bg)' }}>
             <AlertTriangle size={32} style={{ color: 'var(--status-danger)' }} />
@@ -242,8 +242,8 @@ export default function AgendaPublica() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className="ds-card text-center max-w-md p-8" style={{ backgroundColor: 'var(--bg-card)' }}>
+      <div className="min-h-[100dvh] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="ds-card text-center w-full max-w-md p-6 sm:p-8" style={{ backgroundColor: 'var(--bg-card)' }}>
           <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--status-success-bg)' }}>
             <CheckCircle size={32} style={{ color: 'var(--status-success)' }} />
           </div>
@@ -266,17 +266,17 @@ export default function AgendaPublica() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="min-h-[100dvh]" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <div style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
-        <div className="max-w-2xl mx-auto px-6 py-6 text-center">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 text-center">
           <div 
             className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center text-2xl font-bold" 
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-contrast)', boxShadow: 'var(--shadow)' }}
           >
             {config.nome_publico?.charAt(0)?.toUpperCase() || 'P'}
           </div>
-          <h1 className="text-2xl font-heading font-bold" style={{ color: 'var(--text-primary)' }}>{config.nome_publico}</h1>
+          <h1 className="text-xl sm:text-2xl font-heading font-bold break-words" style={{ color: 'var(--text-primary)' }}>{config.nome_publico}</h1>
           {config.especialidade && (
             <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{config.especialidade}</p>
           )}
@@ -284,11 +284,11 @@ export default function AgendaPublica() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
         {/* Step 1: Select Date */}
-        <div className="ds-card p-5" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <div className="ds-card p-4 sm:p-5" style={{ backgroundColor: 'var(--bg-card)' }}>
           <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--text-primary)' }}>1. Escolha uma data</h2>
-          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+          <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-7 sm:overflow-visible">
             {dateOptions.map(dateStr => {
               const d = new Date(dateStr + 'T12:00:00');
               const diaSemana = DIAS_MAP[d.getDay()];
@@ -303,7 +303,8 @@ export default function AgendaPublica() {
                   key={dateStr}
                   onClick={() => disponivel && setSelectedDate(dateStr)}
                   disabled={!disponivel}
-                  className={`flex flex-col items-center py-2.5 px-1 rounded-xl text-xs font-semibold transition-all
+                  aria-pressed={isSelected}
+                  className={`shrink-0 w-16 sm:w-auto snap-start flex flex-col items-center py-2.5 px-1 rounded-xl text-xs font-semibold transition-all
                     ${isSelected ? '' : disponivel ? 'hover:bg-slate-100 dark:hover:bg-white/5' : ''}
                     ${!disponivel ? 'opacity-30 cursor-not-allowed' : ''}
                   `}
@@ -323,7 +324,7 @@ export default function AgendaPublica() {
 
         {/* Step 2: Select Slot */}
         {selectedDate && (
-          <div className="ds-card p-5 animate-in fade-in duration-300" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <div className="ds-card p-4 sm:p-5 animate-in fade-in duration-300" style={{ backgroundColor: 'var(--bg-card)' }}>
             <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>2. Escolha um horário</h2>
             <p className="text-xs mb-3 capitalize" style={{ color: 'var(--text-secondary)' }}>{formatDateLabel(selectedDate)}</p>
 
@@ -342,12 +343,13 @@ export default function AgendaPublica() {
             ) : slots.length === 0 ? (
               <p className="text-sm text-center py-6" style={{ color: 'var(--text-secondary)' }}>Nenhum horário disponível neste dia.</p>
             ) : (
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              <div className="grid grid-cols-3 min-[360px]:grid-cols-4 sm:grid-cols-6 gap-2">
                 {slots.map(hora => (
                   <button
                     key={hora}
                     onClick={() => setSelectedSlot(hora)}
-                    className={`py-2.5 rounded-xl text-sm font-semibold transition-all border`}
+                    aria-pressed={selectedSlot === hora}
+                    className={`min-h-[44px] py-2.5 rounded-xl text-sm font-semibold transition-all border`}
                     style={{
                       backgroundColor: selectedSlot === hora ? 'var(--accent)' : 'transparent',
                       color: selectedSlot === hora ? '#FFFFFF' : 'var(--text-primary)',
@@ -364,7 +366,7 @@ export default function AgendaPublica() {
 
         {/* Step 3: Form */}
         {selectedSlot && (
-          <form onSubmit={handleSubmit} className="ds-card p-5 space-y-4 animate-in fade-in duration-300" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <form onSubmit={handleSubmit} className="ds-card p-4 sm:p-5 space-y-4 animate-in fade-in duration-300" style={{ backgroundColor: 'var(--bg-card)' }}>
             <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>3. Seus dados</h2>
 
             <div>
@@ -377,13 +379,14 @@ export default function AgendaPublica() {
               />
               {formErrors.nome && <p className="text-xs text-red-400 mt-1">{formErrors.nome}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>CPF *</label>
                 <input
                   type="text" required value={formCPF}
                   onChange={e => { setFormCPF(formatCPF(e.target.value)); setFormErrors(prev => ({...prev, cpf: ''})); }}
                   placeholder="000.000.000-00"
+                  inputMode="numeric"
                   maxLength={14}
                   className={`ds-input ${formErrors.cpf ? 'border-red-400' : ''}`}
                 />
